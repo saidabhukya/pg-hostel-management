@@ -122,6 +122,48 @@
     ];
   }
 
+  function getDefaultAnnouncements() {
+    const today = new Date().toISOString().slice(0, 10);
+    return [
+      {
+        id: 1,
+        title: 'Hostel Maintenance Schedule — Water Tank Cleaning',
+        content: 'Hostel overhead water tanks will undergo periodic ultraviolet sanitization tomorrow from 10:00 AM to 1:00 PM. Please store required water in advance.',
+        priority: 'High',
+        audience: 'all',
+        published_date: today,
+        date: today,
+        publishedDateDisplay: formatDisplayDate(today),
+        author_name: 'Hostel Chief Warden',
+        created_by: 1
+      },
+      {
+        id: 2,
+        title: 'High-Speed Wi-Fi 6 Upgrade across all 5 Floors',
+        content: 'New Wi-Fi 6 access points have been configured across all 5 hostel floors to provide 100 Mbps per room. Seamless roaming is enabled.',
+        priority: 'Medium',
+        audience: 'all',
+        published_date: today,
+        date: today,
+        publishedDateDisplay: formatDisplayDate(today),
+        author_name: 'Hostel Chief Warden',
+        created_by: 1
+      },
+      {
+        id: 3,
+        title: 'Reminder: Joining-Date Based Monthly Fee Cycles',
+        content: 'All residents are advised to track their respective monthly joining dates in the Fee Management tab. Room charges should be cleared on or before the due date.',
+        priority: 'Urgent',
+        audience: 'students',
+        published_date: today,
+        date: today,
+        publishedDateDisplay: formatDisplayDate(today),
+        author_name: 'Hostel Accounts Desk',
+        created_by: 1
+      }
+    ];
+  }
+
   function getCleanInitialState() {
     return {
       adminUser: {
@@ -140,7 +182,7 @@
       complaints: [],
       expenses: [],
       visitors: [],
-      announcements: [],
+      announcements: getDefaultAnnouncements(),
       leaveRequests: [],
       settings: {
         hostel_name: 'SRI RAM PG',
@@ -321,6 +363,9 @@
       if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
       if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
       if (!Array.isArray(store.payments)) store.payments = [];
+      if (!Array.isArray(store.announcements) || store.announcements.length === 0) {
+        store.announcements = getDefaultAnnouncements();
+      }
       // Always adopt the latest Vignan Vihar Boys Hostel menu
       store.messMenu = getVignanMessMenu();
     } else {
@@ -410,7 +455,17 @@
       }));
     },
     get visitors() { return store.visitors; },
-    get announcements() { return store.announcements; },
+    get announcements() {
+      if (!Array.isArray(store.announcements) || store.announcements.length === 0) {
+        store.announcements = getDefaultAnnouncements();
+        saveStore();
+      }
+      return (store.announcements || []).map(a => ({
+        ...a,
+        publishedDateDisplay: a.publishedDateDisplay || formatDisplayDate(a.published_date || a.date || a.created_at) || 'Today'
+      }));
+    },
+    get notifications() { return store.notifications || []; },
     get leaveRequests() { return store.leaveRequests; },
     get settings() { return store.settings; },
     get messMenu() { return store.messMenu; },
@@ -1135,6 +1190,53 @@
       const eId = Number(id);
       store.expenses = store.expenses.filter(e => e.id !== eId);
       saveStore();
+    },
+
+    addAnnouncement(data) {
+      if (!Array.isArray(store.announcements)) store.announcements = [];
+      const newId = store.announcements.length ? Math.max(...store.announcements.map(a => Number(a.id) || 0)) + 1 : 1;
+      const today = new Date().toISOString().slice(0, 10);
+      const user = (window.API && typeof window.API.getUser === 'function' && window.API.getUser()) || store.adminUser;
+
+      const newAnn = {
+        id: newId,
+        title: (data.title || '').trim(),
+        content: (data.content || '').trim(),
+        priority: data.priority || 'Medium',
+        audience: data.audience || 'all',
+        published_date: data.publishedDate || data.published_date || today,
+        date: data.publishedDate || data.published_date || today,
+        publishedDateDisplay: formatDisplayDate(data.publishedDate || data.published_date || today),
+        author_name: (user && user.name) || 'Hostel Chief Warden',
+        created_by: (user && user.id) || 1,
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      };
+
+      store.announcements.unshift(newAnn);
+
+      // Also create a notification
+      if (!Array.isArray(store.notifications)) store.notifications = [];
+      const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+      store.notifications.unshift({
+        id: notifId,
+        title: 'New Announcement: ' + (data.title || '').trim(),
+        message: (data.content || '').slice(0, 100) + '...',
+        type: 'announcement',
+        is_read: 0,
+        link: '#announcements',
+        created_at: 'Just now'
+      });
+
+      saveStore();
+      return newAnn;
+    },
+
+    deleteAnnouncement(id) {
+      const annId = Number(id);
+      if (Array.isArray(store.announcements)) {
+        store.announcements = store.announcements.filter(a => Number(a.id) !== annId);
+        saveStore();
+      }
     },
 
     resetToClean() {

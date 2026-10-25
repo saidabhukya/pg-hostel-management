@@ -4,13 +4,13 @@
 const AnnouncementsPage = {
   async render() {
     const user = API.getUser();
-    const isAdmin = user && user.role === 'admin';
+    const isAdmin = !user || user.role === 'admin';
 
     return `
       <div class="page-header">
         <div class="page-title-group">
           <h1>Hostel Bulletins & Announcements</h1>
-          <p>Official notices from the Warden's Office and campus administration</p>
+          <p>Official notices from the Warden's Office, Accounts Desk, and campus administration</p>
         </div>
         <div class="page-actions">
           ${isAdmin ? `
@@ -36,8 +36,10 @@ const AnnouncementsPage = {
   async loadAnnouncements() {
     try {
       const res = await API.get('/announcements');
-      if (res.success) {
-        this.renderAnnouncements(res.data);
+      if (res && res.success) {
+        this.renderAnnouncements(res.data || []);
+      } else {
+        this.renderAnnouncements([]);
       }
     } catch (e) {
       Toast.error('Failed to load announcements: ' + e.message);
@@ -49,13 +51,14 @@ const AnnouncementsPage = {
     if (!container) return;
 
     const user = API.getUser();
-    const isAdmin = user && user.role === 'admin';
+    const isAdmin = !user || user.role === 'admin';
 
-    if (list.length === 0) {
+    if (!Array.isArray(list) || list.length === 0) {
       container.innerHTML = `
         <div class="card" style="text-align:center;padding:3rem;color:var(--text-muted);">
           <i data-lucide="megaphone-off" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
           <p style="font-weight:600;">No active bulletins or notices.</p>
+          <p style="font-size:0.85rem;margin-top:0.25rem;">Click the "+ Post Announcement" button above to publish an official bulletin.</p>
         </div>
       `;
       Utils.renderIcons();
@@ -64,19 +67,36 @@ const AnnouncementsPage = {
 
     container.innerHTML = list.map(a => {
       let priorityBadge = 'badge-info';
-      if (a.priority === 'Urgent') priorityBadge = 'badge-danger';
-      else if (a.priority === 'High') priorityBadge = 'badge-danger';
-      else if (a.priority === 'Medium') priorityBadge = 'badge-warning';
+      let borderLeftColor = 'var(--accent-blue, #2563eb)';
+
+      if (a.priority === 'Urgent') {
+        priorityBadge = 'badge-danger';
+        borderLeftColor = 'var(--primary-red, #dc2626)';
+      } else if (a.priority === 'High') {
+        priorityBadge = 'badge-danger';
+        borderLeftColor = '#ea580c';
+      } else if (a.priority === 'Medium') {
+        priorityBadge = 'badge-warning';
+        borderLeftColor = '#f59e0b';
+      }
+
+      const dateStr = a.publishedDateDisplay || (a.published_date ? Utils.formatDate(a.published_date) : 'Today');
+      const audienceLabel = a.audience === 'all'
+        ? 'All Residents & Staff'
+        : (a.audience === 'students' ? 'Students Only' : (a.audience === 'staff' ? 'Staff Only' : Utils.escapeHTML(a.audience)));
 
       return `
-        <div class="card" style="border-left:4px solid ${a.priority === 'Urgent' ? 'var(--primary-red)' : 'var(--text-muted)'};">
+        <div class="card" style="border-left:5px solid ${borderLeftColor};transition:transform 0.15s ease,box-shadow 0.15s ease;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.5rem;">
             <div style="display:flex;align-items:center;gap:0.6rem;">
-              <span class="badge ${priorityBadge}">${a.priority} Priority</span>
-              <span style="font-size:0.78rem;color:var(--text-muted);">Published: ${a.publishedDateDisplay}</span>
+              <span class="badge ${priorityBadge}">${Utils.escapeHTML(a.priority || 'General')} Priority</span>
+              <span style="font-size:0.78rem;color:var(--text-muted);">
+                <i data-lucide="calendar" style="width:13px;height:13px;display:inline-block;vertical-align:-1px;margin-right:2px;"></i>
+                Published: <strong>${dateStr}</strong>
+              </span>
             </div>
             ${isAdmin ? `
-              <button class="btn btn-sm btn-danger" onclick="AnnouncementsPage.deleteAnnouncement(${a.id})" title="Delete Bulletin">
+              <button class="btn btn-sm btn-danger" onclick="AnnouncementsPage.deleteAnnouncement(${a.id})" title="Delete Bulletin" style="padding:0.3rem 0.5rem;">
                 <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
               </button>
             ` : ''}
@@ -90,9 +110,9 @@ const AnnouncementsPage = {
             ${Utils.escapeHTML(a.content)}
           </p>
 
-          <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between;">
-            <span>Issued by: <strong>${Utils.escapeHTML(a.author_name || 'Hostel Chief Warden')}</strong></span>
-            <span>Target Audience: <strong>${a.audience === 'all' ? 'All Residents & Staff' : a.audience}</strong></span>
+          <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+            <span>Issued by: <strong style="color:var(--text-primary);">${Utils.escapeHTML(a.author_name || 'Hostel Chief Warden')}</strong></span>
+            <span>Target Audience: <strong style="color:var(--text-primary);">${audienceLabel}</strong></span>
           </div>
         </div>
       `;
@@ -149,10 +169,15 @@ const AnnouncementsPage = {
 
   async submitAnnouncement(e) {
     e.preventDefault();
-    const title = document.getElementById('ann-title').value;
-    const content = document.getElementById('ann-content').value;
+    const title = (document.getElementById('ann-title').value || '').trim();
+    const content = (document.getElementById('ann-content').value || '').trim();
     const priority = document.getElementById('ann-priority').value;
     const audience = document.getElementById('ann-audience').value;
+
+    if (!title || !content) {
+      Toast.error('Please enter both headline and content for the announcement.');
+      return;
+    }
 
     try {
       const res = await API.post('/announcements', {
@@ -162,13 +187,18 @@ const AnnouncementsPage = {
         audience
       });
 
-      if (res.success) {
-        Toast.success(res.message);
+      if (res && res.success) {
+        Toast.success(res.message || 'Announcement published successfully!');
         Modal.close();
-        this.loadAnnouncements();
+        await this.loadAnnouncements();
+        if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+          window.NotificationCenter.fetchNotifications();
+        }
+      } else {
+        Toast.error((res && res.message) || 'Failed to publish announcement.');
       }
     } catch (err) {
-      Toast.error(err.message);
+      Toast.error(err.message || 'Error publishing announcement.');
     }
   },
 
@@ -176,12 +206,14 @@ const AnnouncementsPage = {
     if (!confirm('Are you sure you want to delete this announcement?')) return;
     try {
       const res = await API.delete(`/announcements/${id}`);
-      if (res.success) {
-        Toast.success(res.message);
-        this.loadAnnouncements();
+      if (res && res.success) {
+        Toast.success(res.message || 'Announcement deleted successfully.');
+        await this.loadAnnouncements();
+      } else {
+        Toast.error((res && res.message) || 'Failed to delete announcement.');
       }
     } catch (e) {
-      Toast.error(e.message);
+      Toast.error(e.message || 'Error deleting announcement.');
     }
   }
 };

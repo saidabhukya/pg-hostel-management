@@ -464,6 +464,33 @@ const API = {
         pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
       };
     }
+    if (cleanEndpoint === '/announcements' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const newAnn = MockData.addAnnouncement ? MockData.addAnnouncement(body) : body;
+      return {
+        success: true,
+        message: 'Announcement published successfully!',
+        data: newAnn,
+        announcementId: newAnn.id
+      };
+    }
+
+    if (cleanEndpoint.startsWith('/announcements/') && method === 'DELETE') {
+      const parts = cleanEndpoint.split('/');
+      const annId = Number(parts[2]);
+      if (MockData.deleteAnnouncement) {
+        MockData.deleteAnnouncement(annId);
+      }
+      return {
+        success: true,
+        message: 'Announcement deleted successfully.'
+      };
+    }
+
     if (cleanEndpoint === '/announcements') {
       return { success: true, data: MockData.announcements };
     }
@@ -474,11 +501,15 @@ const API = {
       return { success: true, data: MockData.leaveRequests };
     }
     if (cleanEndpoint === '/notifications') {
+      const notifs = (MockData.notifications && MockData.notifications.length)
+        ? MockData.notifications
+        : [
+            { id: 1, title: 'Demo Mode Active', message: 'You are exploring the live UI in GitHub Pages demo mode.', read: false, created_at: 'Just now' }
+          ];
       return {
         success: true,
-        data: [
-          { id: 1, title: 'Demo Mode Active', message: 'You are exploring the live UI in GitHub Pages demo mode.', read: false, created_at: 'Just now' }
-        ]
+        data: notifs,
+        unreadCount: notifs.filter(n => !n.is_read).length
       };
     }
     if (cleanEndpoint.startsWith('/reports/')) {
