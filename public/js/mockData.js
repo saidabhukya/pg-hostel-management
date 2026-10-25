@@ -4,7 +4,14 @@
  * Persists all newly added records to browser localStorage.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_clean_store_v2';
+  const STORAGE_KEY = 'sri_ram_pg_clean_store_v4';
+
+  // Purge any old demo stores from browser localStorage
+  try {
+    ['sri_ram_pg_clean_store_v1', 'sri_ram_pg_clean_store_v2', 'sri_ram_pg_clean_store_v3', 'sri_ram_pg_live_store_v1'].forEach(k => {
+      localStorage.removeItem(k);
+    });
+  } catch (e) {}
 
   // Build 5 floors, 50 rooms (101-110, 201-210, etc.), 250 beds (Bed-A to Bed-E)
   function buildCleanHostelStructure() {

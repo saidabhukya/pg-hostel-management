@@ -297,20 +297,39 @@ const AdminDashboard = {
     // 2. Monthly Financials (Income vs Expenses)
     const finCanvas = document.getElementById('financialChart');
     if (finCanvas) {
+      const incList = chartData.monthlyIncome || [];
+      const expList = chartData.monthlyExpenses || [];
+
+      const allMonths = Array.from(new Set([
+        ...incList.map(i => i.month_year),
+        ...expList.map(e => e.month_year)
+      ])).sort();
+
+      const labels = allMonths.length ? allMonths : ['Current Month'];
+      const incData = allMonths.length ? allMonths.map(m => {
+        const row = incList.find(i => i.month_year === m);
+        return row ? Number(row.total_income) : 0;
+      }) : [statsData.feesCollected || 0];
+
+      const expData = allMonths.length ? allMonths.map(m => {
+        const row = expList.find(e => e.month_year === m);
+        return row ? Number(row.total_expense) : 0;
+      }) : [statsData.hostelExpenses || 0];
+
       this.charts.financial = new Chart(finCanvas.getContext('2d'), {
         type: 'bar',
         data: {
-          labels: ['Aug 2026', 'Sep 2026', 'Oct 2026'],
+          labels: labels,
           datasets: [
             {
               label: 'Fees Collected (₹)',
-              data: [14000, 42000, 1134000],
+              data: incData,
               backgroundColor: '#16a34a',
               borderRadius: 6
             },
             {
               label: 'Expenses (₹)',
-              data: [85000, 110000, 320000],
+              data: expData,
               backgroundColor: '#dc2626',
               borderRadius: 6
             }
@@ -331,12 +350,16 @@ const AdminDashboard = {
     // 3. Bed Distribution Doughnut
     const bedCanvas = document.getElementById('bedDistributionChart');
     if (bedCanvas && statsData) {
+      const occ = Number(statsData.occupiedBeds || 0);
+      const avail = Number(statsData.availableBeds || 0);
+      const maint = Number(statsData.maintenanceBeds || 0);
+
       this.charts.bed = new Chart(bedCanvas.getContext('2d'), {
         type: 'doughnut',
         data: {
-          labels: ['Occupied (183)', 'Available (67)', 'Maintenance (0)'],
+          labels: [`Occupied (${occ})`, `Available (${avail})`, `Maintenance (${maint})`],
           datasets: [{
-            data: [statsData.occupiedBeds, statsData.availableBeds, statsData.maintenanceBeds || 0],
+            data: [occ, avail, maint],
             backgroundColor: ['#dc2626', '#16a34a', '#f97316'],
             borderWidth: 2,
             borderColor: isDark ? '#131c2e' : '#ffffff'
@@ -353,28 +376,52 @@ const AdminDashboard = {
 
     // 4. Expense Breakdown Doughnut/Polar
     const expCanvas = document.getElementById('expenseCategoryChart');
-    if (expCanvas && chartData.categoryExpenses) {
-      const cats = chartData.categoryExpenses;
-      this.charts.expense = new Chart(expCanvas.getContext('2d'), {
-        type: 'pie',
-        data: {
-          labels: cats.map(c => c.category),
-          datasets: [{
-            data: cats.map(c => Number(c.total_amount)),
-            backgroundColor: [
-              '#dc2626', '#2563eb', '#16a34a', '#f59e0b',
-              '#9333ea', '#06b6d4', '#ea580c', '#64748b'
-            ],
-            borderWidth: 2,
-            borderColor: isDark ? '#131c2e' : '#ffffff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'right', labels: { color: textColor } } }
-        }
-      });
+    if (expCanvas) {
+      const cats = chartData.categoryExpenses || [];
+      if (cats.length === 0) {
+        this.charts.expense = new Chart(expCanvas.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['No Expenses Recorded'],
+            datasets: [{
+              data: [1],
+              backgroundColor: [isDark ? '#334155' : '#e2e8f0'],
+              borderWidth: 2,
+              borderColor: isDark ? '#131c2e' : '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+              legend: { position: 'bottom', labels: { color: textColor } },
+              tooltip: { enabled: false }
+            }
+          }
+        });
+      } else {
+        this.charts.expense = new Chart(expCanvas.getContext('2d'), {
+          type: 'pie',
+          data: {
+            labels: cats.map(c => c.category),
+            datasets: [{
+              data: cats.map(c => Number(c.total_amount)),
+              backgroundColor: [
+                '#dc2626', '#2563eb', '#16a34a', '#f59e0b',
+                '#9333ea', '#06b6d4', '#ea580c', '#64748b'
+              ],
+              borderWidth: 2,
+              borderColor: isDark ? '#131c2e' : '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { color: textColor } } }
+          }
+        });
+      }
     }
   },
 
