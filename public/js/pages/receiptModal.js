@@ -210,7 +210,7 @@ const ReceiptModal = {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.text(`Registration No: ${p.reg_number || '-'}`, 18, 68);
-      doc.text(`College: ${p.college || 'Vignan University'}`, 18, 74);
+      doc.text(`College: ${p.college || 'VIGNAN UNIVERSITY'}`, 18, 74);
       doc.text(`Course: ${p.course || 'B.Tech'} (${p.year || '1st Year'})`, 18, 80);
 
       doc.setFont('helvetica', 'bold');

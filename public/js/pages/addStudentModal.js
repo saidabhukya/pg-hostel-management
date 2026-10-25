@@ -96,7 +96,7 @@ const AddStudentModal = {
               <select id="as-college" class="form-control" onchange="AddStudentModal.onCollegeChange(this.value)" required>
                 <option value="" disabled selected>-- Select College / University --</option>
                 <optgroup label="Vignan Group of Institutions">
-                  <option value="Vignan's Foundation for Science, Technology and Research (Vignan University, Vadlamudi)">Vignan's Foundation for Science, Technology and Research (Vignan University, Vadlamudi)</option>
+                  <option value="VIGNAN UNIVERSITY">VIGNAN UNIVERSITY</option>
                   <option value="Vignan's Lara Institute of Technology & Science (Lara, Vadlamudi)">Vignan's Lara Institute of Technology & Science (Lara, Vadlamudi)</option>
                   <option value="Vignan's Nirula Institute of Technology & Science for Women (VNITSW, Guntur)">Vignan's Nirula Institute of Technology & Science for Women (VNITSW, Guntur)</option>
                   <option value="Vignan Pharmacy College (Vadlamudi)">Vignan Pharmacy College (Vadlamudi)</option>

@@ -222,6 +222,9 @@
     const activeStudentMap = new Map();
     store.students.forEach(s => {
       s.id = Number(s.id);
+      if (s.college && (s.college.includes("Vignan's Foundation") || s.college === 'Vignan University, Vadlamudi' || s.college === 'Vignan University')) {
+        s.college = 'VIGNAN UNIVERSITY';
+      }
       activeStudentMap.set(s.id, s);
     });
 
@@ -807,7 +810,7 @@
         name: data.name,
         email: data.email,
         phone: data.phone,
-        college: data.college || 'Vignan University, Vadlamudi',
+        college: data.college || 'VIGNAN UNIVERSITY',
         course: data.course || 'B.Tech - Artificial Intelligence & Machine Learning (AI & ML)',
         joining_date: data.joiningDate || data.joining_date || new Date().toISOString().slice(0, 10),
         monthly_fee: Number(data.monthlyFee || data.monthly_fee || 7000),
@@ -1077,7 +1080,7 @@
           reg_number: student ? student.reg_number : '',
           room_number: student ? student.room_number : '',
           bed_label: student ? student.bed_label : 'Bed-A',
-          college: student ? student.college : 'Vignan University',
+          college: student ? student.college : 'VIGNAN UNIVERSITY',
           course: student ? student.course : 'B.Tech',
           cycle_number: nextCycleNum,
           start_date: cycleStart,
@@ -1104,7 +1107,7 @@
         room_number: student ? student.room_number : (cycle ? cycle.room_number : ''),
         floor_number: student ? student.floor_number : 1,
         bed_label: student ? student.bed_label : (cycle ? cycle.bed_label : 'Bed-A'),
-        college: student ? student.college : 'Vignan University',
+        college: student ? student.college : 'VIGNAN UNIVERSITY',
         course: student ? student.course : 'B.Tech',
         year: student ? (student.year || '1st Year') : '1st Year',
         student_phone: student ? student.phone : '+91 98765 43210',
