@@ -135,6 +135,9 @@ const API = {
     }
 
     // 4. Hostel Structure & Rooms
+    if (cleanEndpoint === '/rooms/options/available') {
+      return { success: true, data: MockData.availableBeds || [] };
+    }
     if (cleanEndpoint === '/rooms/structure') {
       return { success: true, data: MockData.structure };
     }

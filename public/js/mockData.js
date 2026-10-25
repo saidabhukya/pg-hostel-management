@@ -5,13 +5,16 @@
 (function() {
   // Generate 5 floors with 10 rooms each
   const structure = [];
+  const availableBeds = [];
+  let bedIdCounter = 1;
+
   for (let f = 1; f <= 5; f++) {
     const rooms = [];
     let floorOccupied = 0;
     for (let r = 1; r <= 10; r++) {
       const roomNum = `${f}${String(r).padStart(2, '0')}`;
       // Random but consistent occupancy
-      const occupied = (f === 1 && r <= 8) || (f === 2 && r <= 9) || (f === 3 && r <= 7) || (f === 4 && r <= 6) || (f === 5 && r <= 4) ? 5 : 3;
+      const occupied = (f === 1 && r <= 8) || (f === 2 && r <= 9) || (f === 3 && r <= 7) || (f === 4 && r <= 6) || (f === 5 && r <= 4) ? 4 : 3;
       const avail = 5 - occupied;
       floorOccupied += occupied;
       rooms.push({
@@ -21,6 +24,31 @@
         available_beds: avail,
         maintenance_beds: 0
       });
+
+      // Add Bed-E as available
+      availableBeds.push({
+        bed_id: bedIdCounter++,
+        bed_number: 5,
+        bed_label: 'Bed-E',
+        room_id: (f - 1) * 10 + r,
+        room_number: roomNum,
+        floor_id: f,
+        floor_number: f,
+        floor_name: `Floor ${f}`
+      });
+
+      if (avail >= 2) {
+        availableBeds.push({
+          bed_id: bedIdCounter++,
+          bed_number: 4,
+          bed_label: 'Bed-D',
+          room_id: (f - 1) * 10 + r,
+          room_number: roomNum,
+          floor_id: f,
+          floor_number: f,
+          floor_name: `Floor ${f}`
+        });
+      }
     }
     structure.push({
       floor_number: f,
@@ -143,6 +171,7 @@
     ],
 
     structure: structure,
+    availableBeds: availableBeds,
 
     feeCycles: [
       { id: 1, student_id: 1, student_name: 'Ravi Kumar', reg_number: '2024IT123', room_number: '201', bed_label: 'Bed-A', cycle_number: 4, start_date: '2026-10-01', end_date: '2026-10-31', due_date: '2026-10-05', amount: 7000, paid_amount: 7000, status: 'paid' },

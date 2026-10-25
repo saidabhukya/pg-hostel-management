@@ -17,7 +17,7 @@ const AddStudentModal = {
     try {
       // Fetch available beds
       const res = await API.get('/rooms/options/available');
-      this.allAvailableBeds = res.data || [];
+      this.allAvailableBeds = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
 
       if (this.allAvailableBeds.length === 0 && !preselected) {
         Toast.warning('No available beds in the hostel! All 250 beds are currently occupied or under maintenance.');
