@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/database/seed.js",
-    "init-db": "node src/database/init.js"
+    "init-db": "node src/database/init.js",
+    "clean-db": "node src/database/cleanup_demo_data.js"
   },
   "keywords": [
     "hostel",

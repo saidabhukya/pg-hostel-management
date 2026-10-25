@@ -119,6 +119,32 @@ const API = {
     }
 
     // 3. Students
+    if (cleanEndpoint === '/students' && method === 'POST') {
+      let data = {};
+      if (options.body instanceof FormData) {
+        options.body.forEach((val, key) => { data[key] = val; });
+      } else if (typeof options.body === 'string') {
+        try { data = JSON.parse(options.body); } catch(e) {}
+      } else {
+        data = options.body || {};
+      }
+      const newStudent = MockData.addStudent ? MockData.addStudent(data) : data;
+      return {
+        success: true,
+        message: 'Student registered and bed allocated successfully!',
+        data: newStudent
+      };
+    }
+
+    if (cleanEndpoint.startsWith('/students/') && method === 'DELETE') {
+      const sId = cleanEndpoint.replace('/students/', '');
+      if (MockData.deleteStudent) MockData.deleteStudent(sId);
+      return {
+        success: true,
+        message: 'Student record removed and bed released.'
+      };
+    }
+
     if (cleanEndpoint === '/students') {
       return {
         success: true,
@@ -127,10 +153,20 @@ const API = {
       };
     }
     if (cleanEndpoint.startsWith('/students/')) {
+      const sId = Number(cleanEndpoint.replace('/students/', ''));
+      const student = MockData.students.find(s => s.id === sId) || MockData.studentProfile;
       return {
         success: true,
-        data: MockData.studentProfile,
-        student: MockData.studentProfile
+        data: student,
+        student: student
+      };
+    }
+
+    if (cleanEndpoint === '/system/reset-clean') {
+      if (MockData.resetToClean) MockData.resetToClean();
+      return {
+        success: true,
+        message: 'All sample data removed! Starting fresh with 0 students and 250 available beds.'
       };
     }
 

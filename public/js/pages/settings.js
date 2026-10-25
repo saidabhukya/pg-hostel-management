@@ -85,10 +85,10 @@ const SettingsPage = {
                 <input type="text" id="set-hostel-addr" class="form-control" value="Knowledge Park III, Institutional Area, Greater Noida, UP - 201306" />
               </div>
 
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="LoginPage.resetDemoDatabase()">
-                  <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
-                  Reset Demo State
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+                <button type="button" class="btn btn-sm" onclick="SettingsPage.clearAllData()" style="color:#e11d48;border:1px solid #fecdd3;background:#fff1f2;">
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                  Remove Sample Data (Start Clean)
                 </button>
                 <button type="submit" class="btn btn-primary">
                   Save Settings
@@ -173,6 +173,27 @@ const SettingsPage = {
       }
     } catch (err) {
       Toast.error(err.message);
+    }
+  },
+
+  async clearAllData() {
+    if (!confirm('Are you sure you want to remove all sample data? This will clear all students, payments, and complaints so you can add your original data from scratch.')) {
+      return;
+    }
+    try {
+      if (typeof MockData !== 'undefined' && typeof MockData.resetToClean === 'function') {
+        MockData.resetToClean();
+      }
+      localStorage.removeItem('sri_ram_pg_live_store_v1');
+      try {
+        await API.post('/system/reset-clean');
+      } catch(e) {}
+      Toast.success('All sample data removed! Starting fresh with 0 students and 250 available beds.');
+      setTimeout(() => {
+        App.navigate('dashboard');
+      }, 500);
+    } catch (e) {
+      Toast.error('Failed to reset: ' + e.message);
     }
   }
 };
