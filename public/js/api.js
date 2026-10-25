@@ -252,20 +252,60 @@ const API = {
 
     // 5. Fees & Payments
     if (cleanEndpoint === '/fees/cycles' || cleanEndpoint === '/fees') {
+      let list = [...(MockData.feeCycles || [])];
+      try {
+        const urlObj = new URL('http://dummy' + endpoint);
+        const search = (urlObj.searchParams.get('search') || '').toLowerCase().trim();
+        const status = (urlObj.searchParams.get('status') || '').toLowerCase().trim();
+
+        if (search) {
+          list = list.filter(c => 
+            (c.student_name && c.student_name.toLowerCase().includes(search)) ||
+            (c.reg_number && c.reg_number.toLowerCase().includes(search)) ||
+            (c.room_number && String(c.room_number).includes(search))
+          );
+        }
+
+        if (status) {
+          if (status === 'paid') {
+            list = list.filter(c => c.status === 'paid');
+          } else if (status === 'pending') {
+            list = list.filter(c => c.status !== 'paid');
+          }
+        }
+      } catch (e) {}
+
       return {
         success: true,
-        data: MockData.feeCycles,
-        pagination: { total: MockData.feeCycles.length, page: 1, limit: 15, totalPages: 1 }
+        data: list,
+        pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
       };
     }
+
     if (cleanEndpoint === '/fees/reminders') {
+      const cycles = MockData.feeCycles || [];
+      const paidCount = cycles.filter(c => c.status === 'paid').length;
+      const pendingCycles = cycles.filter(c => c.status !== 'paid');
+      const dueSoonCount = pendingCycles.length;
+      let pendingTotal = 0;
+      pendingCycles.forEach(c => {
+        pendingTotal += Math.max(0, Number(c.amount || 0) - Number(c.paid_amount || 0));
+      });
+
       return {
         success: true,
         data: {
-          summary: { dueSoonCount: 4, overdueCount: 2, dueTodayCount: 1 }
+          summary: {
+            dueSoonCount: dueSoonCount,
+            overdueCount: 0,
+            dueTodayCount: 0,
+            paidCount: paidCount,
+            pendingTotal: pendingTotal
+          }
         }
       };
     }
+
     if (cleanEndpoint === '/payments' && method === 'POST') {
       let data = {};
       if (options.body instanceof FormData) {
@@ -279,8 +319,21 @@ const API = {
       return {
         success: true,
         message: 'Payment recorded successfully! Receipt generated.',
-        data: payment
+        data: {
+          ...payment,
+          id: payment.id,
+          paymentId: payment.id
+        }
       };
+    }
+
+    if (cleanEndpoint.startsWith('/payments/')) {
+      const pId = Number(cleanEndpoint.replace('/payments/', ''));
+      const details = MockData.getPaymentDetails ? MockData.getPaymentDetails(pId) : null;
+      if (details) {
+        return { success: true, data: details };
+      }
+      return { success: false, message: 'Payment record not found.' };
     }
 
     if (cleanEndpoint === '/payments') {

@@ -29,28 +29,28 @@ const FeesPage = {
         <div class="kpi-card" style="border-left:4px solid var(--status-success);">
           <div class="kpi-header">
             <span class="kpi-title">Paid Cycles</span>
-            <span class="badge badge-success">Current Month</span>
+            <span class="badge badge-success">Settled</span>
           </div>
-          <div class="kpi-value" id="count-paid-cycles">170</div>
+          <div class="kpi-value" id="count-paid-cycles">0</div>
           <div class="kpi-footer">Fully settled student cycles</div>
         </div>
 
         <div class="kpi-card" style="border-left:4px solid var(--status-warning);">
           <div class="kpi-header">
-            <span class="kpi-title">Due Soon</span>
-            <span class="badge badge-warning">Within 7 Days</span>
+            <span class="kpi-title">Pending Cycles</span>
+            <span class="badge badge-warning">Awaiting Fee</span>
           </div>
-          <div class="kpi-value" id="count-due-soon-cycles">8</div>
+          <div class="kpi-value" id="count-due-soon-cycles">0</div>
           <div class="kpi-footer">Upcoming due reminders</div>
         </div>
 
         <div class="kpi-card" style="border-left:4px solid var(--status-danger);">
           <div class="kpi-header">
-            <span class="kpi-title">Due Today & Overdue</span>
+            <span class="kpi-title">Total Pending</span>
             <span class="badge badge-danger">Action Required</span>
           </div>
-          <div class="kpi-value" id="count-overdue-cycles">5</div>
-          <div class="kpi-footer">Total ₹91,000 pending</div>
+          <div class="kpi-value" id="count-overdue-cycles">₹0</div>
+          <div class="kpi-footer" id="pending-amount-footer">Pending fee collection</div>
         </div>
       </div>
 
@@ -161,10 +161,14 @@ const FeesPage = {
       const res = await API.get('/fees/reminders');
       if (res.success && res.data.summary) {
         const s = res.data.summary;
+        const paidEl = document.getElementById('count-paid-cycles');
         const dueSoonEl = document.getElementById('count-due-soon-cycles');
         const overdueEl = document.getElementById('count-overdue-cycles');
-        if (dueSoonEl) dueSoonEl.innerText = s.dueSoonCount;
-        if (overdueEl) overdueEl.innerText = s.overdueCount + s.dueTodayCount;
+        const pendingFooter = document.getElementById('pending-amount-footer');
+        if (paidEl) paidEl.innerText = s.paidCount ?? 0;
+        if (dueSoonEl) dueSoonEl.innerText = s.dueSoonCount ?? 0;
+        if (overdueEl) overdueEl.innerText = `₹${Number(s.pendingTotal || 0).toLocaleString('en-IN')}`;
+        if (pendingFooter) pendingFooter.innerText = `${s.dueSoonCount || 0} student(s) pending`;
       }
     } catch (e) {}
   },
@@ -189,13 +193,16 @@ const FeesPage = {
     }
 
     tbody.innerHTML = cycles.map(c => {
-      const reminder = c.reminder || { badgeClass: 'badge-danger', label: 'Pending' };
+      const isPaid = c.status === 'paid' || (Number(c.paid_amount || 0) >= Number(c.amount || 0));
+      const reminder = c.reminder || (isPaid 
+        ? { badgeClass: 'badge-success', label: 'Paid' } 
+        : { badgeClass: 'badge-danger', label: 'Pending' });
 
       return `
         <tr>
           <td data-label="Student">
             <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(c.student_name)}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">${c.reg_number} • Joining: ${Utils.formatDate(c.joining_date)}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">${c.reg_number} • Joining: ${c.joining_date ? Utils.formatDate(c.joining_date) : (c.start_date ? Utils.formatDate(c.start_date) : '-')}</div>
           </td>
 
           <td data-label="Room & Bed">
@@ -203,36 +210,38 @@ const FeesPage = {
           </td>
 
           <td data-label="Cycle" style="font-weight:700;">
-            Cycle ${c.cycle_number}
+            Cycle ${c.cycle_number || 1}
           </td>
 
           <td data-label="Period">
-            <div style="font-weight:600;">${c.startDateDisplay} → ${c.endDateDisplay}</div>
+            <div style="font-weight:600;">${c.startDateDisplay || c.start_date || '-'} → ${c.endDateDisplay || c.end_date || '-'}</div>
           </td>
 
           <td data-label="Due Date">
-            <strong>${c.dueDateDisplay}</strong>
+            <strong>${c.dueDateDisplay || c.due_date || '-'}</strong>
           </td>
 
-          <td data-label="Amount" style="font-weight:800;color:var(--text-primary);">
+          <td data-label="Monthly Fee" style="font-weight:800;color:var(--text-primary);">
             ${Utils.formatINR(c.amount)}
+            ${isPaid ? '' : (Number(c.paid_amount) > 0 ? `<div style="font-size:0.75rem;color:var(--status-warning);">Paid: ${Utils.formatINR(c.paid_amount)}</div>` : '')}
           </td>
 
-          <td data-label="Status">
-            <span class="badge ${reminder.badgeClass}">
-              ${reminder.label}
+          <td data-label="Due Status">
+            <span class="badge ${isPaid ? 'badge-success' : reminder.badgeClass}">
+              ${isPaid ? 'Paid' : reminder.label}
             </span>
           </td>
 
           <td data-label="Action">
-            ${c.status === 'paid' ? `
-              <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openReceiptByCycle(${c.id})" title="View Receipt">
+            ${isPaid ? `
+              <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openReceiptByCycle(${c.id})" title="View / Download Receipt">
                 <i data-lucide="receipt" style="width:14px;height:14px;"></i>
-                Receipt
+                <span>Receipt</span>
               </button>
             ` : `
               <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${c.student_id}, '${Utils.escapeHTML(c.student_name)}', ${c.amount}, '${c.start_date}', '${c.end_date}', ${c.id})">
-                Record Pay
+                <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
+                <span>Record Pay</span>
               </button>
             `}
           </td>

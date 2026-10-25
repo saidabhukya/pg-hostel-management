@@ -168,8 +168,14 @@ const ReceiptModal = {
     const p = this.currentReceipt;
 
     try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+      if (!jsPDFClass) {
+        Toast.info('Opening receipt print dialog...');
+        this.printReceipt();
+        return;
+      }
+
+      const doc = new jsPDFClass({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
       // Header Banner
       doc.setFillColor(220, 38, 38); // Crimson Red
@@ -188,9 +194,9 @@ const ReceiptModal = {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
-      doc.text(`Receipt Number: ${p.receipt_number}`, 14, 38);
-      doc.text(`Payment Date: ${p.paymentDateDisplay}`, 14, 43);
-      doc.text(`Status: ${p.status}`, 14, 48);
+      doc.text(`Receipt Number: ${p.receipt_number || 'REC-OFFICIAL'}`, 14, 38);
+      doc.text(`Payment Date: ${p.paymentDateDisplay || Utils.getTodayISO()}`, 14, 43);
+      doc.text(`Status: ${p.status || 'PAID'}`, 14, 48);
 
       // Student & Room Box
       doc.setDrawColor(226, 232, 240);
@@ -200,43 +206,68 @@ const ReceiptModal = {
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Student: ${p.student_name}`, 18, 62);
+      doc.text(`Student: ${p.student_name || 'Resident Student'}`, 18, 62);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.text(`Registration No: ${p.reg_number}`, 18, 68);
-      doc.text(`College: ${p.college || 'National Institute of Technology'}`, 18, 74);
-      doc.text(`Course: ${p.course || ''} (${p.year || ''})`, 18, 80);
+      doc.text(`Registration No: ${p.reg_number || '-'}`, 18, 68);
+      doc.text(`College: ${p.college || 'Vignan University'}`, 18, 74);
+      doc.text(`Course: ${p.course || 'B.Tech'} (${p.year || '1st Year'})`, 18, 80);
 
       doc.setFont('helvetica', 'bold');
       doc.text(`Room: Room ${p.room_number || '-'} • ${p.bed_label || '-'}`, 110, 62);
       doc.setFont('helvetica', 'normal');
       doc.text(`Floor: Floor ${p.floor_number || '-'}`, 110, 68);
-      doc.text(`Parent / Guardian: ${p.parent_name || '-'}`, 110, 74);
+      doc.text(`Parent / Guardian: ${p.parent_name || 'Parent / Guardian'}`, 110, 74);
       doc.text(`Parent Phone: ${p.parent_phone || '-'}`, 110, 80);
 
-      // Line items table using autoTable
-      doc.autoTable({
-        startY: 94,
-        head: [['Item Description', 'Billing Cycle Period', 'Amount (INR)']],
-        body: [
-          [
-            'Monthly Hostel Room & Residency Charges\n(Lodging, Electricity, High-Speed Wi-Fi & Mess)',
-            `${p.cycleStartDisplay} to ${p.cycleEndDisplay}\n(Joining-Date Anchored)`,
-            `₹${Number(p.amount).toLocaleString('en-IN')}`
-          ],
-          [
-            'TOTAL AMOUNT PAID',
-            `Settled via ${p.payment_method}`,
-            `₹${Number(p.amount).toLocaleString('en-IN')}`
-          ]
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 10, cellPadding: 5 },
-        columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
-      });
+      let finalY = 135;
 
-      const finalY = doc.lastAutoTable.finalY + 10;
+      if (typeof doc.autoTable === 'function') {
+        doc.autoTable({
+          startY: 94,
+          head: [['Item Description', 'Billing Cycle Period', 'Amount (INR)']],
+          body: [
+            [
+              'Monthly Hostel Room & Residency Charges\n(Lodging, Electricity, High-Speed Wi-Fi & Mess)',
+              `${p.cycleStartDisplay || 'Current Cycle'} to ${p.cycleEndDisplay || 'Current Cycle'}\n(Joining-Date Anchored)`,
+              `₹${Number(p.amount || 7000).toLocaleString('en-IN')}`
+            ],
+            [
+              'TOTAL AMOUNT PAID',
+              `Settled via ${p.payment_method || 'UPI / Cash'}`,
+              `₹${Number(p.amount || 7000).toLocaleString('en-IN')}`
+            ]
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 10, cellPadding: 5 },
+          columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
+        });
+        finalY = doc.lastAutoTable.finalY + 10;
+      } else {
+        // Direct drawing fallback
+        doc.setFillColor(220, 38, 38);
+        doc.rect(14, 94, 182, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Item Description', 18, 99);
+        doc.text('Billing Cycle Period', 90, 99);
+        doc.text('Amount (INR)', 192, 99, { align: 'right' });
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Monthly Hostel Room Charges', 18, 108);
+        doc.text(`${p.cycleStartDisplay || '-'} to ${p.cycleEndDisplay || '-'}`, 90, 108);
+        doc.text(`₹${Number(p.amount || 7000).toLocaleString('en-IN')}`, 192, 108, { align: 'right' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL AMOUNT PAID', 18, 118);
+        doc.text(`Settled via ${p.payment_method || 'UPI / Cash'}`, 90, 118);
+        doc.setTextColor(220, 38, 38);
+        doc.text(`₹${Number(p.amount || 7000).toLocaleString('en-IN')}`, 192, 118, { align: 'right' });
+        finalY = 135;
+      }
 
       // Next due reminder note
       doc.setDrawColor(254, 202, 202);
@@ -245,7 +276,7 @@ const ReceiptModal = {
       doc.setTextColor(185, 28, 28);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      doc.text(`Notice: Next Billing Cycle Due on ${p.nextDueDateDisplay || '15-11-2026'}. Monthly fee: ₹7,000.`, 20, finalY + 9);
+      doc.text(`Notice: Next Billing Cycle Due on ${p.nextDueDateDisplay || '15-11-2026'}. Monthly fee: ₹${Number(p.amount || 7000).toLocaleString('en-IN')}.`, 20, finalY + 9);
 
       // Signatures
       doc.setTextColor(15, 23, 42);
@@ -258,11 +289,13 @@ const ReceiptModal = {
       doc.line(18, finalY + 42, 60, finalY + 42);
 
       // Save PDF
-      doc.save(`Receipt_${p.receipt_number}_${p.reg_number}.pdf`);
-      Toast.success(`Receipt ${p.receipt_number} downloaded as PDF.`);
+      const filename = `Receipt_${p.receipt_number || 'HOSTEL'}_${p.reg_number || 'FEE'}.pdf`;
+      doc.save(filename);
+      Toast.success(`Receipt ${p.receipt_number || ''} downloaded as PDF.`);
     } catch (e) {
-      console.error(e);
-      Toast.error('PDF generation error: ' + e.message);
+      console.warn('PDF direct save failed, falling back to print window:', e);
+      Toast.info('Downloading via print dialog (Save as PDF)...');
+      this.printReceipt();
     }
   }
 };

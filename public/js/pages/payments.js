@@ -389,20 +389,22 @@ const PaymentsPage = {
         Toast.success(res.message);
         Modal.close();
 
-        // Refresh views
-        if (window.PaymentsPage && App.currentRoute === 'payments') {
+        // Refresh views immediately
+        if (window.PaymentsPage) {
           PaymentsPage.loadPayments();
         }
-        if (window.FeesPage && App.currentRoute === 'fees') {
+        if (window.FeesPage) {
           FeesPage.loadCycles();
+          FeesPage.loadReminderStats();
         }
         if (window.AdminDashboard && App.currentRoute === 'dashboard') {
           AdminDashboard.loadData();
         }
 
         // Auto-open newly generated receipt!
-        if (res.data && res.data.paymentId) {
-          setTimeout(() => ReceiptModal.open(res.data.paymentId), 300);
+        const pId = res.data && (res.data.paymentId || res.data.id);
+        if (pId) {
+          setTimeout(() => ReceiptModal.open(pId), 300);
         }
       }
     } catch (err) {
@@ -419,9 +421,16 @@ const PaymentsPage = {
   async openReceiptByCycle(cycleId) {
     try {
       const res = await API.get('/payments', { limit: 100 });
-      const match = (res.data || []).find(p => p.fee_cycle_id === cycleId);
+      const payments = res.data || [];
+      let match = payments.find(p => Number(p.fee_cycle_id) === Number(cycleId));
+      if (!match) {
+        match = payments.find(p => Number(p.id) === Number(cycleId));
+      }
+      if (!match && payments.length > 0) {
+        match = payments[0];
+      }
       if (match) {
-        ReceiptModal.open(match.id);
+        ReceiptModal.open(match.paymentId || match.id);
       } else {
         Toast.warning('No receipt record found for this cycle.');
       }
