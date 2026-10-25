@@ -96,6 +96,10 @@ const App = {
       </div>
     `;
 
+    // Ensure AI Assistant floating action button is visible
+    const fab = document.getElementById('ai-assistant-btn');
+    if (fab) fab.style.display = 'flex';
+
     Utils.renderIcons();
   },
 

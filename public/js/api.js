@@ -512,6 +512,261 @@ const API = {
         unreadCount: notifs.filter(n => !n.is_read).length
       };
     }
+
+    // 7. AI Hostel Assistant Smart Query Engine (Context-Aware)
+    if (cleanEndpoint === '/ai-assistant/query' || cleanEndpoint.startsWith('/ai-assistant')) {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const question = (body.question || '').trim();
+      const q = question.toLowerCase();
+      const currentUser = this.getUser() || MockData.adminUser;
+      const isStudent = currentUser && currentUser.role === 'student';
+      const student = isStudent ? (this.getStudent() || MockData.studentProfile) : null;
+      const stats = MockData.stats || {};
+      const students = MockData.students || [];
+      const messSchedule = MockData.messSchedule || {};
+      const complaints = MockData.complaints || [];
+      const announcements = MockData.announcements || [];
+      const settings = MockData.settings || {};
+      const feeCycles = MockData.feeCycles || [];
+
+      let answer = '';
+      let category = 'general';
+      let quickActions = [];
+
+      // STUDENT CONTEXT
+      if (isStudent && student) {
+        // Fee Due Query
+        if (q.includes('fee') || q.includes('due') || q.includes('pay') || q.includes('next fee') || q.includes('pending') || q.includes('rent') || q.includes('charge')) {
+          category = 'fees';
+          const studentCycles = feeCycles.filter(c => Number(c.student_id) === Number(student.id));
+          const pendingCycle = studentCycles.find(c => c.status !== 'paid');
+
+          if (pendingCycle) {
+            answer = `Your monthly room fee of **₹${Number(pendingCycle.amount || student.monthly_fee || 7000).toLocaleString('en-IN')}** for billing cycle (${pendingCycle.startDateDisplay || pendingCycle.start_date} to ${pendingCycle.endDateDisplay || pendingCycle.end_date}) is due on **${pendingCycle.dueDateDisplay || pendingCycle.due_date}** (Status: **Pending**).`;
+          } else if (student.fee_status === 'paid') {
+            answer = `All your current fee cycles are fully **PAID**! Your monthly hostel fee is **₹${Number(student.monthly_fee || 7000).toLocaleString('en-IN')}**, calculated from your joining date (${student.joiningDateDisplay || student.joining_date}).`;
+          } else {
+            answer = `Your monthly hostel fee is **₹${Number(student.monthly_fee || 7000).toLocaleString('en-IN')}**. Current Status: **Pending**. Please clear your dues on or before your cycle due date.`;
+          }
+
+          quickActions = [
+            { label: 'View Fee History', link: '#fees' },
+            { label: 'Download Receipts', link: '#payments' }
+          ];
+        }
+        // Room & Bed Query
+        else if (q.includes('room') || q.includes('bed') || q.includes('floor') || q.includes('where do i stay') || q.includes('my room') || q.includes('my bed')) {
+          category = 'room';
+          answer = `You are currently allocated to **Room ${student.room_number || '101'}**, **${student.bed_label || 'Bed-A'}** on **Floor ${student.floor_number || 1}**.\n\nRoom Capacity: 5 beds with attached study desks and Wi-Fi 6 connectivity.`;
+          quickActions = [{ label: 'View Hostel Matrix', link: '#hostel-structure' }];
+        }
+        // Mess / Dining Menu Query
+        else if (q.includes('food') || q.includes('menu') || q.includes('mess') || q.includes('dinner') || q.includes('lunch') || q.includes('breakfast') || q.includes('snack') || q.includes('eat') || q.includes('meal')) {
+          category = 'mess';
+          const todayMenu = messSchedule.todayMenu || {};
+          const dayName = messSchedule.todayDayName || 'Today';
+
+          answer = `**Today's Mess Menu (${dayName}) — Vignan Vihar Boys Hostel:**\n\n` +
+            `• **Breakfast (${todayMenu.breakfast_timing || '7:30 - 9:30 AM'}):**\n  ${todayMenu.breakfast || 'Tiffin & Tea'}\n` +
+            `• **Lunch (${todayMenu.lunch_timing || '12:30 - 2:30 PM'}):**\n  ${todayMenu.lunch || 'Meals with Curries'}\n` +
+            `• **Evening Snacks (${todayMenu.snacks_timing || '4:30 - 6:00 PM'}):**\n  ${todayMenu.snacks || 'Hot Snacks & Tea'}\n` +
+            `• **Dinner (${todayMenu.dinner_timing || '7:30 - 9:30 PM'}):**\n  ${todayMenu.dinner || 'Dinner with Veg/Non-Veg'}\n` +
+            (todayMenu.special_notes ? `\n• *Special Note:* ${todayMenu.special_notes}` : '');
+
+          quickActions = [{ label: 'Full 7-Day Schedule', link: '#mess' }];
+        }
+        // Complaints Query
+        else if (q.includes('complaint') || q.includes('wifi') || q.includes('tap') || q.includes('plumb') || q.includes('broken') || q.includes('repair') || q.includes('clean') || q.includes('fan') || q.includes('light') || q.includes('water')) {
+          category = 'complaint';
+          answer = `To report an issue with Wi-Fi, plumbing, electrical fittings, or room housekeeping, navigate to the **Complaints** section and click **"+ New Ticket"**. Our maintenance team will attend to it promptly.`;
+          quickActions = [{ label: 'Submit Ticket', link: '#complaints' }];
+        }
+        // Leave / Gate pass Query
+        else if (q.includes('leave') || q.includes('out') || q.includes('gate pass') || q.includes('vacation') || q.includes('holiday') || q.includes('permission')) {
+          category = 'leave';
+          answer = `Hostel gate pass and outstation leave permissions can be requested via the **Leave Requests** tab. Specify your departure date, return date, reason, and guardian contact. Approvals are typically processed within 24 hours.`;
+          quickActions = [{ label: 'Apply For Leave', link: '#leave-requests' }];
+        }
+        // Curfew & Rules
+        else if (q.includes('rule') || q.includes('curfew') || q.includes('time') || q.includes('contact') || q.includes('warden') || q.includes('phone') || q.includes('emergency')) {
+          category = 'rules';
+          answer = `**SRI RAM PG Rules & Guidelines:**\n\n` +
+            `• **Night Curfew:** ${settings.curfew_time || '10:00 PM'} (Gate closes strictly).\n` +
+            `• **Visitor Hours:** 9:00 AM to 6:00 PM in the reception lounge only.\n` +
+            `• **Warden Helpline:** ${settings.contact_phone || '+91 120 232 4000'}\n` +
+            `• **Official Email:** ${settings.contact_email || 'warden@srirampg.in'}\n` +
+            `• Quiet study hours are observed after 11:00 PM across all residential floors.`;
+        }
+        // Bulletins / Announcements
+        else if (q.includes('bulletin') || q.includes('announc') || q.includes('notice') || q.includes('news')) {
+          category = 'announcements';
+          if (announcements.length > 0) {
+            answer = `**Latest Hostel Bulletins:**\n\n` +
+              announcements.slice(0, 3).map(a => `• **${a.title}** (${a.priority} Priority, ${a.publishedDateDisplay || 'Today'}):\n  ${a.content.slice(0, 110)}...`).join('\n\n');
+          } else {
+            answer = `There are no new bulletins at this time. All hostel operations are running on regular schedule.`;
+          }
+          quickActions = [{ label: 'Noticeboard', link: '#announcements' }];
+        }
+        // General Student Help
+        else {
+          answer = `Hello **${student.name || 'Resident'}**! I am your AI Hostel Assistant. You can ask me:\n\n` +
+            `• *"When is my next fee due?"*\n` +
+            `• *"What is today's mess menu?"*\n` +
+            `• *"What is my room and bed number?"*\n` +
+            `• *"How do I raise a maintenance complaint?"*\n` +
+            `• *"What are the hostel curfew hours?"*`;
+          quickActions = [
+            { label: 'Today\'s Menu', link: '#mess' },
+            { label: 'My Room', link: '#hostel-structure' },
+            { label: 'Fee Status', link: '#fees' }
+          ];
+        }
+      }
+      // ADMIN / WARDEN CONTEXT
+      else {
+        // Room search (e.g. "room 101", "room 204")
+        const roomMatch = q.match(/\broom\s*(\d{3})\b/i);
+        if (roomMatch) {
+          category = 'room_detail';
+          const rNum = roomMatch[1];
+          const roomStudents = students.filter(s => String(s.room_number) === String(rNum));
+          answer = `**Room ${rNum} Status (Floor ${rNum.charAt(0)}):**\n\n` +
+            `• Total Capacity: **5 Beds**\n` +
+            `• Currently Occupied: **${roomStudents.length} / 5 Beds**\n` +
+            `• Vacant Beds: **${5 - roomStudents.length} Beds**\n\n` +
+            (roomStudents.length > 0
+              ? `**Assigned Residents:**\n` + roomStudents.map(s => `• ${s.bed_label}: **${s.name}** (${s.college || 'Vignan'}, ${s.course || 'B.Tech'}) — Fee: **${(s.fee_status || 'pending').toUpperCase()}** (Ph: ${s.phone || '-'})`).join('\n')
+              : `• No students are currently allocated to Room ${rNum}. All 5 beds (Bed-A to Bed-E) are ready for occupancy.`);
+
+          quickActions = [
+            { label: `View Room ${rNum}`, link: '#hostel-structure' },
+            { label: 'Register Student', link: '#students' }
+          ];
+        }
+        // Specific Student lookup
+        else if (q.includes('student') && students.some(s => q.includes(s.name.toLowerCase()))) {
+          category = 'student_lookup';
+          const found = students.find(s => q.includes(s.name.toLowerCase()));
+          answer = `**Student Profile: ${found.name}**\n\n` +
+            `• Reg Number: **${found.reg_number}**\n` +
+            `• Room & Bed: **Room ${found.room_number} (${found.bed_label})**, Floor ${found.floor_number}\n` +
+            `• College & Course: **${found.college || 'Vignan'}** — ${found.course || 'B.Tech'}\n` +
+            `• Monthly Fee: **₹${Number(found.monthly_fee || 7000).toLocaleString('en-IN')}** (Status: **${(found.fee_status || 'pending').toUpperCase()}**)\n` +
+            `• Joining Date: **${found.joiningDateDisplay || found.joining_date}**\n` +
+            `• Student Phone: **${found.phone || '-'}** | Parent Phone: **${found.parent_phone || '-'}**`;
+
+          quickActions = [
+            { label: 'View Profile', link: '#students' },
+            { label: 'Fee Records', link: '#fees' }
+          ];
+        }
+        // Occupancy & Bed Distribution
+        else if (q.includes('occupan') || q.includes('bed') || q.includes('capacity') || q.includes('vacan') || q.includes('available') || q.includes('rooms')) {
+          category = 'occupancy';
+          answer = `**Hostel Occupancy & Bed Distribution:**\n\n` +
+            `• Total Capacity: **${stats.totalBeds || 250} Beds** (50 rooms across 5 floors)\n` +
+            `• Occupied Beds: **${stats.occupiedBeds || 0} Beds** (${stats.occupancyRate || 0}% occupancy)\n` +
+            `• Available Beds: **${stats.availableBeds || 250} Beds** ready for admission\n` +
+            `• Maintenance Beds: **${stats.maintenanceBeds || 0} Beds**`;
+
+          quickActions = [
+            { label: 'Floor Matrix', link: '#hostel-structure' },
+            { label: 'Student Directory', link: '#students' }
+          ];
+        }
+        // Financials / Income / Expenses / P&L
+        else if (q.includes('fee') || q.includes('income') || q.includes('expense') || q.includes('profit') || q.includes('p&l') || q.includes('financial') || q.includes('collection') || q.includes('pending')) {
+          category = 'financials';
+          answer = `**Hostel Financial Summary (Live):**\n\n` +
+            `• Total Fees Collected: **₹${Number(stats.feesCollected || 0).toLocaleString('en-IN')}**\n` +
+            `• Total Operating Expenses: **₹${Number(stats.hostelExpenses || 0).toLocaleString('en-IN')}**\n` +
+            `• **Net Operational Income (P&L):** **₹${Number(stats.netIncome || 0).toLocaleString('en-IN')}**\n` +
+            `• Outstanding Pending Fees: **₹${Number(stats.pendingFees || 0).toLocaleString('en-IN')}** (${stats.pendingFeeStudentsCount || 0} student${stats.pendingFeeStudentsCount !== 1 ? 's' : ''} pending)`;
+
+          quickActions = [
+            { label: 'Operating Expenses & P&L', link: '#expenses' },
+            { label: 'Fee Management', link: '#fees' },
+            { label: 'Payment Receipts', link: '#payments' }
+          ];
+        }
+        // Maintenance & Complaints
+        else if (q.includes('complaint') || q.includes('ticket') || q.includes('repair') || q.includes('maintenance')) {
+          category = 'complaints';
+          const pendingCount = complaints.filter(c => c.status === 'Pending').length;
+          const inProgressCount = complaints.filter(c => c.status === 'In Progress').length;
+          const resolvedCount = complaints.filter(c => c.status === 'Resolved').length;
+
+          answer = `**Maintenance & Complaints Status:**\n\n` +
+            `• Pending Tickets: **${pendingCount}**\n` +
+            `• In Progress: **${inProgressCount}**\n` +
+            `• Resolved: **${resolvedCount}**\n\n` +
+            (pendingCount > 0 ? `Please review open tickets in the Complaints management console.` : `All reported maintenance tickets have been resolved!`);
+
+          quickActions = [{ label: 'Manage Complaints', link: '#complaints' }];
+        }
+        // Mess / Dining Schedule
+        else if (q.includes('food') || q.includes('mess') || q.includes('menu') || q.includes('lunch') || q.includes('dinner') || q.includes('breakfast')) {
+          category = 'mess';
+          const todayMenu = messSchedule.todayMenu || {};
+          const dayName = messSchedule.todayDayName || 'Today';
+
+          answer = `**Today's Mess Menu (${dayName}) — Vignan Vihar Boys Hostel:**\n\n` +
+            `• **Breakfast (${todayMenu.breakfast_timing || '7:30 - 9:30 AM'}):** ${todayMenu.breakfast || '-'}\n` +
+            `• **Lunch (${todayMenu.lunch_timing || '12:30 - 2:30 PM'}):** ${todayMenu.lunch || '-'}\n` +
+            `• **Snacks (${todayMenu.snacks_timing || '4:30 - 6:00 PM'}):** ${todayMenu.snacks || '-'}\n` +
+            `• **Dinner (${todayMenu.dinner_timing || '7:30 - 9:30 PM'}):** ${todayMenu.dinner || '-'}\n` +
+            (todayMenu.special_notes ? `\n• *Special Note:* ${todayMenu.special_notes}` : '');
+
+          quickActions = [{ label: 'Edit Mess Schedule', link: '#mess' }];
+        }
+        // Bulletins & Announcements
+        else if (q.includes('bulletin') || q.includes('announc') || q.includes('notice') || q.includes('post')) {
+          category = 'announcements';
+          answer = `There are currently **${announcements.length} active bulletin${announcements.length !== 1 ? 's' : ''}** on the hostel notice board.\n\n` +
+            (announcements.length > 0
+              ? announcements.slice(0, 3).map(a => `• **${a.title}** (${a.priority} Priority, ${a.publishedDateDisplay || 'Today'})`).join('\n')
+              : 'No active bulletins published.');
+
+          quickActions = [
+            { label: 'Post New Announcement', link: '#announcements' },
+            { label: 'View Noticeboard', link: '#announcements' }
+          ];
+        }
+        // General Warden Welcome / Help
+        else {
+          answer = `Hello Warden! I am your **AI Hostel Management Assistant**. You can ask me:\n\n` +
+            `• *"What is the current bed occupancy rate?"*\n` +
+            `• *"Give me a summary of hostel financials (P&L)"*\n` +
+            `• *"How much fee is pending this month?"*\n` +
+            `• *"Who is in room 101?"*\n` +
+            `• *"What complaints need attention?"*\n` +
+            `• *"What is today's mess menu?"*`;
+
+          quickActions = [
+            { label: 'Overview Dashboard', link: '#dashboard' },
+            { label: 'Operating Expenses', link: '#expenses' },
+            { label: 'Floor Matrix', link: '#hostel-structure' },
+            { label: 'Fee Cycles', link: '#fees' }
+          ];
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          question,
+          answer,
+          category,
+          quickActions,
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
     if (cleanEndpoint.startsWith('/reports/')) {
       const type = cleanEndpoint.replace('/reports/', '');
       const stats = MockData.stats || {};
