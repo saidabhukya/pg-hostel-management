@@ -6,7 +6,7 @@
  * When a student is removed/vacated, their bed automatically and immediately becomes Available.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_live_store_v6';
+  const STORAGE_KEY = 'sri_ram_pg_live_store_v8';
 
   // Purge any older demo stores
   try {
@@ -55,6 +55,14 @@
     };
   }
 
+  function saveStore() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  }
+
   // Load from localStorage or initialize clean
   let store;
   try {
@@ -65,42 +73,37 @@
       if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
       if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
       if (!Array.isArray(store.payments)) store.payments = [];
-      if (!Array.isArray(store.messMenu) || !store.messMenu[0]?.day_of_week) {
+      if (!Array.isArray(store.messMenu) || !store.messMenu[0] || !store.messMenu[0].day_of_week) {
         store.messMenu = getCleanInitialState().messMenu;
       }
     } else {
       store = getCleanInitialState();
-      // Migrate from v5 if available
+      // Safely migrate user-added students and records from v5, v6, or v7
       try {
-        const v5 = localStorage.getItem('sri_ram_pg_live_store_v5');
-        if (v5) {
-          const parsed = JSON.parse(v5);
-          if (Array.isArray(parsed.students)) store.students = parsed.students;
-          if (Array.isArray(parsed.feeCycles)) store.feeCycles = parsed.feeCycles;
-          if (Array.isArray(parsed.payments)) store.payments = parsed.payments;
-          if (Array.isArray(parsed.maintenanceBeds)) store.maintenanceBeds = parsed.maintenanceBeds;
+        const prevKeys = ['sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
+        for (const pk of prevKeys) {
+          const val = localStorage.getItem(pk);
+          if (val) {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed.students) && parsed.students.length > 0 && store.students.length === 0) {
+              store.students = parsed.students;
+            }
+            if (Array.isArray(parsed.feeCycles) && parsed.feeCycles.length > 0 && store.feeCycles.length === 0) {
+              store.feeCycles = parsed.feeCycles;
+            }
+            if (Array.isArray(parsed.payments) && parsed.payments.length > 0 && store.payments.length === 0) {
+              store.payments = parsed.payments;
+            }
+            if (Array.isArray(parsed.maintenanceBeds) && parsed.maintenanceBeds.length > 0 && store.maintenanceBeds.length === 0) {
+              store.maintenanceBeds = parsed.maintenanceBeds;
+            }
+          }
         }
       } catch (e) {}
+      saveStore();
     }
   } catch (e) {
     store = getCleanInitialState();
-  }
-          if (Array.isArray(parsed.feeCycles)) store.feeCycles = parsed.feeCycles;
-          if (Array.isArray(parsed.payments)) store.payments = parsed.payments;
-          if (Array.isArray(parsed.maintenanceBeds)) store.maintenanceBeds = parsed.maintenanceBeds;
-        }
-      } catch (e) {}
-    }
-  } catch (e) {
-    store = getCleanInitialState();
-  }
-
-  function saveStore() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-    } catch (e) {
-      console.warn('Failed to save to localStorage:', e);
-    }
   }
 
   const bedLetters = ['A', 'B', 'C', 'D', 'E'];

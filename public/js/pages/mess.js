@@ -9,6 +9,17 @@ const MessPage = {
     const user = API.getUser();
     const isAdmin = user && user.role === 'admin';
 
+    // Synchronously prepare schedule from MockData so the page renders INSTANTLY
+    let data = this.currentData;
+    if (!data && typeof MockData !== 'undefined' && MockData.messSchedule) {
+      data = MockData.messSchedule;
+      this.currentData = data;
+    }
+
+    const todayDayName = data?.todayDayName || 'Monday';
+    const todayMenu = data?.todayMenu || null;
+    const weeklyMenu = data?.weeklyMenu || [];
+
     return `
       <div class="page-header">
         <div class="page-title-group">
@@ -25,9 +36,7 @@ const MessPage = {
 
       <!-- TODAY'S FEATURED MENU HERO CARD -->
       <div id="today-menu-card" class="card" style="margin-bottom:1.75rem;border-left:4px solid var(--primary-red);background:linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);">
-        <div style="text-align:center;padding:2rem;color:var(--text-muted);">
-          Loading today's meal schedule...
-        </div>
+        ${this.getTodayHtml(todayDayName, todayMenu)}
       </div>
 
       <!-- 7-DAY WEEKLY SCHEDULE -->
@@ -37,51 +46,27 @@ const MessPage = {
             <i data-lucide="calendar" style="color:var(--primary-red);"></i>
             7-Day Weekly Mess Routine
           </h3>
-          <span style="font-size:0.8rem;color:var(--text-muted);">Dining Hall Ground Floor</span>
+          <span style="font-size:0.8rem;color:var(--text-muted);">Dining Hall Ground Floor • Pure Vegetarian & Healthy Balanced Diet</span>
         </div>
 
         <div id="weekly-menu-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:1.25rem;">
-          <p style="color:var(--text-muted);padding:1rem;">Loading weekly routine...</p>
+          ${this.getWeeklyHtml(weeklyMenu, todayDayName, isAdmin)}
         </div>
       </div>
     `;
   },
 
   async afterRender() {
+    Utils.renderIcons();
     await this.loadMenu();
   },
 
-  async loadMenu() {
-    try {
-      const res = await API.get('/mess');
-      if (res.success && res.data) {
-        this.currentData = res.data;
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const currentDay = days[new Date().getDay()];
-        const todayDayName = res.data.todayDayName || currentDay;
-        const weeklyMenu = Array.isArray(res.data.weeklyMenu) ? res.data.weeklyMenu : (Array.isArray(res.data) ? res.data : []);
-        const todayMenu = res.data.todayMenu || weeklyMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weeklyMenu[0];
-
-        this.renderToday(todayDayName, todayMenu);
-        this.renderWeekly(weeklyMenu, todayDayName);
-      } else {
-        Toast.error('Failed to load mess schedule.');
-      }
-    } catch (e) {
-      Toast.error('Failed to load mess schedule: ' + e.message);
-    }
-  },
-
-  renderToday(dayName, todayMenu) {
-    const card = document.getElementById('today-menu-card');
-    if (!card) return;
-
+  getTodayHtml(dayName, todayMenu) {
     if (!todayMenu) {
-      card.innerHTML = `<p style="padding:1.5rem;text-align:center;color:var(--text-muted);">Menu details unavailable.</p>`;
-      return;
+      return `<p style="padding:1.5rem;text-align:center;color:var(--text-muted);">Today's menu details loading...</p>`;
     }
 
-    card.innerHTML = `
+    return `
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:1rem;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
         <div>
           <span class="badge badge-danger" style="margin-bottom:0.25rem;font-size:0.8rem;">TODAY'S SPECIAL</span>
@@ -90,7 +75,7 @@ const MessPage = {
           </h2>
         </div>
         <div style="font-size:0.82rem;color:var(--text-muted);">
-          Service Hall: <strong>Ground Floor Wing A</strong>
+          Service Hall: <strong>Ground Floor Main Dining Hall</strong>
         </div>
       </div>
 
@@ -101,7 +86,7 @@ const MessPage = {
             <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Breakfast</span>
             <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.breakfast || 'Idli, Sambar, Chutney, Tea')}</p>
+          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.breakfast || 'Idli, Sambar, Coconut Chutney, Tea / Coffee')}</p>
         </div>
 
         <!-- Lunch -->
@@ -110,7 +95,7 @@ const MessPage = {
             <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Lunch</span>
             <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.lunch_timing || '12:30 PM - 2:30 PM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.lunch || 'Rice, Dal, Veg Curry, Roti')}</p>
+          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.lunch || 'Steamed Rice, Dal Tadka, Paneer Butter Masala, Roti, Curd')}</p>
         </div>
 
         <!-- Dinner -->
@@ -119,34 +104,25 @@ const MessPage = {
             <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Dinner</span>
             <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.dinner_timing || '7:30 PM - 9:30 PM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.dinner || 'Steamed Rice, Dal, Chapati, Dessert')}</p>
+          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.dinner || 'Jeera Rice, Mixed Veg Curry, Phulka, Sweet')}</p>
         </div>
       </div>
 
       ${todayMenu.special_notes ? `
-        <div style="margin-top:1rem;font-size:0.82rem;color:var(--primary-red);font-weight:600;display:flex;align-items:center;gap:0.4rem;">
-          <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
-          Chef's Special: ${Utils.escapeHTML(todayMenu.special_notes)}
+        <div style="margin-top:1rem;font-size:0.84rem;color:var(--primary-red);font-weight:700;display:flex;align-items:center;gap:0.4rem;">
+          <i data-lucide="sparkles" style="width:15px;height:15px;"></i>
+          <span>Chef's Special: ${Utils.escapeHTML(todayMenu.special_notes)}</span>
         </div>
       ` : ''}
     `;
-
-    Utils.renderIcons();
   },
 
-  renderWeekly(weeklyMenu, todayDay) {
-    const container = document.getElementById('weekly-menu-container');
-    if (!container) return;
-
-    const user = API.getUser();
-    const isAdmin = user && user.role === 'admin';
-
+  getWeeklyHtml(weeklyMenu, todayDay, isAdmin) {
     if (!Array.isArray(weeklyMenu) || weeklyMenu.length === 0) {
-      container.innerHTML = `<p style="padding:1rem;color:var(--text-muted);">No routine available.</p>`;
-      return;
+      return `<p style="padding:1rem;color:var(--text-muted);">Weekly menu routine loading...</p>`;
     }
 
-    container.innerHTML = weeklyMenu.map(m => {
+    return weeklyMenu.map(m => {
       const dayName = m.day_of_week || m.day || 'Day';
       const isToday = dayName.toLowerCase() === String(todayDay || '').toLowerCase();
 
@@ -196,8 +172,32 @@ const MessPage = {
         </div>
       `;
     }).join('');
+  },
 
-    Utils.renderIcons();
+  async loadMenu() {
+    try {
+      const res = await API.get('/mess');
+      if (res.success && res.data) {
+        this.currentData = res.data;
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const currentDay = days[new Date().getDay()];
+        const todayDayName = res.data.todayDayName || currentDay;
+        const weeklyMenu = Array.isArray(res.data.weeklyMenu) ? res.data.weeklyMenu : (Array.isArray(res.data) ? res.data : []);
+        const todayMenu = res.data.todayMenu || weeklyMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weeklyMenu[0];
+
+        const card = document.getElementById('today-menu-card');
+        if (card) card.innerHTML = this.getTodayHtml(todayDayName, todayMenu);
+
+        const container = document.getElementById('weekly-menu-container');
+        const user = API.getUser();
+        const isAdmin = user && user.role === 'admin';
+        if (container) container.innerHTML = this.getWeeklyHtml(weeklyMenu, todayDayName, isAdmin);
+
+        Utils.renderIcons();
+      }
+    } catch (e) {
+      console.warn('Live mess reload:', e.message);
+    }
   },
 
   openEditModal(dayOfWeek) {
@@ -212,22 +212,22 @@ const MessPage = {
         <form onsubmit="MessPage.submitEdit(event, '${dayOfWeek}')">
           <div class="form-group" style="margin-bottom:1.15rem;">
             <label class="form-label required">Breakfast Menu</label>
-            <textarea id="edit-mess-bf" class="form-control" rows="2" required>${Utils.escapeHTML(item.breakfast)}</textarea>
+            <textarea id="edit-mess-bf" class="form-control" rows="2" required>${Utils.escapeHTML(item.breakfast || '')}</textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:1.15rem;">
             <label class="form-label required">Lunch Menu</label>
-            <textarea id="edit-mess-lunch" class="form-control" rows="2" required>${Utils.escapeHTML(item.lunch)}</textarea>
+            <textarea id="edit-mess-lunch" class="form-control" rows="2" required>${Utils.escapeHTML(item.lunch || '')}</textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:1.15rem;">
             <label class="form-label required">Dinner Menu</label>
-            <textarea id="edit-mess-dinner" class="form-control" rows="2" required>${Utils.escapeHTML(item.dinner)}</textarea>
+            <textarea id="edit-mess-dinner" class="form-control" rows="2" required>${Utils.escapeHTML(item.dinner || '')}</textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:1.5rem;">
             <label class="form-label">Special Notes / Chef Special</label>
-            <input type="text" id="edit-mess-notes" class="form-control" value="${Utils.escapeHTML(item.special_notes || '')}" />
+            <input type="text" id="edit-mess-notes" class="form-control" value="${Utils.escapeHTML(item.special_notes || '')}" placeholder="e.g. Special Sunday Dessert / South Indian Sambhar" />
           </div>
 
           <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
@@ -256,12 +256,12 @@ const MessPage = {
       });
 
       if (res.success) {
-        Toast.success(res.message);
+        Toast.success(res.message || `Menu for ${dayOfWeek} updated!`);
         Modal.close();
-        this.loadMenu();
+        await this.loadMenu();
       }
     } catch (err) {
-      Toast.error(err.message);
+      Toast.error(err.message || 'Failed to update menu.');
     }
   },
 
@@ -298,11 +298,11 @@ const MessPage = {
     try {
       const res = await API.post('/mess/feedback', { title, description });
       if (res.success) {
-        Toast.success(res.message);
+        Toast.success(res.message || 'Feedback submitted successfully!');
         Modal.close();
       }
     } catch (err) {
-      Toast.error(err.message);
+      Toast.error(err.message || 'Failed to submit feedback.');
     }
   }
 };
