@@ -77,28 +77,7 @@ const LoginPage = {
           </div>
         </header>
 
-        <!-- 3. SLIDER NAVIGATION ARROWS (Left & Right) -->
-        <button 
-          type="button" 
-          class="sri-ram-nav-arrow arrow-left" 
-          onclick="LoginPage.prevSlide()" 
-          title="Previous Photo"
-          aria-label="Previous Photo"
-        >
-          <i data-lucide="chevron-left"></i>
-        </button>
-
-        <button 
-          type="button" 
-          class="sri-ram-nav-arrow arrow-right" 
-          onclick="LoginPage.nextSlide()" 
-          title="Next Photo"
-          aria-label="Next Photo"
-        >
-          <i data-lucide="chevron-right"></i>
-        </button>
-
-        <!-- 4. CENTER LOGIN CARD (Glassmorphism, fixed position) -->
+        <!-- 3. CENTER LOGIN CARD -->
         <main class="sri-ram-card-container">
           <div class="sri-ram-login-card">
             <!-- House & Bed Logo -->
@@ -185,40 +164,7 @@ const LoginPage = {
           </div>
         </main>
 
-        <!-- 5. RIGHT SIDE HOSTEL THUMBNAILS & VERTICAL DOT INDICATORS -->
-        <aside class="sri-ram-side-gallery">
-          <div class="sri-ram-thumbs-column">
-            ${this.slides.map((s, idx) => `
-              <div 
-                class="sri-ram-thumb-item ${idx === 0 ? 'active' : ''}" 
-                id="thumb-item-${idx}" 
-                onclick="LoginPage.goToSlide(${idx})"
-                title="${s.title}"
-                role="button"
-                tabindex="0"
-              >
-                <div class="thumb-img-wrapper" style="background-image: url('${s.image}');"></div>
-                <div class="thumb-badge ${idx === 0 ? 'active' : ''}" id="thumb-badge-${idx}">
-                  ${s.id}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-
-          <!-- Vertical Indicator Dots -->
-          <div class="sri-ram-dots-column">
-            ${this.slides.map((s, idx) => `
-              <span 
-                class="sri-ram-dot ${idx === 0 ? 'active' : ''}" 
-                id="dot-item-${idx}" 
-                onclick="LoginPage.goToSlide(${idx})"
-                title="Slide ${s.id}"
-              ></span>
-            `).join('')}
-          </div>
-        </aside>
-
-        <!-- 6. BOTTOM BRANDING BAR (Overlay) -->
+        <!-- 4. BOTTOM BRANDING BAR (Overlay) -->
         <footer class="sri-ram-bottom-bar">
           <div class="sri-ram-bottom-left">
             <i data-lucide="shield-check" class="bottom-shield-icon"></i>
@@ -266,37 +212,9 @@ const LoginPage = {
           slideEl.setAttribute('aria-hidden', 'true');
         }
       }
-
-      // 2. Update side thumbnails
-      const thumbEl = document.getElementById(`thumb-item-${i}`);
-      const badgeEl = document.getElementById(`thumb-badge-${i}`);
-      if (thumbEl) {
-        if (i === idx) {
-          thumbEl.classList.add('active');
-        } else {
-          thumbEl.classList.remove('active');
-        }
-      }
-      if (badgeEl) {
-        if (i === idx) {
-          badgeEl.classList.add('active');
-        } else {
-          badgeEl.classList.remove('active');
-        }
-      }
-
-      // 3. Update vertical indicator dots
-      const dotEl = document.getElementById(`dot-item-${i}`);
-      if (dotEl) {
-        if (i === idx) {
-          dotEl.classList.add('active');
-        } else {
-          dotEl.classList.remove('active');
-        }
-      }
     }
 
-    // Reset the 2000ms timer so the user enjoys a full 2s view after manual clicks
+    // Reset the 2000ms timer so each slide displays for 2 seconds
     if (this.sliderTimer) {
       clearInterval(this.sliderTimer);
       this.sliderTimer = setInterval(() => {
