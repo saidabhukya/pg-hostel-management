@@ -271,21 +271,69 @@ const StudentDashboard = {
       // 4. Complaints
       const compContainer = document.getElementById('stu-complaints-container');
       if (compContainer && compRes.success) {
-        const comps = (compRes.data || []).slice(0, 3);
+        const comps = (compRes.data || []);
         if (comps.length === 0) {
-          compContainer.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No complaints filed by you.</p>';
-        } else {
-          compContainer.innerHTML = comps.map(c => `
-            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:0.6rem;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
-                <span class="badge badge-info">${c.category}</span>
-                <span class="badge ${c.status === 'Resolved' ? 'badge-success' : c.status === 'In Progress' ? 'badge-warning' : 'badge-danger'}">
-                  ${c.status}
-                </span>
-              </div>
-              <div style="font-weight:700;font-size:0.88rem;color:var(--text-primary);">${Utils.escapeHTML(c.title)}</div>
+          compContainer.innerHTML = `
+            <div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">
+              <i data-lucide="check-circle" style="width:32px;height:32px;color:var(--status-success);margin-bottom:0.5rem;opacity:0.7;"></i>
+              <p style="margin:0;font-weight:600;">No Complaints Active</p>
+              <p style="margin:0.25rem 0 0;font-size:0.75rem;">All facilities in your room are reported in working condition.</p>
             </div>
-          `).join('');
+          `;
+        } else {
+          compContainer.innerHTML = comps.slice(0, 4).map(c => {
+            const isResolved = c.status === 'Resolved' || c.status === 'Solved';
+            const isInProgress = c.status === 'In Progress' || c.status === 'Processing';
+            const badgeClass = isResolved ? 'badge-success' : isInProgress ? 'badge-warning' : 'badge-danger';
+            const statusLabel = isResolved ? 'Resolved (Solved)' : isInProgress ? 'In Progress (Processing)' : 'Pending Review';
+            const statusIcon = isResolved ? 'check-circle' : isInProgress ? 'wrench' : 'clock';
+
+            return `
+              <div style="padding:0.9rem;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:0.75rem;border-left:4px solid ${isResolved ? 'var(--status-success)' : isInProgress ? 'var(--status-warning)' : 'var(--primary-red)'};">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.35rem;">
+                  <span class="badge badge-info">${Utils.escapeHTML(c.category || 'General')}</span>
+                  <span class="badge ${badgeClass}" style="display:inline-flex;align-items:center;gap:0.3rem;">
+                    <i data-lucide="${statusIcon}" style="width:12px;height:12px;"></i>
+                    ${statusLabel}
+                  </span>
+                  <span style="font-size:0.72rem;color:var(--text-muted);margin-left:auto;">
+                    ${c.createdAtDisplay || (c.created_at ? Utils.formatDate(c.created_at) : 'Today')}
+                  </span>
+                </div>
+                <div style="font-weight:700;font-size:0.92rem;color:var(--text-primary);margin-top:0.2rem;">
+                  ${Utils.escapeHTML(c.title)}
+                </div>
+                ${c.description ? `
+                  <p style="font-size:0.8rem;color:var(--text-secondary);margin:0.25rem 0 0.45rem;line-height:1.4;">
+                    ${Utils.escapeHTML(c.description)}
+                  </p>
+                ` : ''}
+
+                <!-- Live Warden Resolution Notes on Student Dashboard -->
+                ${c.admin_notes ? `
+                  <div style="margin-top:0.5rem;padding:0.5rem 0.75rem;background:var(--bg-card);border-radius:var(--radius-sm);border-left:3px solid ${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};font-size:0.8rem;color:var(--text-primary);">
+                    <div style="display:flex;align-items:center;gap:0.35rem;font-weight:700;font-size:0.75rem;color:${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};margin-bottom:0.2rem;">
+                      <i data-lucide="${isResolved ? 'check-check' : 'message-square'}" style="width:13px;height:13px;"></i>
+                      <span>${isResolved ? 'Warden Solved & Closed Remarks:' : 'Warden Processing Update Remarks:'}</span>
+                    </div>
+                    <div>${Utils.escapeHTML(c.admin_notes)}</div>
+                  </div>
+                ` : `
+                  <div style="margin-top:0.35rem;font-size:0.72rem;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;">
+                    <i data-lucide="info" style="width:12px;height:12px;"></i>
+                    <span>${isResolved ? 'Issue marked solved by warden.' : isInProgress ? 'Maintenance technician dispatched to your room.' : 'Ticket received by warden desk, awaiting technician dispatch.'}</span>
+                  </div>
+                `}
+              </div>
+            `;
+          }).join('') + `
+            <div style="text-align:right;margin-top:0.5rem;">
+              <button class="btn btn-sm btn-secondary" onclick="App.navigate('complaints')">
+                <span>View Full Complaints Console</span>
+                <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+              </button>
+            </div>
+          `;
         }
       }
 

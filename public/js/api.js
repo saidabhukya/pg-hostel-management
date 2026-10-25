@@ -288,7 +288,11 @@ const API = {
       const student = MockData.students.find(s => s.id === sId) || MockData.studentProfile;
       const studentFeeCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId);
       const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId);
-      const studentComplaints = (MockData.complaints || []).filter(c => Number(c.student_id) === sId);
+      const studentComplaints = (MockData.complaints || []).filter(c => 
+        Number(c.student_id) === sId ||
+        (student && student.reg_number && c.reg_number === student.reg_number) ||
+        (student && student.room_number && String(c.room_number) === String(student.room_number))
+      );
       const studentLeaves = (MockData.leaveRequests || []).filter(l => Number(l.student_id) === sId);
 
       return {
@@ -610,11 +614,20 @@ const API = {
       if (currentUser && currentUser.role === 'student') {
         const student = this.getStudent();
         if (student) {
-          list = list.filter(c => 
-            Number(c.student_id) === Number(student.id) ||
-            (c.reg_number && c.reg_number === student.reg_number) ||
-            (c.room_number && String(c.room_number) === String(student.room_number))
-          );
+          const sId = Number(student.id);
+          const sReg = (student.reg_number || '').trim().toLowerCase();
+          const sRoom = String(student.room_number || '').trim().toLowerCase();
+
+          list = list.filter(c => {
+            const cId = Number(c.student_id);
+            const cReg = String(c.reg_number || '').trim().toLowerCase();
+            const cRoom = String(c.room_number || '').trim().toLowerCase();
+            return (
+              (sId && cId === sId) ||
+              (sReg && cReg && cReg === sReg) ||
+              (sRoom && cRoom && (cRoom === sRoom || cRoom.includes(sRoom) || sRoom.includes(cRoom)))
+            );
+          });
         }
       }
 
@@ -627,7 +640,17 @@ const API = {
           list = list.filter(c => (c.category || '').toLowerCase() === cat.toLowerCase());
         }
         if (st) {
-          list = list.filter(c => (c.status || '').toLowerCase() === st.toLowerCase());
+          const stLower = st.toLowerCase();
+          list = list.filter(c => {
+            const cSt = (c.status || '').toLowerCase();
+            if (stLower === 'resolved' || stLower === 'solved') {
+              return cSt === 'resolved' || cSt === 'solved';
+            }
+            if (stLower === 'in progress' || stLower === 'processing') {
+              return cSt === 'in progress' || cSt === 'processing';
+            }
+            return cSt === stLower;
+          });
         }
       } catch (e) {}
 

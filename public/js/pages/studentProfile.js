@@ -228,24 +228,32 @@ const StudentProfile = {
               <p style="color:var(--text-muted);text-align:center;padding:2rem;">No complaints logged by this resident.</p>
             ` : `
               <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                ${complaints.map(c => `
-                  <div class="card" style="padding:1rem;background:var(--bg-secondary);">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
-                      <span class="badge badge-info">${c.category}</span>
-                      <span class="badge ${c.status === 'Resolved' ? 'badge-success' : c.status === 'In Progress' ? 'badge-warning' : 'badge-danger'}">
-                        ${c.status}
+                ${complaints.map(c => {
+                  const isResolved = c.status === 'Resolved' || c.status === 'Solved';
+                  const isInProgress = c.status === 'In Progress' || c.status === 'Processing';
+                  const badgeClass = isResolved ? 'badge-success' : isInProgress ? 'badge-warning' : 'badge-danger';
+                  const statusLabel = isResolved ? 'Resolved (Solved)' : isInProgress ? 'In Progress (Processing)' : 'Pending Review';
+                  const statusIcon = isResolved ? 'check-circle' : isInProgress ? 'wrench' : 'clock';
+
+                  return `
+                  <div class="card" style="padding:1rem;background:var(--bg-secondary);border-left:4px solid ${isResolved ? 'var(--status-success)' : isInProgress ? 'var(--status-warning)' : 'var(--primary-red)'};">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;flex-wrap:wrap;gap:0.4rem;">
+                      <span class="badge badge-info">${Utils.escapeHTML(c.category || 'General')}</span>
+                      <span class="badge ${badgeClass}" style="display:inline-flex;align-items:center;gap:0.25rem;">
+                        <i data-lucide="${statusIcon}" style="width:12px;height:12px;"></i>
+                        ${statusLabel}
                       </span>
                     </div>
                     <div style="font-weight:700;color:var(--text-primary);font-size:0.95rem;">${Utils.escapeHTML(c.title)}</div>
                     <div style="font-size:0.82rem;color:var(--text-secondary);margin:0.25rem 0;">${Utils.escapeHTML(c.description)}</div>
-                    <div style="font-size:0.72rem;color:var(--text-muted);">${Utils.formatDate(c.created_at)}</div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);">${c.createdAtDisplay || Utils.formatDate(c.created_at)}</div>
                     ${c.admin_notes ? `
-                      <div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:var(--bg-card);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--text-secondary);">
-                        <strong>Warden Note:</strong> ${Utils.escapeHTML(c.admin_notes)}
+                      <div style="margin-top:0.5rem;padding:0.5rem 0.75rem;background:var(--bg-card);border-radius:var(--radius-sm);border-left:3px solid ${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};font-size:0.8rem;color:var(--text-secondary);">
+                        <strong style="color:var(--text-primary);">${isResolved ? '✓ Warden Solved & Closed Remarks:' : '⚙ Warden Processing Update:'}</strong> ${Utils.escapeHTML(c.admin_notes)}
                       </div>
                     ` : ''}
                   </div>
-                `).join('')}
+                `;}).join('')}
               </div>
             `}
           </div>

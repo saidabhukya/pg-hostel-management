@@ -41,12 +41,12 @@ const ComplaintsPage = {
           </div>
 
           <!-- Status Filter -->
-          <div style="min-width:160px;">
+          <div style="min-width:180px;">
             <select id="comp-status-filter" class="form-control" onchange="ComplaintsPage.handleStatusFilter(this.value)">
               <option value="">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
+              <option value="Pending">Pending (Under Review)</option>
+              <option value="In Progress">In Progress (Processing)</option>
+              <option value="Resolved">Resolved (Solved)</option>
             </select>
           </div>
         </div>
@@ -112,14 +112,23 @@ const ComplaintsPage = {
       return;
     }
 
-    container.innerHTML = complaints.map(c => `
-      <div class="card" style="border-left:4px solid ${c.status === 'Resolved' ? 'var(--status-success)' : c.status === 'In Progress' ? 'var(--status-warning)' : 'var(--primary-red)'};">
+    container.innerHTML = complaints.map(c => {
+      const isResolved = c.status === 'Resolved' || c.status === 'Solved';
+      const isInProgress = c.status === 'In Progress' || c.status === 'Processing';
+      const badgeClass = isResolved ? 'badge-success' : isInProgress ? 'badge-warning' : 'badge-danger';
+      const statusLabel = isResolved ? 'Resolved (Solved)' : isInProgress ? 'In Progress (Processing)' : 'Pending Review';
+      const statusIcon = isResolved ? 'check-circle' : isInProgress ? 'wrench' : 'clock';
+      const borderLeftColor = isResolved ? 'var(--status-success)' : isInProgress ? 'var(--status-warning)' : 'var(--primary-red)';
+
+      return `
+      <div class="card" style="border-left:4px solid ${borderLeftColor};">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
           <div style="flex:1;min-width:280px;">
             <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.35rem;flex-wrap:wrap;">
               <span class="badge badge-info">${Utils.escapeHTML(c.category || 'General')}</span>
-              <span class="badge ${c.status === 'Resolved' ? 'badge-success' : c.status === 'In Progress' ? 'badge-warning' : 'badge-danger'}">
-                ${c.status || 'Pending'}
+              <span class="badge ${badgeClass}" style="display:inline-flex;align-items:center;gap:0.3rem;">
+                <i data-lucide="${statusIcon}" style="width:12px;height:12px;"></i>
+                ${statusLabel}
               </span>
               <span style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:0.25rem;">
                 <i data-lucide="clock" style="width:12px;height:12px;"></i>
@@ -151,7 +160,7 @@ const ComplaintsPage = {
               <div style="display:flex;gap:0.4rem;">
                 <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.openUpdateStatusModal(${c.id}, '${c.status}', '${Utils.escapeHTML(c.admin_notes || '')}')" title="Update Status">
                   <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
-                  <span>Status</span>
+                  <span>Update Status</span>
                 </button>
                 <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.deleteComplaint(${c.id})" title="Delete Ticket" style="color:var(--primary-red);">
                   <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
@@ -162,12 +171,17 @@ const ComplaintsPage = {
         </div>
 
         ${c.admin_notes ? `
-          <div style="margin-top:0.85rem;padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid var(--primary-red);font-size:0.82rem;color:var(--text-secondary);">
-            <strong>Warden Resolution Notes:</strong> ${Utils.escapeHTML(c.admin_notes)}
+          <div style="margin-top:0.85rem;padding:0.75rem 0.9rem;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid ${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};font-size:0.82rem;color:var(--text-secondary);">
+            <div style="display:flex;align-items:center;gap:0.35rem;font-weight:700;font-size:0.8rem;color:${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};margin-bottom:0.25rem;">
+              <i data-lucide="${isResolved ? 'check-check' : 'message-square'}" style="width:14px;height:14px;"></i>
+              <span>${isResolved ? 'Warden Solved & Resolution Remarks:' : 'Warden Processing Update Remarks:'}</span>
+            </div>
+            <p style="margin:0;line-height:1.45;color:var(--text-primary);">${Utils.escapeHTML(c.admin_notes)}</p>
           </div>
         ` : ''}
       </div>
-    `).join('');
+      `;
+    }).join('');
 
     Utils.renderIcons();
   },
@@ -282,27 +296,32 @@ const ComplaintsPage = {
       content: `
         <form onsubmit="ComplaintsPage.submitStatusUpdate(event, ${id})">
           <div class="form-group" style="margin-bottom:1.15rem;">
-            <label class="form-label required">Status</label>
+            <label class="form-label required">Update Ticket Status</label>
             <select id="update-comp-status" class="form-control" required>
-              <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>Pending</option>
-              <option value="In Progress" ${currentStatus === 'In Progress' ? 'selected' : ''}>In Progress</option>
-              <option value="Resolved" ${currentStatus === 'Resolved' ? 'selected' : ''}>Resolved</option>
+              <option value="In Progress" ${currentStatus === 'In Progress' || currentStatus === 'Processing' ? 'selected' : ''}>⚙ In Progress (Processing / Work Underway)</option>
+              <option value="Resolved" ${currentStatus === 'Resolved' || currentStatus === 'Solved' ? 'selected' : ''}>✓ Resolved (Solved & Fixed)</option>
+              <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>⏳ Pending (Awaiting Review)</option>
             </select>
           </div>
 
           <div class="form-group" style="margin-bottom:1.5rem;">
-            <label class="form-label">Warden Action Notes / Remarks</label>
-            <textarea id="update-comp-notes" class="form-control" rows="3" placeholder="Action taken or technician dispatch info...">${currentNotes || ''}</textarea>
+            <label class="form-label required">Warden Remarks / Action Notes (Visible on Student Portal)</label>
+            <textarea id="update-comp-notes" class="form-control" rows="3" placeholder="Explain action taken (e.g. Plumber replaced tap washer, issue solved)..." required>${currentNotes || ''}</textarea>
+            <small style="color:var(--text-muted);font-size:0.75rem;">These notes immediately update on the student resident portal and their notification center.</small>
           </div>
 
           <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Update Status</button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              <span>Save & Update Student</span>
+            </button>
           </div>
         </form>
       `,
-      maxWidth: '480px'
+      maxWidth: '500px'
     });
+    Utils.renderIcons();
   },
 
   async submitStatusUpdate(e, id) {

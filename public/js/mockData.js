@@ -1416,17 +1416,23 @@
       const cId = Number(id);
       const comp = (store.complaints || []).find(c => Number(c.id) === cId);
       if (comp) {
-        comp.status = status;
-        if (adminNotes !== undefined) comp.admin_notes = adminNotes;
+        let normalizedStatus = status;
+        if (status === 'Solved') normalizedStatus = 'Resolved';
+        if (status === 'Processing') normalizedStatus = 'In Progress';
 
-        // Push status change notification
+        comp.status = normalizedStatus;
+        if (adminNotes !== undefined) comp.admin_notes = adminNotes.trim();
+
+        // Push status change notification targeting the resident & room
         if (!Array.isArray(store.notifications)) store.notifications = [];
         const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+        const statusDisplay = normalizedStatus === 'Resolved' ? 'Solved & Resolved' : normalizedStatus === 'In Progress' ? 'In Progress (Processing)' : 'Pending Review';
+
         store.notifications.unshift({
           id: notifId,
-          title: `Ticket Status Updated: ${comp.title}`,
-          message: `Complaint #${cId} is now "${status}". ${adminNotes ? 'Action: ' + adminNotes : ''}`,
-          type: status === 'Resolved' ? 'payment' : 'complaint',
+          title: `Ticket Status: ${comp.title}`,
+          message: `Complaint #${cId} (Room ${comp.room_number || '-'}) status updated to "${statusDisplay}".${comp.admin_notes ? ' Warden Remarks: ' + comp.admin_notes : ''}`,
+          type: normalizedStatus === 'Resolved' ? 'payment' : 'complaint',
           is_read: 0,
           link: '#complaints',
           created_at: new Date().toISOString()
