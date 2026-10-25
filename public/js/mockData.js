@@ -206,6 +206,9 @@
 
     addStudent(data) {
       const studentId = store.students.length ? Math.max(...store.students.map(s => s.id)) + 1 : 1;
+      const isPaidNow = (data.paymentStatus === 'paid' || data.payment_status === 'paid');
+      const feeStatus = isPaidNow ? 'paid' : 'pending';
+
       const newStudent = {
         id: studentId,
         reg_number: data.regNumber || data.reg_number || `REG${Date.now().toString().slice(-4)}`,
@@ -220,7 +223,7 @@
         floor_number: Number(data.floorNumber || data.floor_number || 1),
         bed_label: data.bedLabel || data.bed_label || 'Bed-A',
         bed_id: Number(data.bedId || data.bed_id || 0),
-        fee_status: 'paid',
+        fee_status: feeStatus,
         status: 'active'
       };
 
@@ -246,9 +249,11 @@
         if (bedIdx !== -1) store.availableBeds.splice(bedIdx, 1);
       }
 
-      // Initial Payment & Fee Cycle
+      // Initial Fee Cycle (PENDING by default, unless marked Paid Now)
       const feeCycleId = store.feeCycles.length + 1;
       const today = new Date().toISOString().slice(0, 10);
+      const paidAmt = isPaidNow ? newStudent.monthly_fee : 0;
+
       store.feeCycles.unshift({
         id: feeCycleId,
         student_id: newStudent.id,
@@ -257,30 +262,68 @@
         room_number: newStudent.room_number,
         bed_label: newStudent.bed_label,
         cycle_number: 1,
-        start_date: today,
+        start_date: newStudent.joining_date || today,
         end_date: today,
-        due_date: today,
+        due_date: newStudent.joining_date || today,
         amount: newStudent.monthly_fee,
-        paid_amount: newStudent.monthly_fee,
-        status: 'paid'
+        paid_amount: paidAmt,
+        status: feeStatus
       });
 
-      store.payments.unshift({
-        id: store.payments.length + 1,
-        student_id: newStudent.id,
-        student_name: newStudent.name,
-        reg_number: newStudent.reg_number,
-        room_number: newStudent.room_number,
-        bed_label: newStudent.bed_label,
-        amount: newStudent.monthly_fee,
-        payment_method: 'UPI / Direct',
-        transaction_id: `TXN${Date.now()}`,
-        payment_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        status: 'PAID'
-      });
+      // ONLY record payment if explicitly marked as Paid Now
+      if (isPaidNow) {
+        store.payments.unshift({
+          id: store.payments.length + 1,
+          student_id: newStudent.id,
+          student_name: newStudent.name,
+          reg_number: newStudent.reg_number,
+          room_number: newStudent.room_number,
+          bed_label: newStudent.bed_label,
+          amount: newStudent.monthly_fee,
+          payment_method: data.paymentMethod || data.payment_method || 'UPI / Cash',
+          transaction_id: `TXN${Date.now()}`,
+          payment_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          status: 'PAID'
+        });
+      }
 
       saveStore();
       return newStudent;
+    },
+
+    recordPayment(data) {
+      const studentId = Number(data.studentId || data.student_id);
+      const student = store.students.find(s => s.id === studentId);
+      const amount = Number(data.amount || (student ? student.monthly_fee : 7000));
+
+      const newPayment = {
+        id: store.payments.length + 1,
+        student_id: studentId,
+        student_name: student ? student.name : (data.student_name || 'Resident Student'),
+        reg_number: student ? student.reg_number : '',
+        room_number: student ? student.room_number : '',
+        bed_label: student ? student.bed_label : '',
+        amount: amount,
+        payment_method: data.paymentMethod || data.payment_method || 'UPI / Cash',
+        transaction_id: data.transactionId || `TXN${Date.now()}`,
+        payment_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        status: 'PAID'
+      };
+
+      store.payments.unshift(newPayment);
+
+      // Update student and fee cycle status to paid
+      if (student) {
+        student.fee_status = 'paid';
+      }
+      const cycle = store.feeCycles.find(c => c.student_id === studentId && c.status !== 'paid');
+      if (cycle) {
+        cycle.status = 'paid';
+        cycle.paid_amount = amount;
+      }
+
+      saveStore();
+      return newPayment;
     },
 
     deleteStudent(studentId) {

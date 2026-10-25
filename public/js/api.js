@@ -238,6 +238,23 @@ const API = {
         }
       };
     }
+    if (cleanEndpoint === '/payments' && method === 'POST') {
+      let data = {};
+      if (options.body instanceof FormData) {
+        options.body.forEach((val, key) => { data[key] = val; });
+      } else if (typeof options.body === 'string') {
+        try { data = JSON.parse(options.body); } catch(e) {}
+      } else {
+        data = options.body || {};
+      }
+      const payment = MockData.recordPayment ? MockData.recordPayment(data) : data;
+      return {
+        success: true,
+        message: 'Payment recorded successfully! Receipt generated.',
+        data: payment
+      };
+    }
+
     if (cleanEndpoint === '/payments') {
       return {
         success: true,

@@ -223,6 +223,24 @@ const AddStudentModal = {
               <input type="number" id="as-monthlyFee" class="form-control" value="7000" min="1000" step="100" required onchange="AddStudentModal.updateCyclePreview()" />
             </div>
 
+            <div class="form-group">
+              <label class="form-label required">Fee Payment Status at Admission</label>
+              <select id="as-paymentStatus" class="form-control" onchange="AddStudentModal.onPaymentStatusChange(this.value)">
+                <option value="pending" selected>Pending (Collect fee later - Default)</option>
+                <option value="paid">Paid Now (Fee received at admission desk)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="as-paymentMethod-wrap" style="display:none;">
+              <label class="form-label required">Payment Mode</label>
+              <select id="as-paymentMethod" class="form-control">
+                <option value="UPI (PhonePe / Google Pay)">UPI (PhonePe / Google Pay / Paytm)</option>
+                <option value="Cash at Desk">Cash at Reception Desk</option>
+                <option value="Bank NetBanking">Bank Transfer / IMPS / NEFT</option>
+                <option value="Debit / Credit Card">Debit / Credit Card</option>
+              </select>
+            </div>
+
             <!-- CASCADING SELECTORS: Floor -> Room -> Bed -->
             <div class="form-group">
               <label class="form-label required">Select Floor</label>
@@ -425,6 +443,13 @@ const AddStudentModal = {
     }
   },
 
+  onPaymentStatusChange(val) {
+    const wrap = document.getElementById('as-paymentMethod-wrap');
+    if (wrap) {
+      wrap.style.display = val === 'paid' ? 'block' : 'none';
+    }
+  },
+
   onCourseChange(val) {
     const wrap = document.getElementById('as-course-other-wrap');
     const input = document.getElementById('as-course-other');
@@ -507,6 +532,11 @@ const AddStudentModal = {
       fd.append('joiningDate', joiningDate);
       fd.append('monthlyFee',  monthlyFee);
       fd.append('bedId',       bedId);
+
+      const paymentStatusEl = document.getElementById('as-paymentStatus');
+      const paymentMethodEl = document.getElementById('as-paymentMethod');
+      fd.append('paymentStatus', paymentStatusEl ? paymentStatusEl.value : 'pending');
+      fd.append('paymentMethod', paymentMethodEl ? paymentMethodEl.value : 'Cash at Desk');
       if (photoInput && photoInput.files && photoInput.files[0]) {
         fd.append('photo', photoInput.files[0]);
       }
