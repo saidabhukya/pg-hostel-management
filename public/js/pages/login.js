@@ -11,32 +11,32 @@ const LoginPage = {
   slides: [
     {
       id: 1,
-      image: './assets/images/hostel-slide-1.jpg',
+      image: './assets/images/hostel-slide-1.jpg?v=hd2',
       title: 'SRI RAM PG Main Campus',
       category: 'Exterior Architecture'
     },
     {
       id: 2,
-      image: './assets/images/hostel-slide-2.jpg',
+      image: './assets/images/hostel-slide-2.jpg?v=hd2',
       title: 'Spacious Resident Rooms',
       category: 'Air-Conditioned Suites'
     },
     {
       id: 3,
-      image: './assets/images/hostel-slide-3.jpg',
-      title: 'Student Lounge & Recreation',
-      category: 'Community Living'
+      image: './assets/images/hostel-slide-3.jpg?v=hd2',
+      title: 'Hostel Dining Hall & Mess',
+      category: 'Clean Dining & Meals'
     },
     {
       id: 4,
-      image: './assets/images/hostel-slide-4.jpg',
-      title: 'Quiet Study & Dining Hall',
+      image: './assets/images/hostel-slide-4.jpg?v=hd2',
+      title: 'Quiet Study & Common Lounge',
       category: 'Academic Environment'
     },
     {
       id: 5,
-      image: './assets/images/hostel-slide-5.jpg',
-      title: 'Clean & Secure Corridors',
+      image: './assets/images/hostel-slide-5.jpg?v=hd2',
+      title: 'Reception & Secure Corridors',
       category: '24/7 Monitored Residency'
     }
   ],
