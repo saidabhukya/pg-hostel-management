@@ -1,0 +1,178 @@
+/* ========================================================
+   PG HOSTEL MANAGEMENT SYSTEM - THEME VARIABLES (LIGHT/DARK)
+   College Management Portal Aesthetics
+   ======================================================== */
+
+:root {
+  /* Brand Palette */
+  --primary-red: #dc2626;
+  --primary-red-hover: #b91c1c;
+  --primary-red-active: #991b1b;
+  --primary-red-light: rgba(220, 38, 38, 0.08);
+  --primary-red-subtle: #fef2f2;
+  --primary-red-border: #fecaca;
+  --primary-red-glow: rgba(220, 38, 38, 0.25);
+
+  /* Status Tokens */
+  --status-success: #16a34a;
+  --status-success-bg: #dcfce7;
+  --status-success-text: #15803d;
+
+  --status-warning: #eab308;
+  --status-warning-bg: #fef9c3;
+  --status-warning-text: #854d0e;
+
+  --status-danger: #dc2626;
+  --status-danger-bg: #fee2e2;
+  --status-danger-text: #991b1b;
+
+  --status-info: #2563eb;
+  --status-info-bg: #dbeafe;
+  --status-info-text: #1e40af;
+
+  /* Maintenance / Orange */
+  --status-maintenance: #f97316;
+  --status-maintenance-bg: #ffedd5;
+  --status-maintenance-text: #9a3412;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
+
+  /* Layout dimensions */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 70px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ----------------------------------------------------
+   LIGHT THEME (Default)
+   ---------------------------------------------------- */
+[data-theme="light"] {
+  --bg-app: #f8fafc;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #e2e8f0;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --bg-header: #ffffff;
+  --bg-modal: #ffffff;
+  --bg-overlay: rgba(15, 23, 42, 0.55);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  --border-color: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --border-focus: #dc2626;
+
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --modal-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  --accent-line: #dc2626;
+  --sidebar-active-bg: #fef2f2;
+  --sidebar-active-text: #dc2626;
+  --sidebar-active-border: #dc2626;
+
+  --logo-text-color: #0f172a;
+}
+
+/* ----------------------------------------------------
+   DARK THEME (Near-Black / Charcoal)
+   ---------------------------------------------------- */
+[data-theme="dark"] {
+  --bg-app: #090d16;
+  --bg-primary: #0f172a;
+  --bg-secondary: #162032;
+  --bg-tertiary: #1e293b;
+  --bg-card: #131c2e;
+  --bg-hover: #1e293b;
+  --bg-sidebar: #0f172a;
+  --bg-header: #0f172a;
+  --bg-modal: #131c2e;
+  --bg-overlay: rgba(0, 0, 0, 0.75);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-inverse: #0f172a;
+
+  --border-color: #1e293b;
+  --border-subtle: #162032;
+  --border-focus: #ef4444;
+
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --card-shadow-hover: 0 12px 20px -3px rgba(0, 0, 0, 0.45), 0 6px 8px -4px rgba(0, 0, 0, 0.3);
+  --modal-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.6), 0 10px 12px -5px rgba(0, 0, 0, 0.4);
+
+  --status-success-bg: rgba(22, 163, 74, 0.2);
+  --status-success-text: #4ade80;
+
+  --status-warning-bg: rgba(234, 179, 8, 0.2);
+  --status-warning-text: #fde047;
+
+  --status-danger-bg: rgba(220, 38, 38, 0.25);
+  --status-danger-text: #f87171;
+
+  --status-info-bg: rgba(37, 99, 235, 0.2);
+  --status-info-text: #60a5fa;
+
+  --status-maintenance-bg: rgba(249, 115, 22, 0.25);
+  --status-maintenance-text: #fb923c;
+
+  --accent-line: #ef4444;
+  --sidebar-active-bg: rgba(220, 38, 38, 0.15);
+  --sidebar-active-text: #ef4444;
+  --sidebar-active-border: #ef4444;
+
+  --logo-text-color: #f8fafc;
+}
+
+/* Global Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--primary-red);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-red-hover);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}

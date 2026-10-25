@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="0; url=./public/index.html">
+  <title>PG Hostel Management System | Redirecting...</title>
+  <link rel="icon" type="image/svg+xml" href="./public/assets/images/college-logo.svg">
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 2.5rem;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+    }
+    .btn {
+      display: inline-block;
+      background: #e11d48;
+      color: #ffffff;
+      font-weight: 600;
+      padding: 0.85rem 1.75rem;
+      border-radius: 8px;
+      text-decoration: none;
+      margin: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.25);
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #be123c;
+    }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      box-shadow: none;
+    }
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #e11d48;
+    }
+  </style>
+  <script>
+    // If opened in browser directly, redirect to server if reachable, or public/index.html
+    window.location.href = window.location.protocol === 'file:' ? './public/index.html' : '/';
+  </script>
+</head>
+<body>
+  <div class="card">
+    <img src="./public/assets/images/college-logo.svg" alt="College Logo" style="width: 72px; height: 72px; margin-bottom: 1rem;">
+    <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #0f172a;">SRI RAM PG</h1>
+    <p style="color: #64748b; margin-bottom: 1.5rem; line-height: 1.5;">
+      Redirecting you to the portal. If you are not redirected automatically, click below:
+    </p>
+    <div>
+      <a href="http://localhost:5000" class="btn">Open http://localhost:5000</a>
+      <a href="./public/index.html" class="btn btn-secondary">Open Local Portal</a>
+    </div>
+    <div style="margin-top: 2rem; font-size: 0.85rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
+      <strong>Portal:</strong> SRI RAM PG &bull; Better Stays, Brighter Futures<br>
+      <strong>Default Admin Login:</strong> <code>admin</code> / <code>admin123</code>
+    </div>
+  </div>
+</body>
+</html>

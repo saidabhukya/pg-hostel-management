@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="200" height="280">
+  <!-- Background glow -->
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF9C4"/>
+      <stop offset="100%" stop-color="#FF8F00"/>
+    </radialGradient>
+    <radialGradient id="bodyGrad" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FF8C42"/>
+      <stop offset="100%" stop-color="#E65100"/>
+    </radialGradient>
+    <radialGradient id="faceGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FFB74D"/>
+      <stop offset="100%" stop-color="#E65100"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Divine aura / halo -->
+  <circle cx="100" cy="100" r="95" fill="#FFF9C4" opacity="0.3"/>
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#FFD700" stroke-width="2.5" opacity="0.7" stroke-dasharray="8 4"/>
+  <circle cx="100" cy="100" r="78" fill="none" stroke="#FF8F00" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Halo behind head -->
+  <circle cx="100" cy="68" r="30" fill="#FFD700" opacity="0.35" filter="url(#glow)"/>
+  <circle cx="100" cy="68" r="28" fill="none" stroke="#FFD700" stroke-width="2" opacity="0.8"/>
+
+  <!-- Body - torso -->
+  <ellipse cx="100" cy="160" rx="38" ry="52" fill="url(#bodyGrad)"/>
+
+  <!-- Dhoti / waist cloth -->
+  <ellipse cx="100" cy="195" rx="42" ry="18" fill="#FFD700"/>
+  <line x1="80" y1="185" x2="75" y2="215" stroke="#FF8F00" stroke-width="1.5" opacity="0.6"/>
+  <line x1="100" y1="183" x2="100" y2="215" stroke="#FF8F00" stroke-width="1.5" opacity="0.6"/>
+  <line x1="120" y1="185" x2="125" y2="215" stroke="#FF8F00" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Left arm (viewer's right) - raised holding mace -->
+  <path d="M62 140 Q40 120 38 95 Q36 80 45 75" fill="none" stroke="url(#bodyGrad)" stroke-width="20" stroke-linecap="round"/>
+  <!-- Right arm - raised in blessing -->
+  <path d="M138 140 Q158 120 162 100 Q165 82 158 78" fill="none" stroke="url(#bodyGrad)" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Right hand blessing (Abhaya Mudra) -->
+  <ellipse cx="158" cy="74" rx="12" ry="15" fill="url(#faceGrad)"/>
+  <!-- Fingers -->
+  <line x1="150" y1="65" x2="148" y2="55" stroke="#E65100" stroke-width="3" stroke-linecap="round"/>
+  <line x1="155" y1="62" x2="153" y2="52" stroke="#E65100" stroke-width="3" stroke-linecap="round"/>
+  <line x1="160" y1="62" x2="159" y2="52" stroke="#E65100" stroke-width="3" stroke-linecap="round"/>
+  <line x1="165" y1="64" x2="165" y2="55" stroke="#E65100" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Left hand holding Gada (mace) -->
+  <ellipse cx="42" cy="72" rx="12" ry="14" fill="url(#faceGrad)"/>
+  <!-- Gada (mace) -->
+  <rect x="26" y="20" width="8" height="55" rx="4" fill="#8D6E63"/>
+  <ellipse cx="30" cy="18" rx="14" ry="10" fill="#5D4037"/>
+  <ellipse cx="30" cy="18" rx="11" ry="7" fill="#8D6E63"/>
+  <ellipse cx="30" cy="14" rx="7" ry="5" fill="#BCAAA4"/>
+
+  <!-- Neck -->
+  <rect x="90" y="103" width="20" height="18" rx="4" fill="url(#faceGrad)"/>
+
+  <!-- Head -->
+  <ellipse cx="100" cy="75" rx="32" ry="35" fill="url(#faceGrad)"/>
+
+  <!-- Monkey face features -->
+  <!-- Snout / muzzle -->
+  <ellipse cx="100" cy="90" rx="16" ry="12" fill="#FF8C42"/>
+  <ellipse cx="100" cy="92" rx="12" ry="9" fill="#FF7043"/>
+
+  <!-- Eyes -->
+  <ellipse cx="88" cy="72" rx="7" ry="7" fill="white"/>
+  <ellipse cx="112" cy="72" rx="7" ry="7" fill="white"/>
+  <circle cx="90" cy="72" r="4.5" fill="#1A1A1A"/>
+  <circle cx="114" cy="72" r="4.5" fill="#1A1A1A"/>
+  <!-- Eye shine -->
+  <circle cx="91" cy="70" r="1.5" fill="white"/>
+  <circle cx="115" cy="70" r="1.5" fill="white"/>
+
+  <!-- Eyebrows -->
+  <path d="M82 65 Q88 62 94 65" fill="none" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M106 65 Q112 62 118 65" fill="none" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="86" rx="6" ry="4" fill="#E64A19"/>
+  <circle cx="97" cy="86" r="2.5" fill="#BF360C"/>
+  <circle cx="103" cy="86" r="2.5" fill="#BF360C"/>
+
+  <!-- Mouth - smile -->
+  <path d="M90 96 Q100 104 110 96" fill="none" stroke="#5D4037" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Ears -->
+  <ellipse cx="68" cy="72" rx="8" ry="10" fill="#FF8C42"/>
+  <ellipse cx="68" cy="72" rx="5" ry="7" fill="#FFAB91"/>
+  <ellipse cx="132" cy="72" rx="8" ry="10" fill="#FF8C42"/>
+  <ellipse cx="132" cy="72" rx="5" ry="7" fill="#FFAB91"/>
+
+  <!-- Crown / Mukut -->
+  <path d="M70 48 Q100 20 130 48" fill="#FFD700" stroke="#FF8F00" stroke-width="1"/>
+  <polygon points="85,48 90,28 95,48" fill="#FFD700"/>
+  <polygon points="95,46 100,18 105,46" fill="#FFD700"/>
+  <polygon points="105,48 110,28 115,48" fill="#FFD700"/>
+  <!-- Crown jewel -->
+  <circle cx="100" cy="22" r="5" fill="#F44336"/>
+  <circle cx="90" cy="32" r="3.5" fill="#4CAF50"/>
+  <circle cx="110" cy="32" r="3.5" fill="#2196F3"/>
+
+  <!-- Ornaments / necklace -->
+  <path d="M75 110 Q100 125 125 110" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="100" cy="122" r="4" fill="#FFD700"/>
+  <circle cx="88" cy="118" r="3" fill="#FF8F00"/>
+  <circle cx="112" cy="118" r="3" fill="#FF8F00"/>
+
+  <!-- Tail curling up -->
+  <path d="M130 195 Q160 195 170 170 Q180 145 165 128 Q152 115 145 125" fill="none" stroke="#FF8C42" stroke-width="12" stroke-linecap="round"/>
+  <!-- Tail tip flame -->
+  <ellipse cx="146" cy="126" rx="8" ry="12" fill="#FF5722" transform="rotate(-20, 146, 126)"/>
+  <ellipse cx="146" cy="126" rx="5" ry="8" fill="#FFEB3B" transform="rotate(-20, 146, 126)"/>
+
+  <!-- Legs -->
+  <ellipse cx="84" cy="235" rx="20" ry="35" fill="url(#bodyGrad)"/>
+  <ellipse cx="116" cy="235" rx="20" ry="35" fill="url(#bodyGrad)"/>
+  <!-- Feet -->
+  <ellipse cx="80" cy="268" rx="18" ry="8" fill="#E65100"/>
+  <ellipse cx="120" cy="268" rx="18" ry="8" fill="#E65100"/>
+
+  <!-- Ankle ornaments -->
+  <rect x="64" y="255" width="32" height="6" rx="3" fill="#FFD700"/>
+  <rect x="104" y="255" width="32" height="6" rx="3" fill="#FFD700"/>
+
+  <!-- JAI HANUMAN text -->
+  <text x="100" y="290" text-anchor="middle" font-family="serif" font-size="13" font-weight="bold" fill="#FF8F00" letter-spacing="2">🙏 JAI HANUMAN 🙏</text>
+</svg>

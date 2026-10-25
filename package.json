@@ -1,0 +1,31 @@
+{
+  "name": "pg-hostel-management-system",
+  "version": "1.0.0",
+  "description": "Production-grade PG Hostel Management Web Application with joining-date billing, 250-bed floor management, and dual-role portals",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/database/seed.js",
+    "init-db": "node src/database/init.js"
+  },
+  "keywords": [
+    "hostel",
+    "pg-management",
+    "college-portal",
+    "student-housing",
+    "mysql"
+  ],
+  "author": "Google DeepMind Engineering",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.3",
+    "better-sqlite3": "^11.5.0"
+  }
+}

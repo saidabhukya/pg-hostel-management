@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dc2626" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#111827" stop-opacity="0.8" />
+    </linearGradient>
+    <linearGradient id="buildingGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="buildingGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#dc2626" />
+      <stop offset="100%" stop-color="#991b1b" />
+    </linearGradient>
+    <linearGradient id="windowLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Ambient background circle -->
+  <circle cx="300" cy="250" r="220" fill="url(#bgGlow)" />
+
+  <!-- Ground Plane -->
+  <path d="M 50 420 L 550 420" stroke="#334155" stroke-width="4" stroke-linecap="round" />
+  <path d="M 120 422 L 480 422" stroke="#dc2626" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Modern Multi-Story Hostel Building -->
+  <!-- Left Wing (4 floors) -->
+  <rect x="130" y="160" width="130" height="260" rx="6" fill="url(#buildingGrad1)" stroke="#334155" stroke-width="2" filter="url(#softShadow)" />
+  <!-- Left Wing Roof Accent -->
+  <path d="M 125 160 L 265 160" stroke="#dc2626" stroke-width="4" stroke-linecap="round" />
+  
+  <!-- Left Windows Grid -->
+  <g fill="url(#windowLight)" opacity="0.9">
+    <!-- 4th Floor -->
+    <rect x="150" y="180" width="22" height="32" rx="3" />
+    <rect x="185" y="180" width="22" height="32" rx="3" />
+    <rect x="220" y="180" width="22" height="32" rx="3" fill="#64748b" opacity="0.4" />
+
+    <!-- 3rd Floor -->
+    <rect x="150" y="235" width="22" height="32" rx="3" fill="#64748b" opacity="0.4" />
+    <rect x="185" y="235" width="22" height="32" rx="3" />
+    <rect x="220" y="235" width="22" height="32" rx="3" />
+
+    <!-- 2nd Floor -->
+    <rect x="150" y="290" width="22" height="32" rx="3" />
+    <rect x="185" y="290" width="22" height="32" rx="3" fill="#64748b" opacity="0.4" />
+    <rect x="220" y="290" width="22" height="32" rx="3" />
+
+    <!-- 1st Floor -->
+    <rect x="150" y="345" width="22" height="32" rx="3" />
+    <rect x="185" y="345" width="22" height="32" rx="3" />
+    <rect x="220" y="345" width="22" height="32" rx="3" />
+  </g>
+
+  <!-- Central Main Tower (5 floors - Red Architectural Header) -->
+  <rect x="240" y="90" width="150" height="330" rx="8" fill="#0f172a" stroke="#dc2626" stroke-width="2.5" filter="url(#softShadow)" />
+  
+  <!-- Modern Geometric Red Crown / Roof Garden -->
+  <path d="M 235 90 L 395 90 L 385 70 L 245 70 Z" fill="url(#buildingGrad2)" />
+  <!-- Flag Mast -->
+  <line x1="315" y1="70" x2="315" y2="35" stroke="#94a3b8" stroke-width="2.5" />
+  <polygon points="315,35 345,45 315,55" fill="#dc2626" />
+
+  <!-- Main Tower Windows (5 floors) -->
+  <g fill="url(#windowLight)">
+    <!-- 5F -->
+    <rect x="260" y="115" width="30" height="35" rx="3" />
+    <rect x="305" y="115" width="30" height="35" rx="3" />
+    <rect x="345" y="115" width="30" height="35" rx="3" />
+
+    <!-- 4F -->
+    <rect x="260" y="170" width="30" height="35" rx="3" />
+    <rect x="305" y="170" width="30" height="35" rx="3" fill="#475569" opacity="0.5" />
+    <rect x="345" y="170" width="30" height="35" rx="3" />
+
+    <!-- 3F -->
+    <rect x="260" y="225" width="30" height="35" rx="3" fill="#475569" opacity="0.5" />
+    <rect x="305" y="225" width="30" height="35" rx="3" />
+    <rect x="345" y="225" width="30" height="35" rx="3" />
+
+    <!-- 2F (Room 205 highlight) -->
+    <rect x="260" y="280" width="30" height="35" rx="3" stroke="#fbbf24" stroke-width="2" />
+    <rect x="305" y="280" width="30" height="35" rx="3" />
+    <rect x="345" y="280" width="30" height="35" rx="3" fill="#475569" opacity="0.5" />
+  </g>
+
+  <!-- Grand Entrance Gate (Ground Floor) -->
+  <rect x="290" y="355" width="50" height="65" rx="4" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" />
+  <path d="M 315 355 L 315 420" stroke="#cbd5e1" stroke-width="1.5" />
+  <circle cx="310" cy="390" r="2.5" fill="#fbbf24" />
+  <circle cx="320" cy="390" r="2.5" fill="#fbbf24" />
+  <!-- Entrance Canopy -->
+  <polygon points="275,355 355,355 365,345 265,345" fill="url(#buildingGrad2)" />
+
+  <!-- Right Wing (Study & Recreation Wing) -->
+  <rect x="375" y="200" width="115" height="220" rx="6" fill="url(#buildingGrad1)" stroke="#334155" stroke-width="2" filter="url(#softShadow)" />
+  <path d="M 370 200 L 495 200" stroke="#dc2626" stroke-width="4" stroke-linecap="round" />
+  
+  <!-- Right Windows -->
+  <g fill="url(#windowLight)">
+    <rect x="395" y="225" width="22" height="35" rx="3" />
+    <rect x="435" y="225" width="45" height="35" rx="3" />
+    <rect x="395" y="280" width="22" height="35" rx="3" fill="#475569" opacity="0.5" />
+    <rect x="435" y="280" width="45" height="35" rx="3" />
+    <rect x="395" y="340" width="85" height="40" rx="3" fill="#f8fafc" opacity="0.8" />
+  </g>
+
+  <!-- Trees & Greenery -->
+  <circle cx="105" cy="390" r="24" fill="#059669" opacity="0.85" />
+  <circle cx="90" cy="405" r="18" fill="#047857" />
+  <line x1="105" y1="414" x2="105" y2="422" stroke="#475569" stroke-width="4" />
+
+  <circle cx="510" cy="385" r="28" fill="#059669" opacity="0.85" />
+  <circle cx="525" cy="402" r="20" fill="#047857" />
+  <line x1="510" y1="413" x2="510" y2="422" stroke="#475569" stroke-width="4" />
+
+  <!-- Modern Wi-Fi / Connectivity Waves above building -->
+  <path d="M 290 28 A 25 25 0 0 1 340 28" stroke="#dc2626" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6" />
+  <path d="M 280 20 A 38 38 0 0 1 350 20" stroke="#dc2626" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.35" />
+</svg>
