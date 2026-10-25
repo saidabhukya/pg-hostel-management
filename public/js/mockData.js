@@ -160,6 +160,18 @@
         publishedDateDisplay: formatDisplayDate(today),
         author_name: 'Hostel Accounts Desk',
         created_by: 1
+      },
+      {
+        id: 4,
+        title: 'Vignan Vihar Boys Hostel: Special Sunday Dining Feast',
+        content: 'Special grand dinner this Sunday featuring Hyderabadi Dum Chicken Biryani, Paneer Butter Masala, Veg Curries, and Sweet Payasam. Dining hall timings: 7:30 PM to 9:30 PM.',
+        priority: 'Medium',
+        audience: 'all',
+        published_date: today,
+        date: today,
+        publishedDateDisplay: formatDisplayDate(today),
+        author_name: 'Food & Mess Committee',
+        created_by: 1
       }
     ];
   }
@@ -306,6 +318,15 @@
     if (!Array.isArray(store.expenses)) store.expenses = [];
     if (!Array.isArray(store.complaints)) store.complaints = [];
     if (!Array.isArray(store.visitors)) store.visitors = [];
+    if (!Array.isArray(store.announcements) || store.announcements.length === 0) {
+      store.announcements = getDefaultAnnouncements();
+    } else {
+      const validAnn = store.announcements.filter(a => a && typeof a === 'object' && a.title);
+      store.announcements = validAnn.length > 0 ? validAnn : getDefaultAnnouncements();
+    }
+    if (!Array.isArray(store.notifications) || store.notifications.length === 0) {
+      store.notifications = getDefaultNotifications();
+    }
 
     const activeStudentMap = new Map();
     store.students.forEach(s => {
@@ -576,8 +597,16 @@
         store.announcements = getDefaultAnnouncements();
         saveStore();
       }
-      return (store.announcements || []).map(a => ({
+      const valid = store.announcements.filter(a => a && typeof a === 'object' && a.title);
+      if (valid.length === 0) {
+        store.announcements = getDefaultAnnouncements();
+        saveStore();
+        return store.announcements;
+      }
+      return valid.map(a => ({
         ...a,
+        title: a.title || a.headline || 'Hostel Bulletin',
+        content: a.content || a.description || '',
         publishedDateDisplay: a.publishedDateDisplay || formatDisplayDate(a.published_date || a.date || a.created_at) || 'Today'
       }));
     },

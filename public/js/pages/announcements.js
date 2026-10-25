@@ -2,70 +2,18 @@
  * Announcements Page Component
  */
 const AnnouncementsPage = {
-  async render() {
-    const user = API.getUser();
-    const isAdmin = !user || user.role === 'admin';
-
-    return `
-      <div class="page-header">
-        <div class="page-title-group">
-          <h1>Hostel Bulletins & Announcements</h1>
-          <p>Official notices from the Warden's Office, Accounts Desk, and campus administration</p>
-        </div>
-        <div class="page-actions">
-          ${isAdmin ? `
-            <button class="btn btn-primary" onclick="AnnouncementsPage.openCreateModal()">
-              <i data-lucide="plus-circle"></i>
-              <span>Post Announcement</span>
-            </button>
-          ` : ''}
-        </div>
-      </div>
-
-      <!-- Announcements List Container -->
-      <div id="announcements-container" style="display:flex;flex-direction:column;gap:1.25rem;">
-        <p style="text-align:center;color:var(--text-muted);padding:2rem;">Loading announcements...</p>
-      </div>
-    `;
-  },
-
-  async afterRender() {
-    await this.loadAnnouncements();
-  },
-
-  async loadAnnouncements() {
-    try {
-      const res = await API.get('/announcements');
-      if (res && res.success) {
-        this.renderAnnouncements(res.data || []);
-      } else {
-        this.renderAnnouncements([]);
-      }
-    } catch (e) {
-      Toast.error('Failed to load announcements: ' + e.message);
-    }
-  },
-
-  renderAnnouncements(list) {
-    const container = document.getElementById('announcements-container');
-    if (!container) return;
-
-    const user = API.getUser();
-    const isAdmin = !user || user.role === 'admin';
-
+  getCardsHtml(list, isAdmin) {
     if (!Array.isArray(list) || list.length === 0) {
-      container.innerHTML = `
+      return `
         <div class="card" style="text-align:center;padding:3rem;color:var(--text-muted);">
           <i data-lucide="megaphone-off" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
           <p style="font-weight:600;">No active bulletins or notices.</p>
           <p style="font-size:0.85rem;margin-top:0.25rem;">Click the "+ Post Announcement" button above to publish an official bulletin.</p>
         </div>
       `;
-      Utils.renderIcons();
-      return;
     }
 
-    container.innerHTML = list.map(a => {
+    return list.map(a => {
       let priorityBadge = 'badge-info';
       let borderLeftColor = 'var(--accent-blue, #2563eb)';
 
@@ -103,11 +51,11 @@ const AnnouncementsPage = {
           </div>
 
           <h3 style="font-size:1.2rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;margin-bottom:0.6rem;">
-            ${Utils.escapeHTML(a.title)}
+            ${Utils.escapeHTML(a.title || 'Hostel Notice')}
           </h3>
 
           <p style="font-size:0.92rem;color:var(--text-secondary);line-height:1.6;white-space:pre-line;">
-            ${Utils.escapeHTML(a.content)}
+            ${Utils.escapeHTML(a.content || '')}
           </p>
 
           <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
@@ -117,7 +65,66 @@ const AnnouncementsPage = {
         </div>
       `;
     }).join('');
+  },
 
+  async render() {
+    const user = API.getUser();
+    const isAdmin = !user || user.role === 'admin';
+    const initialList = (typeof MockData !== 'undefined' && MockData.announcements && MockData.announcements.length > 0)
+      ? MockData.announcements
+      : [];
+
+    return `
+      <div class="page-header">
+        <div class="page-title-group">
+          <h1>Hostel Bulletins & Announcements</h1>
+          <p>Official notices from the Warden's Office, Accounts Desk, and campus administration</p>
+        </div>
+        <div class="page-actions">
+          ${isAdmin ? `
+            <button class="btn btn-primary" onclick="AnnouncementsPage.openCreateModal()">
+              <i data-lucide="plus-circle"></i>
+              <span>Post Announcement</span>
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Announcements List Container -->
+      <div id="announcements-container" style="display:flex;flex-direction:column;gap:1.25rem;">
+        ${this.getCardsHtml(initialList, isAdmin)}
+      </div>
+    `;
+  },
+
+  async afterRender() {
+    await this.loadAnnouncements();
+  },
+
+  async loadAnnouncements() {
+    try {
+      const res = await API.get('/announcements');
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        this.renderAnnouncements(res.data);
+      } else {
+        const fallback = (typeof MockData !== 'undefined' && MockData.announcements) ? MockData.announcements : [];
+        this.renderAnnouncements(fallback);
+      }
+    } catch (e) {
+      console.warn('Failed to load announcements:', e);
+      const fallback = (typeof MockData !== 'undefined' && MockData.announcements) ? MockData.announcements : [];
+      this.renderAnnouncements(fallback);
+    }
+  },
+
+  renderAnnouncements(list) {
+    const container = document.getElementById('announcements-container');
+    if (!container) return;
+
+    const user = API.getUser();
+    const isAdmin = !user || user.role === 'admin';
+
+    container.innerHTML = this.getCardsHtml(list, isAdmin);
     Utils.renderIcons();
   },
 

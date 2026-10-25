@@ -253,16 +253,19 @@ const StudentDashboard = {
 
       // 3. Announcements
       const annContainer = document.getElementById('stu-announcements-container');
-      if (annContainer && annRes.success) {
-        const anns = (annRes.data || []).slice(0, 3);
+      if (annContainer) {
+        let anns = (annRes && annRes.success && Array.isArray(annRes.data) && annRes.data.length > 0)
+          ? annRes.data
+          : ((typeof MockData !== 'undefined' && MockData.announcements) ? MockData.announcements : []);
+        anns = anns.slice(0, 3);
         if (anns.length === 0) {
           annContainer.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No active announcements.</p>';
         } else {
           annContainer.innerHTML = anns.map(a => `
             <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:0.6rem;border-left:3px solid var(--primary-red);">
-              <div style="font-weight:700;font-size:0.9rem;color:var(--text-primary);">${Utils.escapeHTML(a.title)}</div>
-              <div style="font-size:0.8rem;color:var(--text-secondary);margin:0.25rem 0;">${Utils.escapeHTML(a.content.substring(0, 120))}...</div>
-              <div style="font-size:0.7rem;color:var(--text-muted);">${a.publishedDateDisplay}</div>
+              <div style="font-weight:700;font-size:0.9rem;color:var(--text-primary);">${Utils.escapeHTML(a.title || 'Hostel Bulletin')}</div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin:0.25rem 0;">${Utils.escapeHTML((a.content || '').substring(0, 120))}...</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);">${a.publishedDateDisplay || (a.published_date ? Utils.formatDate(a.published_date) : 'Today')}</div>
             </div>
           `).join('');
         }
