@@ -42,16 +42,16 @@ const NotificationCenter = {
   },
 
   _updateBadge() {
-    // Red dot
+    const hasUnread = Number(this.unreadCount) > 0;
     const dot = document.getElementById('header-unread-dot');
-    if (dot) {
-      dot.style.display = this.unreadCount > 0 ? 'block' : 'none';
-    }
-    // Count number inside the bell button (if element exists)
     const countEl = document.getElementById('header-notif-count');
+
     if (countEl) {
-      countEl.textContent = this.unreadCount > 9 ? '9+' : String(this.unreadCount);
-      countEl.style.display = this.unreadCount > 0 ? 'inline-flex' : 'none';
+      countEl.textContent = this.unreadCount > 99 ? '99+' : String(this.unreadCount);
+      countEl.style.display = hasUnread ? 'inline-flex' : 'none';
+    }
+    if (dot) {
+      dot.style.display = (hasUnread && !countEl) ? 'block' : 'none';
     }
   },
 
@@ -266,15 +266,16 @@ const NotificationCenter = {
   /** Human-readable relative time */
   _timeAgo(isoString) {
     if (!isoString) return '';
+    if (isoString === 'Just now' || isoString === 'Today') return isoString;
     try {
       const date = new Date(isoString);
+      if (isNaN(date.getTime())) return isoString;
       const now  = new Date();
       const diff = Math.floor((now - date) / 1000); // seconds
       if (diff < 60)   return 'Just now';
       if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
       if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
       if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-      // Fallback: formatted date
       const d = date.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
       return d;
     } catch (e) {

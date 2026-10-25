@@ -218,6 +218,39 @@
     ];
   }
 
+  function getDefaultNotifications() {
+    const now = new Date();
+    return [
+      {
+        id: 1,
+        title: 'Maintenance Ticket Filed: Bathroom tap leaking on Floor 1',
+        message: 'Plumbing issue reported in Room 101 (Sai Teja).',
+        type: 'complaint',
+        is_read: 0,
+        link: '#complaints',
+        created_at: new Date(now.getTime() - 2 * 3600000).toISOString()
+      },
+      {
+        id: 2,
+        title: 'Hostel Notice: Sunday Special Mess Menu',
+        message: 'Hyderabadi Chicken Biryani & Paneer Butter Masala active for dinner.',
+        type: 'announcement',
+        is_read: 0,
+        link: '#mess',
+        created_at: new Date(now.getTime() - 6 * 3600000).toISOString()
+      },
+      {
+        id: 3,
+        title: 'Monthly Fee Schedule Active',
+        message: 'Billing cycle fee records generated for all registered residents.',
+        type: 'fee_due',
+        is_read: 1,
+        link: '#fees',
+        created_at: new Date(now.getTime() - 86400000).toISOString()
+      }
+    ];
+  }
+
   function getCleanInitialState() {
     return {
       adminUser: {
@@ -234,6 +267,7 @@
       feeCycles: [],
       payments: [],
       complaints: getDefaultComplaints(),
+      notifications: getDefaultNotifications(),
       expenses: [],
       visitors: [],
       announcements: getDefaultAnnouncements(),
@@ -429,6 +463,9 @@
       if (!Array.isArray(store.complaints) || store.complaints.length === 0) {
         store.complaints = getDefaultComplaints();
       }
+      if (!Array.isArray(store.notifications) || store.notifications.length === 0) {
+        store.notifications = getDefaultNotifications();
+      }
       // Always adopt the latest Vignan Vihar Boys Hostel menu
       store.messMenu = getVignanMessMenu();
     } else {
@@ -544,7 +581,13 @@
         publishedDateDisplay: a.publishedDateDisplay || formatDisplayDate(a.published_date || a.date || a.created_at) || 'Today'
       }));
     },
-    get notifications() { return store.notifications || []; },
+    get notifications() {
+      if (!Array.isArray(store.notifications) || store.notifications.length === 0) {
+        store.notifications = getDefaultNotifications();
+        saveStore();
+      }
+      return store.notifications;
+    },
     get leaveRequests() { return store.leaveRequests; },
     get settings() { return store.settings; },
     get messMenu() { return store.messMenu; },
@@ -1362,7 +1405,7 @@
         type: 'complaint',
         is_read: 0,
         link: '#complaints',
-        created_at: 'Just now'
+        created_at: new Date().toISOString()
       });
 
       saveStore();
@@ -1375,6 +1418,20 @@
       if (comp) {
         comp.status = status;
         if (adminNotes !== undefined) comp.admin_notes = adminNotes;
+
+        // Push status change notification
+        if (!Array.isArray(store.notifications)) store.notifications = [];
+        const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+        store.notifications.unshift({
+          id: notifId,
+          title: `Ticket Status Updated: ${comp.title}`,
+          message: `Complaint #${cId} is now "${status}". ${adminNotes ? 'Action: ' + adminNotes : ''}`,
+          type: status === 'Resolved' ? 'payment' : 'complaint',
+          is_read: 0,
+          link: '#complaints',
+          created_at: new Date().toISOString()
+        });
+
         saveStore();
       }
       return comp;
@@ -1384,6 +1441,31 @@
       const cId = Number(id);
       if (Array.isArray(store.complaints)) {
         store.complaints = store.complaints.filter(c => Number(c.id) !== cId);
+        saveStore();
+      }
+    },
+
+    markNotificationRead(id) {
+      const nId = Number(id);
+      if (Array.isArray(store.notifications)) {
+        const item = store.notifications.find(n => Number(n.id) === nId);
+        if (item) {
+          item.is_read = 1;
+          saveStore();
+        }
+      }
+    },
+
+    markAllNotificationsRead() {
+      if (Array.isArray(store.notifications)) {
+        store.notifications.forEach(n => { n.is_read = 1; });
+        saveStore();
+      }
+    },
+
+    clearReadNotifications() {
+      if (Array.isArray(store.notifications)) {
+        store.notifications = store.notifications.filter(n => !n.is_read);
         saveStore();
       }
     },

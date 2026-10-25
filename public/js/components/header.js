@@ -39,6 +39,7 @@ const Header = {
             <button class="header-btn" id="notification-bell-btn" onclick="NotificationCenter.togglePopover(event)" title="Notifications" style="position:relative;">
               <i data-lucide="bell"></i>
               <span id="header-unread-dot" class="badge-dot" style="display:none;"></span>
+              <span id="header-notif-count" class="header-notif-badge" style="display:none;position:absolute;top:2px;right:2px;background:var(--primary-red);color:#ffffff;border-radius:10px;font-size:0.65rem;font-weight:700;padding:0 4px;min-width:16px;height:16px;align-items:center;justify-content:center;line-height:1;border:2px solid var(--bg-card);box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
             </button>
             <div id="notification-popover-container" class="notification-popover"></div>
           </div>

@@ -715,16 +715,36 @@ const API = {
     if (cleanEndpoint === '/leave-requests' || cleanEndpoint === '/leaves') {
       return { success: true, data: MockData.leaveRequests };
     }
+    if (cleanEndpoint.startsWith('/notifications/') && cleanEndpoint.endsWith('/read') && method === 'PUT') {
+      const parts = cleanEndpoint.split('/');
+      const notifId = parts[2];
+      if (MockData.markNotificationRead) {
+        MockData.markNotificationRead(notifId);
+      }
+      return { success: true, message: 'Notification marked as read.' };
+    }
+
+    if (cleanEndpoint === '/notifications/read-all' && method === 'PUT') {
+      if (MockData.markAllNotificationsRead) {
+        MockData.markAllNotificationsRead();
+      }
+      return { success: true, message: 'All notifications marked as read.' };
+    }
+
+    if (cleanEndpoint === '/notifications/clear-read' || (cleanEndpoint === '/notifications' && method === 'DELETE')) {
+      if (MockData.clearReadNotifications) {
+        MockData.clearReadNotifications();
+      }
+      return { success: true, message: 'Read notifications cleared.' };
+    }
+
     if (cleanEndpoint === '/notifications') {
-      const notifs = (MockData.notifications && MockData.notifications.length)
-        ? MockData.notifications
-        : [
-            { id: 1, title: 'Demo Mode Active', message: 'You are exploring the live UI in GitHub Pages demo mode.', read: false, created_at: 'Just now' }
-          ];
+      const notifs = MockData.notifications || [];
+      const unreadCount = notifs.filter(n => !n.is_read || n.is_read === 0 || n.is_read === false).length;
       return {
         success: true,
         data: notifs,
-        unreadCount: notifs.filter(n => !n.is_read).length
+        unreadCount: unreadCount
       };
     }
 

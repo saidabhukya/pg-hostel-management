@@ -261,6 +261,9 @@ const ComplaintsPage = {
         Toast.success(res.message);
         Modal.close();
         await ComplaintsPage.loadComplaints();
+        if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+          await window.NotificationCenter.fetchNotifications();
+        }
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to submit complaint.');
@@ -313,6 +316,9 @@ const ComplaintsPage = {
         Toast.success(res.message);
         Modal.close();
         await ComplaintsPage.loadComplaints();
+        if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+          await window.NotificationCenter.fetchNotifications();
+        }
       }
     } catch (err) {
       Toast.error(err.message);
@@ -326,6 +332,9 @@ const ComplaintsPage = {
       if (res.success) {
         Toast.success(res.message || 'Complaint deleted successfully.');
         await ComplaintsPage.loadComplaints();
+        if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+          await window.NotificationCenter.fetchNotifications();
+        }
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to delete complaint.');
