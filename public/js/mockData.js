@@ -6,7 +6,7 @@
  * When a student is removed/vacated, their bed automatically and immediately becomes Available.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_live_store_v9';
+  const STORAGE_KEY = 'sri_ram_pg_live_store_v10';
 
   // Purge any older demo stores
   try {
@@ -14,6 +14,113 @@
       localStorage.removeItem(k);
     });
   } catch (e) {}
+
+  /**
+   * Official Vignan Vihar Boys Hostel 7-Day Food Routine
+   * Extracted directly from official hostel dining schedule board
+   */
+  function getVignanMessMenu() {
+    return [
+      {
+        id: 1,
+        day: 'Monday',
+        day_of_week: 'Monday',
+        breakfast: 'Idly, Vada, Pongal, Chetney, Sambar, Allam Chetney, Milk, Coffee',
+        lunch: 'Dal, Sweet (ChakkarPongal / Bread Halwa / Ravva Kesari), Chetney, Sambar, Boiled Egg, Onion + Tomato Curry / Omlet, Guntuvankaya / Egg Porutu, Rice, Rasam, Curd',
+        snacks: 'Alu Bajji (1), Full Mirchi Bajji (1), Thapala Chakkalu (1), Rice Flour Pakodi (1), Ragijava / Pulses, Tea, Milk',
+        dinner: 'Rice, Pulka, Pappu, Potato Curry, Dosakai + Tomato, Seasonal Fruits, Chetney, Rasam, Pappu Charu, (Plain Curd Rice,) Curd',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Monday Sweet (ChakkarPongal / Halwa / Kesari) & Evening Mirchi / Alu Bajji'
+      },
+      {
+        id: 2,
+        day: 'Tuesday',
+        day_of_week: 'Tuesday',
+        breakfast: 'Idly, Chapathi with Pappu, Upma, Chetney, Pudina Chetney, Milk, Coffee',
+        lunch: 'Dal, Pulihora / Kichadi / Pudina Rice / Tomato Rice, Chetney, Akukura Pappu, Cabbage + Tomato, Goruchikkudu, Sambar, Rice, Rasam, Curd',
+        snacks: 'Noodles (2), Chakka Pakodi with Mirchi (1), Karapoosa (1), Pulses, Tea, Milk',
+        dinner: 'Rice, Pulka-Gravy, Seasonal Curry, Egg Fried Rice, Veg Fried Rice, Kakarakaya Iguru, Chetney, Bendakaya Fry, Rasam, Sambar, Curd',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Pulihora / Kichadi / Pudina Rice & Night Egg / Veg Fried Rice with Bendakaya Fry'
+      },
+      {
+        id: 3,
+        day: 'Wednesday',
+        day_of_week: 'Wednesday',
+        breakfast: 'Idly, Plain Dosa, Chetney, Koriyandar Chetney, Upma, Milk, Coffee',
+        lunch: 'Dal, Tomato Pappu, Benda Iguru, Seasonal Curry, Chetney, Papada, Sambar, Rasam, Curd, Rice',
+        snacks: 'Cream Cake (2), Dilpasand (1), Veg Puff (1), Pulses, Tea, Milk',
+        dinner: 'Rice, Pulka, Biryani, Kurma, Raita, Gongura Chetney, Chicken Curry, Arati Iguru, Veg Curries + Sweet, Pappu Charu, Rasam, Curd',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Wednesday Feast: Chicken Curry, Biryani, Gongura Chetney & Evening Dilpasand / Cake'
+      },
+      {
+        id: 4,
+        day: 'Thursday',
+        day_of_week: 'Thursday',
+        breakfast: 'Idly, Utappa, Upma, Chetney, Allam Chetney, Milk, Coffee',
+        lunch: 'Dal, Chetney, Seasonal Curry, Seasonal Frys, Chama Pulusu, Dosakaya Pappu, Rasam, Sambar, Curd, Rice',
+        snacks: 'Uggani (1), All Mixture (1), Punugulu (2), Chetney, Rajijava, Pulses, Tea, Milk',
+        dinner: 'Boiled Egg, Rice, Pulka-Pappu, Cabbage Pickle, Cali Flower, Cabbage, Sambar, Rice, Seasonal Fruits, Rasam, Curd',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Hot Punugulu & Uggani Snack with Boiled Egg & Seasonal Fruits at Dinner'
+      },
+      {
+        id: 5,
+        day: 'Friday',
+        day_of_week: 'Friday',
+        breakfast: 'Idly, Chapathi, Chetney, Tamota Bath, Pudina Chetney, Kurma, Milk, Coffee',
+        lunch: 'Dal, Akukura Pappu, Chetney, Seasonal Curry, Iguru, Vadiyalu / Appadalu, Rasam, Sambar, Curd, Rice',
+        snacks: 'Cream Bun (1), Cake (1), Biscuits (2), Tea, Pulses, Milk',
+        dinner: 'Rice, Pulka-Kurma, Biryani, Chicken Fry, Chetney, Veg Curries + Sweet, Rasam, Curd',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Friday Special Biryani & Crispy Chicken Fry Dinner with Bakery Bun/Cake'
+      },
+      {
+        id: 6,
+        day: 'Saturday',
+        day_of_week: 'Saturday',
+        breakfast: 'Idly, Masala Dosa, Uppma, Koriyandar Chetney, Chetney, Milk, Coffee',
+        lunch: 'Dal, Fry, Dosaakaya Pappu, Dondakai Iguru, Drumstick Tamota, Oil Fry, Chetney, Rasam, Sambar, Curd, Rice',
+        snacks: 'Jilebi (1), Badusha (1), Mysorepak (1), Fruit Salad (1), Pulses, Tea, Milk',
+        dinner: 'Boiled Egg, Pulka / Alu Palak / Dondakaya / Bendakaya / Kakarikai, Rasam, Chetney, Fruit Curd Rice, Sambar, Curd',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Saturday Sweets (Jilebi, Badusha, Mysorepak) & Refreshing Fruit Salad'
+      },
+      {
+        id: 7,
+        day: 'Sunday',
+        day_of_week: 'Sunday',
+        breakfast: 'Idly, Bread Jam (2), Puri (1), Onion Dosa (1), Karam Podi, Chetney, Milk, Coffee',
+        lunch: 'Mudda Pappu, Pickle, Alu Patchikaram, Milli Maker + Tomato / Pakodi Pulusu, Pachipulusu / Majjighi Charu, Sambar, Curd, Rice',
+        snacks: 'Cornflex Chat (2), Poha (1), Besibilli Bath (2), Payasam, Tea, Milk, Pulses',
+        dinner: 'Rice, Pulka, Biryani, Kurma, Chicken Fry, Raita, Gongora Chetney, Pappu Charu, Rasam, Veg Curries + Sweet, Curd',
+        breakfast_timing: '8:00 AM - 10:00 AM',
+        lunch_timing: '1:00 PM - 3:00 PM',
+        snacks_timing: '4:30 PM - 6:00 PM',
+        dinner_timing: '8:00 PM - 10:00 PM',
+        special_notes: 'Sunday Grand Day: Traditional Mudda Pappu, Besibilli Bath, Sweet Payasam, Biryani & Chicken Fry'
+      }
+    ];
+  }
 
   function getCleanInitialState() {
     return {
@@ -43,15 +150,7 @@
         default_monthly_fee: '7000',
         curfew_time: '10:00 PM'
       },
-      messMenu: [
-        { id: 1, day: 'Monday', day_of_week: 'Monday', breakfast: 'Idli, Sambar, Coconut Chutney, Tea/Coffee', lunch: 'Rice, Dal Tadka, Paneer Butter Masala, Roti, Salad', snacks: 'Samosa, Masala Chai', dinner: 'Jeera Rice, Mixed Veg Curry, Phulka, Gulab Jamun', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Hot Sambar & Soft Steamed Idlis' },
-        { id: 2, day: 'Tuesday', day_of_week: 'Tuesday', breakfast: 'Aloo Paratha, Curd, Pickle, Tea/Coffee', lunch: 'Rice, Rajma Masala, Aloo Gobi, Roti, Curd', snacks: 'Veg Cutlet, Tea/Coffee', dinner: 'Veg Pulao, Dal Fry, Roti, Kheer', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Punjabi Style Rajma & Fresh Curd' },
-        { id: 3, day: 'Wednesday', day_of_week: 'Wednesday', breakfast: 'Poha, Sev, Boiled Eggs / Banana, Tea/Coffee', lunch: 'Rice, Sambar, Bhindi Masala, Roti, Curd', snacks: 'Bhel Puri, Green Tea', dinner: 'Egg Curry / Paneer Do Pyaza, Steamed Rice, Chapati', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Choice of Egg Curry or Paneer Do Pyaza' },
-        { id: 4, day: 'Thursday', day_of_week: 'Thursday', breakfast: 'Masala Dosa, Chutney, Sambar, Coffee', lunch: 'Rice, Chole Bhature / Roti, Boondi Raita', snacks: 'Biscuit / Cookies, Masala Chai', dinner: 'Veg Biryani, Mirchi Ka Salan, Raita, Ice Cream', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Crispy Dosa & Evening Biryani Feast' },
-        { id: 5, day: 'Friday', day_of_week: 'Friday', breakfast: 'Upma, Vada, Chutney, Tea/Coffee', lunch: 'Rice, Dal Makhani, Mixed Vegetable, Roti, Curd', snacks: 'Pakora, Mint Chutney, Chai', dinner: 'Fried Rice, Veg Manchurian, Spring Rolls', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Indo-Chinese Special Dinner Night' },
-        { id: 6, day: 'Saturday', day_of_week: 'Saturday', breakfast: 'Puri Bhaji, Halwa, Tea/Coffee', lunch: 'Lemon Rice, Dal Palak, Curd Rice, Papad', snacks: 'French Fries, Lemonade', dinner: 'Paneer Biryani, Veg Kurma, Parotta, Rasgulla', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Weekend Feast with Bengal Sweet Rasgulla' },
-        { id: 7, day: 'Sunday', day_of_week: 'Sunday', breakfast: 'Chole Kulche / Bread Omelette, Fresh Juice', lunch: 'Special Sunday Feast: Paneer Tikka, Dum Aloo, Butter Naan', snacks: 'Cake Slice, Tea/Coffee', dinner: 'Khichdi, Kadhi, Papad, Achar, Fruit Custard', breakfast_timing: '8:00 AM - 10:00 AM', lunch_timing: '1:00 PM - 3:00 PM', dinner_timing: '8:00 PM - 10:00 PM', special_notes: 'Sunday Grand Lunch with Paneer Tikka' }
-      ]
+      messMenu: getVignanMessMenu()
     };
   }
 
@@ -222,14 +321,13 @@
       if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
       if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
       if (!Array.isArray(store.payments)) store.payments = [];
-      if (!Array.isArray(store.messMenu) || !store.messMenu[0] || !store.messMenu[0].day_of_week) {
-        store.messMenu = getCleanInitialState().messMenu;
-      }
+      // Always adopt the latest Vignan Vihar Boys Hostel menu
+      store.messMenu = getVignanMessMenu();
     } else {
       store = getCleanInitialState();
-      // Safely migrate user-added students and records from v8, v7, v6, or v5
+      // Safely migrate user-added students and records from v9, v8, v7, v6, or v5
       try {
-        const prevKeys = ['sri_ram_pg_live_store_v8', 'sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
+        const prevKeys = ['sri_ram_pg_live_store_v9', 'sri_ram_pg_live_store_v8', 'sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
         for (const pk of prevKeys) {
           const val = localStorage.getItem(pk);
           if (val) {
@@ -320,6 +418,7 @@
         day_of_week: m.day_of_week || m.day,
         breakfast_timing: m.breakfast_timing || '7:30 AM - 9:30 AM',
         lunch_timing: m.lunch_timing || '12:30 PM - 2:30 PM',
+        snacks_timing: m.snacks_timing || '4:30 PM - 6:00 PM',
         dinner_timing: m.dinner_timing || '7:30 PM - 9:30 PM'
       }));
       const todayMenu = weekly.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weekly[0];
@@ -873,6 +972,7 @@
       if (item) {
         if (data.breakfast) item.breakfast = data.breakfast;
         if (data.lunch) item.lunch = data.lunch;
+        if (data.snacks) item.snacks = data.snacks;
         if (data.dinner) item.dinner = data.dinner;
         if (data.specialNotes !== undefined) item.special_notes = data.specialNotes;
         saveStore();

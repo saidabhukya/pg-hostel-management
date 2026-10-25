@@ -69,7 +69,7 @@ const MessPage = {
     return `
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:1rem;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
         <div>
-          <span class="badge badge-danger" style="margin-bottom:0.25rem;font-size:0.8rem;">TODAY'S SPECIAL</span>
+          <span class="badge badge-danger" style="margin-bottom:0.25rem;font-size:0.8rem;">TODAY'S SPECIAL • VIGNAN VIHAR BOYS HOSTEL</span>
           <h2 style="font-size:1.45rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.5px;">
             ${dayName}'s Dining Menu
           </h2>
@@ -79,39 +79,48 @@ const MessPage = {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:1.25rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1rem;">
         <!-- Breakfast -->
-        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1.15rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
-            <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Breakfast</span>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
+        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">🍳 Break Fast</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600;">${todayMenu.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.breakfast || 'Idli, Sambar, Coconut Chutney, Tea / Coffee')}</p>
+          <p style="font-size:0.86rem;color:var(--text-primary);line-height:1.45;">${Utils.escapeHTML(todayMenu.breakfast || '-')}</p>
         </div>
 
         <!-- Lunch -->
-        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1.15rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
-            <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Lunch</span>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.lunch_timing || '12:30 PM - 2:30 PM'}</span>
+        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">🍲 Lunch</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600;">${todayMenu.lunch_timing || '12:30 PM - 2:30 PM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.lunch || 'Steamed Rice, Dal Tadka, Paneer Butter Masala, Roti, Curd')}</p>
+          <p style="font-size:0.86rem;color:var(--text-primary);line-height:1.45;">${Utils.escapeHTML(todayMenu.lunch || '-')}</p>
+        </div>
+
+        <!-- Snacks -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">☕ Snacks</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600;">${todayMenu.snacks_timing || '4:30 PM - 6:00 PM'}</span>
+          </div>
+          <p style="font-size:0.86rem;color:var(--text-primary);line-height:1.45;">${Utils.escapeHTML(todayMenu.snacks || '-')}</p>
         </div>
 
         <!-- Dinner -->
-        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1.15rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
-            <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Dinner</span>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.dinner_timing || '7:30 PM - 9:30 PM'}</span>
+        <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">🍽️ Dinner</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);font-weight:600;">${todayMenu.dinner_timing || '7:30 PM - 9:30 PM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.dinner || 'Jeera Rice, Mixed Veg Curry, Phulka, Sweet')}</p>
+          <p style="font-size:0.86rem;color:var(--text-primary);line-height:1.45;">${Utils.escapeHTML(todayMenu.dinner || '-')}</p>
         </div>
       </div>
 
       ${todayMenu.special_notes ? `
         <div style="margin-top:1rem;font-size:0.84rem;color:var(--primary-red);font-weight:700;display:flex;align-items:center;gap:0.4rem;">
           <i data-lucide="sparkles" style="width:15px;height:15px;"></i>
-          <span>Chef's Special: ${Utils.escapeHTML(todayMenu.special_notes)}</span>
+          <span>Hostel Chef's Special: ${Utils.escapeHTML(todayMenu.special_notes)}</span>
         </div>
       ` : ''}
     `;
@@ -141,28 +150,39 @@ const MessPage = {
             ` : ''}
           </div>
 
-          <div style="display:flex;flex-direction:column;gap:0.6rem;font-size:0.85rem;">
+          <div style="display:flex;flex-direction:column;gap:0.55rem;font-size:0.83rem;">
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Breakfast:</span>
-                <span style="font-size:0.72rem;color:var(--text-muted);">${m.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.76rem;text-transform:uppercase;">🍳 Break Fast:</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);">${m.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
               </div>
               <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.breakfast || '')}</p>
             </div>
+
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Lunch:</span>
-                <span style="font-size:0.72rem;color:var(--text-muted);">${m.lunch_timing || '12:30 PM - 2:30 PM'}</span>
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.76rem;text-transform:uppercase;">🍲 Lunch:</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);">${m.lunch_timing || '12:30 PM - 2:30 PM'}</span>
               </div>
               <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.lunch || '')}</p>
             </div>
+
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Dinner:</span>
-                <span style="font-size:0.72rem;color:var(--text-muted);">${m.dinner_timing || '7:30 PM - 9:30 PM'}</span>
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.76rem;text-transform:uppercase;">☕ Snacks:</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);">${m.snacks_timing || '4:30 PM - 6:00 PM'}</span>
+              </div>
+              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.snacks || '')}</p>
+            </div>
+
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.76rem;text-transform:uppercase;">🍽️ Dinner:</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);">${m.dinner_timing || '7:30 PM - 9:30 PM'}</span>
               </div>
               <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.dinner || '')}</p>
             </div>
+
             ${m.special_notes ? `
               <div style="margin-top:0.35rem;padding-top:0.35rem;border-top:1px dashed var(--border-color);font-size:0.78rem;color:var(--primary-red);font-weight:600;">
                 ⭐ ${Utils.escapeHTML(m.special_notes)}
@@ -211,13 +231,18 @@ const MessPage = {
       content: `
         <form onsubmit="MessPage.submitEdit(event, '${dayOfWeek}')">
           <div class="form-group" style="margin-bottom:1.15rem;">
-            <label class="form-label required">Breakfast Menu</label>
+            <label class="form-label required">Break Fast Menu</label>
             <textarea id="edit-mess-bf" class="form-control" rows="2" required>${Utils.escapeHTML(item.breakfast || '')}</textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:1.15rem;">
             <label class="form-label required">Lunch Menu</label>
             <textarea id="edit-mess-lunch" class="form-control" rows="2" required>${Utils.escapeHTML(item.lunch || '')}</textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Evening Snacks</label>
+            <textarea id="edit-mess-snacks" class="form-control" rows="2" required>${Utils.escapeHTML(item.snacks || '')}</textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:1.15rem;">
@@ -244,6 +269,7 @@ const MessPage = {
     e.preventDefault();
     const breakfast = document.getElementById('edit-mess-bf').value;
     const lunch = document.getElementById('edit-mess-lunch').value;
+    const snacks = document.getElementById('edit-mess-snacks').value;
     const dinner = document.getElementById('edit-mess-dinner').value;
     const specialNotes = document.getElementById('edit-mess-notes').value;
 
@@ -251,6 +277,7 @@ const MessPage = {
       const res = await API.put(`/mess/${dayOfWeek}`, {
         breakfast,
         lunch,
+        snacks,
         dinner,
         specialNotes
       });
