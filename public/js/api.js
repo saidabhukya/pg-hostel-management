@@ -405,6 +405,87 @@ const API = {
         ]
       };
     }
+    if (cleanEndpoint.startsWith('/reports/')) {
+      const type = cleanEndpoint.replace('/reports/', '');
+      const stats = MockData.stats || {};
+      const students = MockData.students || [];
+      const payments = MockData.payments || [];
+      const cycles = MockData.feeCycles || [];
+
+      if (type === 'collections' || type === 'income') {
+        return {
+          success: true,
+          data: {
+            title: type === 'collections' ? 'Fee Collections Ledger' : 'Financial Statement & Profit & Loss',
+            summary: {
+              'Fees Collected': Utils.formatINR(stats.feesCollected || 0),
+              'Hostel Expenses': Utils.formatINR(stats.hostelExpenses || 0),
+              'Net Realized': Utils.formatINR(stats.netIncome || 0)
+            },
+            columns: ['Receipt #', 'Date', 'Student Name', 'Reg No', 'Room', 'Payment Mode', 'Amount', 'Status'],
+            rows: payments.map(p => [
+              p.receipt_number || '-',
+              Utils.formatDate(p.payment_date),
+              p.student_name || '-',
+              p.reg_number || '-',
+              `Room ${p.room_number || '-'} (${p.bed_label || '-'})`,
+              p.payment_method || 'UPI',
+              Utils.formatINR(p.amount),
+              'Settled'
+            ])
+          }
+        };
+      }
+
+      if (type === 'dues') {
+        const pendingCycles = cycles.filter(c => c.status !== 'paid');
+        return {
+          success: true,
+          data: {
+            title: 'Outstanding Fee Dues Report',
+            summary: {
+              'Pending Dues': Utils.formatINR(stats.pendingFees || 0),
+              'Students with Dues': pendingCycles.length
+            },
+            columns: ['Student Name', 'Reg No', 'Room & Bed', 'College', 'Due Date', 'Monthly Fee', 'Due Amount'],
+            rows: pendingCycles.map(c => [
+              c.student_name || '-',
+              c.reg_number || '-',
+              `Room ${c.room_number || '-'} (${c.bed_label || '-'})`,
+              c.college || 'Vignan University',
+              c.dueDateDisplay || c.due_date || '-',
+              Utils.formatINR(c.amount),
+              Utils.formatINR(Math.max(0, Number(c.amount || 0) - Number(c.paid_amount || 0)))
+            ])
+          }
+        };
+      }
+
+      // Default fallback report
+      return {
+        success: true,
+        data: {
+          title: 'Student Residency Directory',
+          summary: {
+            'Enrolled Students': stats.totalStudents || 0,
+            'Total Beds': stats.totalBeds || 250,
+            'Occupancy Rate': `${stats.occupancyRate || 0}%`
+          },
+          columns: ['Student Name', 'Reg No', 'Room', 'Bed', 'College', 'Course', 'Joining Date', 'Fee Status'],
+          rows: students.map(s => [
+            s.name || '-',
+            s.reg_number || '-',
+            s.room_number || '-',
+            s.bed_label || '-',
+            s.college || '-',
+            s.course || '-',
+            s.joining_date ? Utils.formatDate(s.joining_date) : '-',
+            s.fee_status === 'paid' ? 'Paid' : 'Pending'
+          ])
+        }
+      };
+    }
+
     if (cleanEndpoint === '/settings') {
       return { success: true, data: MockData.settings };
     }

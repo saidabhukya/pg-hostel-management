@@ -6,7 +6,7 @@
  * When a student is removed/vacated, their bed automatically and immediately becomes Available.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_live_store_v8';
+  const STORAGE_KEY = 'sri_ram_pg_live_store_v9';
 
   // Purge any older demo stores
   try {
@@ -63,6 +63,155 @@
     }
   }
 
+  /**
+   * Data Integrity & Deduplication Engine
+   * Eliminates orphan payments from deleted students and caps payments
+   * strictly to genuine paid billing cycles so feesCollected is 100% accurate.
+   */
+  function sanitizeStore() {
+    if (!store) return;
+    if (!Array.isArray(store.students)) store.students = [];
+    if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
+    if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
+    if (!Array.isArray(store.payments)) store.payments = [];
+    if (!Array.isArray(store.expenses)) store.expenses = [];
+    if (!Array.isArray(store.complaints)) store.complaints = [];
+    if (!Array.isArray(store.visitors)) store.visitors = [];
+
+    const activeStudentMap = new Map();
+    store.students.forEach(s => {
+      s.id = Number(s.id);
+      activeStudentMap.set(s.id, s);
+    });
+
+    // 1. Purge fee cycles for students who no longer exist in store.students
+    store.feeCycles = store.feeCycles.filter(c => activeStudentMap.has(Number(c.student_id)));
+
+    // 2. Purge payments for students who no longer exist in store.students (no orphaned payments!)
+    store.payments = store.payments.filter(p => activeStudentMap.has(Number(p.student_id)));
+
+    // 3. For each active student:
+    // Synchronize feeCycles & payments so there are NO duplicate payments for the same cycle
+    const sanitizedPayments = [];
+    const processedCycleIds = new Set();
+
+    store.students.forEach(student => {
+      const studentId = Number(student.id);
+      let studentCycles = store.feeCycles.filter(c => Number(c.student_id) === studentId);
+
+      // If student has no cycle at all, create Cycle 1
+      if (studentCycles.length === 0) {
+        const today = new Date().toISOString().slice(0, 10);
+        const jD = student.joining_date || today;
+        let cycleEnd = today;
+        try {
+          const d = new Date(jD);
+          const nextM = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+          const cEndD = new Date(nextM.getTime() - (24 * 60 * 60 * 1000));
+          cycleEnd = cEndD.toISOString().slice(0, 10);
+        } catch (e) {}
+
+        const feeCycleId = store.feeCycles.length ? Math.max(...store.feeCycles.map(c => c.id)) + 1 : 1;
+        const isPaid = student.fee_status === 'paid';
+        const newCycle = {
+          id: feeCycleId,
+          student_id: studentId,
+          student_name: student.name,
+          reg_number: student.reg_number,
+          room_number: student.room_number,
+          bed_label: student.bed_label,
+          college: student.college,
+          course: student.course,
+          cycle_number: 1,
+          start_date: jD,
+          end_date: cycleEnd,
+          due_date: jD,
+          amount: Number(student.monthly_fee || 7000),
+          paid_amount: isPaid ? Number(student.monthly_fee || 7000) : 0,
+          payment_date: isPaid ? (student.joining_date || today) : null,
+          status: isPaid ? 'paid' : 'pending'
+        };
+        store.feeCycles.push(newCycle);
+        studentCycles = [newCycle];
+      }
+
+      // Check student payments
+      const studentPayments = store.payments.filter(p => Number(p.student_id) === studentId);
+
+      studentCycles.forEach(cycle => {
+        cycle.id = Number(cycle.id);
+        const cycleAmount = Number(cycle.amount || student.monthly_fee || 7000);
+
+        // Find payments corresponding to this cycle
+        const matchingPayments = studentPayments.filter(p => 
+          Number(p.fee_cycle_id) === cycle.id || 
+          (!p.fee_cycle_id && studentPayments.length === 1)
+        );
+
+        if (cycle.status === 'paid' || student.fee_status === 'paid' || matchingPayments.length > 0) {
+          cycle.status = 'paid';
+          cycle.paid_amount = cycleAmount;
+          if (!cycle.payment_date) cycle.payment_date = cycle.start_date || new Date().toISOString().slice(0, 10);
+          student.fee_status = 'paid';
+
+          // Ensure exactly ONE clean payment record exists for this paid cycle
+          let pRecord = matchingPayments[0];
+          if (!pRecord) {
+            const pId = sanitizedPayments.length ? Math.max(...sanitizedPayments.map(p => p.id)) + 1 : 1;
+            pRecord = {
+              id: pId,
+              paymentId: pId,
+              fee_cycle_id: cycle.id,
+              student_id: studentId,
+              student_name: student.name,
+              reg_number: student.reg_number,
+              room_number: student.room_number,
+              floor_number: student.floor_number || 1,
+              bed_label: student.bed_label || 'Bed-A',
+              college: student.college,
+              course: student.course,
+              student_phone: student.phone || '',
+              student_email: student.email || '',
+              parent_name: student.parent_name || 'Parent / Guardian',
+              parent_phone: student.parent_phone || '+91 98765 00000',
+              amount: cycleAmount,
+              payment_method: 'UPI',
+              transaction_id: `TXN${Date.now()}`,
+              payment_date: cycle.payment_date || new Date().toISOString().slice(0, 10),
+              cycle_start_date: cycle.start_date,
+              cycle_end_date: cycle.end_date,
+              receipt_number: `REC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(pId).padStart(4, '0')}`,
+              status: 'PAID'
+            };
+          } else {
+            // Keep the real payment record, but enforce exact cycle amount
+            pRecord.amount = cycleAmount;
+            pRecord.fee_cycle_id = cycle.id;
+            pRecord.student_name = student.name;
+            pRecord.reg_number = student.reg_number;
+            pRecord.room_number = student.room_number;
+            pRecord.floor_number = student.floor_number;
+            pRecord.bed_label = student.bed_label;
+            pRecord.college = student.college;
+            pRecord.course = student.course;
+            pRecord.status = 'PAID';
+          }
+
+          if (!processedCycleIds.has(cycle.id)) {
+            processedCycleIds.add(cycle.id);
+            sanitizedPayments.push(pRecord);
+          }
+        } else {
+          cycle.status = 'pending';
+          cycle.paid_amount = 0;
+          cycle.payment_date = null;
+        }
+      });
+    });
+
+    store.payments = sanitizedPayments;
+  }
+
   // Load from localStorage or initialize clean
   let store;
   try {
@@ -78,9 +227,9 @@
       }
     } else {
       store = getCleanInitialState();
-      // Safely migrate user-added students and records from v5, v6, or v7
+      // Safely migrate user-added students and records from v8, v7, v6, or v5
       try {
-        const prevKeys = ['sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
+        const prevKeys = ['sri_ram_pg_live_store_v8', 'sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
         for (const pk of prevKeys) {
           const val = localStorage.getItem(pk);
           if (val) {
@@ -100,10 +249,13 @@
           }
         }
       } catch (e) {}
-      saveStore();
     }
+    sanitizeStore();
+    saveStore();
   } catch (e) {
     store = getCleanInitialState();
+    sanitizeStore();
+    saveStore();
   }
 
   const bedLetters = ['A', 'B', 'C', 'D', 'E'];
@@ -121,6 +273,7 @@
     get students() { return store.students; },
 
     get feeCycles() {
+      sanitizeStore();
       const today = new Date().toISOString().slice(0, 10);
       return store.feeCycles.map(c => {
         const isPaid = c.status === 'paid' || (Number(c.paid_amount || 0) >= Number(c.amount || 0));
@@ -147,7 +300,10 @@
       });
     },
 
-    get payments() { return store.payments; },
+    get payments() {
+      sanitizeStore();
+      return store.payments;
+    },
     get complaints() { return store.complaints; },
     get expenses() { return store.expenses; },
     get visitors() { return store.visitors; },
@@ -268,6 +424,7 @@
     },
 
     get stats() {
+      sanitizeStore();
       const totalStudents = store.students.length;
       const totalBeds = 250;
       const occupiedBeds = totalStudents;
@@ -313,6 +470,7 @@
     },
 
     get charts() {
+      sanitizeStore();
       const floorOccupancy = this.structure.map(f => ({
         floor_number: f.floor_number,
         floor_name: f.name,
@@ -321,9 +479,23 @@
         available_beds: f.stats.availableBeds
       }));
 
+      // Group payments by month (e.g. "Oct 2026")
+      const incomeByMonth = {};
+      for (const p of store.payments) {
+        if (p.status === 'PAID') {
+          const d = p.payment_date ? new Date(p.payment_date) : new Date();
+          const monthYear = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          incomeByMonth[monthYear] = (incomeByMonth[monthYear] || 0) + Number(p.amount || 0);
+        }
+      }
+      const monthlyIncome = Object.keys(incomeByMonth).map(m => ({
+        month_year: m,
+        total_income: incomeByMonth[m]
+      }));
+
       return {
         floorOccupancy,
-        monthlyIncome: [],
+        monthlyIncome,
         monthlyExpenses: [],
         categoryExpenses: [],
         recentPayments: store.payments.slice(-5).reverse(),
@@ -531,6 +703,7 @@
         });
       }
 
+      sanitizeStore();
       saveStore();
       return newStudent;
     },
@@ -539,6 +712,8 @@
       const idNum = Number(studentId);
       store.students = store.students.filter(s => s.id !== idNum);
       store.feeCycles = store.feeCycles.filter(c => c.student_id !== idNum);
+      store.payments = store.payments.filter(p => Number(p.student_id) !== idNum);
+      sanitizeStore();
       saveStore();
     },
 
@@ -589,15 +764,13 @@
     },
 
     recordPayment(data) {
+      sanitizeStore();
       const studentId = Number(data.studentId || data.student_id);
       const student = store.students.find(s => s.id === studentId);
       const amount = Number(data.amount || (student ? student.monthly_fee : 7000));
       const feeCycleId = data.feeCycleId ? Number(data.feeCycleId) : null;
       const todayISO = new Date().toISOString().slice(0, 10);
       const paymentDate = data.paymentDate || todayISO;
-
-      const pId = store.payments.length ? Math.max(...store.payments.map(p => p.id)) + 1 : 1;
-      const receiptNumber = `REC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(pId).padStart(4, '0')}`;
 
       // Locate matching fee cycle
       let cycle = null;
@@ -611,13 +784,50 @@
         cycle = store.feeCycles.find(c => Number(c.student_id) === studentId);
       }
 
+      // Check if this cycle is already fully paid - prevent duplicate payment accumulation
+      if (cycle && cycle.status === 'paid' && Number(cycle.paid_amount || 0) >= Number(cycle.amount || amount)) {
+        const existingPayment = store.payments.find(p => Number(p.fee_cycle_id) === Number(cycle.id));
+        if (existingPayment) {
+          return existingPayment;
+        }
+      }
+
       const cycleStart = data.cycleStartDate || (cycle ? cycle.start_date : paymentDate);
       const cycleEnd = data.cycleEndDate || (cycle ? cycle.end_date : paymentDate);
+
+      // If no pending cycle found, create next billing cycle
+      if (!cycle) {
+        const lastCycle = store.feeCycles.filter(c => Number(c.student_id) === studentId).slice(-1)[0];
+        const nextCycleNum = lastCycle ? (Number(lastCycle.cycle_number || 1) + 1) : 1;
+        const newCycleId = store.feeCycles.length ? Math.max(...store.feeCycles.map(c => c.id)) + 1 : 1;
+        cycle = {
+          id: newCycleId,
+          student_id: studentId,
+          student_name: student ? student.name : (data.student_name || 'Resident Student'),
+          reg_number: student ? student.reg_number : '',
+          room_number: student ? student.room_number : '',
+          bed_label: student ? student.bed_label : 'Bed-A',
+          college: student ? student.college : 'Vignan University',
+          course: student ? student.course : 'B.Tech',
+          cycle_number: nextCycleNum,
+          start_date: cycleStart,
+          end_date: cycleEnd,
+          due_date: cycleStart,
+          amount: amount,
+          paid_amount: amount,
+          payment_date: paymentDate,
+          status: 'paid'
+        };
+        store.feeCycles.unshift(cycle);
+      }
+
+      const pId = store.payments.length ? Math.max(...store.payments.map(p => p.id)) + 1 : 1;
+      const receiptNumber = `REC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(pId).padStart(4, '0')}`;
 
       const newPayment = {
         id: pId,
         paymentId: pId,
-        fee_cycle_id: cycle ? cycle.id : (feeCycleId || 1),
+        fee_cycle_id: cycle.id,
         student_id: studentId,
         student_name: student ? student.name : (data.student_name || 'Resident Student'),
         reg_number: student ? student.reg_number : '',
@@ -649,10 +859,11 @@
       }
       if (cycle) {
         cycle.status = 'paid';
-        cycle.paid_amount = Number(cycle.paid_amount || 0) + amount;
+        cycle.paid_amount = Number(cycle.amount || amount);
         cycle.payment_date = paymentDate;
       }
 
+      sanitizeStore();
       saveStore();
       return newPayment;
     },
