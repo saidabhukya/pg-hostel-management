@@ -330,6 +330,7 @@
       adminUser: {
         id: 1,
         username: 'admin',
+        password: 'admin123',
         email: 'admin@hostel.com',
         role: 'admin',
         name: 'Hostel Chief Warden',
@@ -373,6 +374,25 @@
    */
   function sanitizeStore() {
     if (!store) return;
+    if (!store.adminUser) {
+      store.adminUser = {
+        id: 1,
+        username: 'admin',
+        password: 'admin123',
+        email: 'admin@hostel.com',
+        role: 'admin',
+        name: 'Hostel Chief Warden',
+        phone: '+91 98111 22334',
+        avatar: './assets/images/default-avatar.png'
+      };
+    } else {
+      if (!store.adminUser.password) {
+        store.adminUser.password = 'admin123';
+      }
+      if (!store.adminUser.username) {
+        store.adminUser.username = 'admin';
+      }
+    }
     if (!Array.isArray(store.students)) store.students = [];
     if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
     if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
@@ -615,7 +635,18 @@
   }
 
   const MockData = {
-    get adminUser() { return store.adminUser; },
+    get adminUser() {
+      sanitizeStore();
+      return store.adminUser;
+    },
+    updateAdminPassword(newPassword) {
+      sanitizeStore();
+      if (store.adminUser) {
+        store.adminUser.password = String(newPassword).trim();
+      }
+      saveStore();
+      return true;
+    },
     get students() { return store.students; },
 
     get feeCycles() {

@@ -107,32 +107,42 @@ const API = {
       const uLower = inputUser.toLowerCase();
 
       // Case A: Administrator / Warden Login
-      if (uLower === 'admin' || uLower === 'admin@hostel.com' || uLower === 'warden') {
-        const adminUser = MockData.adminUser || {
-          id: 1,
-          username: 'admin',
-          email: 'admin@hostel.com',
+      const adminData = (MockData && MockData.adminUser) || {};
+      const expectedAdminPass = String(adminData.password || 'admin123').trim();
+      const expectedAdminUsername = String(adminData.username || 'admin').trim().toLowerCase();
+      const expectedAdminEmail = String(adminData.email || 'admin@hostel.com').trim().toLowerCase();
+
+      const isAdminAttempt = (uLower === expectedAdminUsername || uLower === expectedAdminEmail || uLower === 'admin' || uLower === 'warden');
+
+      if (isAdminAttempt) {
+        if (inputPass !== expectedAdminPass) {
+          throw new Error('Incorrect password for Administrator. Please enter the correct password.');
+        }
+
+        const adminUser = {
+          id: adminData.id || 1,
+          username: adminData.username || 'admin',
+          email: adminData.email || 'admin@hostel.com',
           role: 'admin',
-          name: 'Hostel Chief Warden',
-          phone: '+91 98111 22334',
-          avatar: './assets/images/default-avatar.png'
+          name: adminData.name || 'Hostel Chief Warden',
+          phone: adminData.phone || '+91 98111 22334',
+          avatar: adminData.avatar || './assets/images/default-avatar.png'
         };
 
         return {
           success: true,
           token: 'demo-jwt-token-admin',
           user: adminUser,
-          message: 'Welcome Warden! Logged into SRI RAM PG.'
+          message: 'Welcome Warden! Logged into SRI RAM PG Admin Portal.'
         };
       }
 
-      // Case B: Student Login by Registration Number, Email, Phone, or Name
+      // Case B: Student Login by Registration Number or Email
       const students = MockData.students || [];
       const student = students.find(s =>
         (s.reg_number && s.reg_number.toLowerCase() === uLower) ||
         (s.email && s.email.toLowerCase() === uLower) ||
-        (s.phone && s.phone.replace(/\D/g, '') === inputUser.replace(/\D/g, '')) ||
-        (s.name && s.name.toLowerCase() === uLower)
+        (s.phone && s.phone.replace(/\D/g, '') === inputUser.replace(/\D/g, ''))
       );
 
       if (student) {
@@ -141,13 +151,10 @@ const API = {
         const savedPass = String(student.password || student.reg_number || '').trim();
         const inputPLower = inputPass.toLowerCase();
         const isMatch = (inputPLower === savedPass.toLowerCase()) ||
-                        (inputPLower === String(student.reg_number || '').trim().toLowerCase()) ||
-                        (inputPass === 'student123') ||
-                        (inputPass === 'password') ||
-                        (inputPass === (student.phone || '').replace(/\D/g, ''));
+                        (inputPLower === String(student.reg_number || '').trim().toLowerCase());
 
         if (!isMatch) {
-          throw new Error('Incorrect password. Please use your Registration Number as password.');
+          throw new Error('Incorrect password for Student account. Please enter your valid Registration Number.');
         }
 
         const studentUser = {
@@ -171,12 +178,12 @@ const API = {
           token: `demo-jwt-token-student-${student.id}`,
           user: studentUser,
           student: studentProfile,
-          message: `Welcome ${student.name}! Logged into SRI RAM PG.`
+          message: `Welcome ${student.name}! Logged into SRI RAM PG Student Portal.`
         };
       }
 
-      // If no student found with that registration number
-      throw new Error(`Invalid credentials. No active student found with Registration Number "${inputUser}". Please verify with the Warden.`);
+      // If credentials do not match admin or any student
+      throw new Error('Invalid credentials. Please enter a valid username and password.');
     }
 
     if (cleanEndpoint === '/auth/change-password' && method === 'POST') {
@@ -186,12 +193,49 @@ const API = {
       } catch (e) {}
 
       const currentUser = this.getUser();
-      if (currentUser && currentUser.role === 'student') {
-        const student = (MockData.students || []).find(s => s.id === currentUser.id || s.reg_number === currentUser.username);
-        if (student) {
-          student.password = body.newPassword;
+      if (!currentUser) {
+        throw new Error('Not authenticated.');
+      }
+
+      const curPass = String(body.currentPassword || '').trim();
+      const newPass = String(body.newPassword || '').trim();
+
+      if (!newPass || newPass.length < 4) {
+        throw new Error('New password must be at least 4 characters long.');
+      }
+
+      if (currentUser.role === 'admin') {
+        const adminData = (MockData && MockData.adminUser) || {};
+        const savedPass = String(adminData.password || 'admin123').trim();
+        if (curPass !== savedPass) {
+          throw new Error('Current admin password does not match.');
+        }
+        if (typeof MockData.updateAdminPassword === 'function') {
+          MockData.updateAdminPassword(newPass);
+        } else if (MockData.adminUser) {
+          MockData.adminUser.password = newPass;
           if (MockData.saveStore) MockData.saveStore();
         }
+        return {
+          success: true,
+          message: 'Admin password updated successfully!'
+        };
+      }
+
+      if (currentUser.role === 'student') {
+        const student = (MockData.students || []).find(s => s.id === currentUser.id || s.reg_number === currentUser.username);
+        if (student) {
+          const savedPass = String(student.password || student.reg_number || '').trim();
+          if (curPass !== savedPass && curPass.toLowerCase() !== savedPass.toLowerCase()) {
+            throw new Error('Current password does not match.');
+          }
+          student.password = newPass;
+          if (MockData.saveStore) MockData.saveStore();
+        }
+        return {
+          success: true,
+          message: 'Student password updated successfully!'
+        };
       }
 
       return {
@@ -201,11 +245,14 @@ const API = {
     }
 
     if (cleanEndpoint === '/auth/me') {
-      const currentUser = this.getUser() || MockData.adminUser;
+      const currentUser = this.getUser();
+      if (!currentUser) {
+        throw new Error('Not authenticated.');
+      }
       let currentStudent = null;
       if (currentUser && currentUser.role === 'student') {
         const students = MockData.students || [];
-        currentStudent = this.getStudent() || students.find(s => s.id === currentUser.id || s.reg_number === currentUser.username) || students[0] || null;
+        currentStudent = this.getStudent() || students.find(s => s.id === currentUser.id || s.reg_number === currentUser.username) || null;
       }
       return {
         success: true,
@@ -1086,7 +1133,7 @@ const API = {
 
       const question = (body.question || '').trim();
       const q = question.toLowerCase();
-      const currentUser = this.getUser() || MockData.adminUser;
+      const currentUser = this.getUser();
       const isStudent = currentUser && currentUser.role === 'student';
       const student = isStudent ? (this.getStudent() || MockData.studentProfile) : null;
       const stats = MockData.stats || {};
