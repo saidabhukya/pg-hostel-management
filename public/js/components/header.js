@@ -123,8 +123,8 @@ const Header = {
                   Reg: ${s.reg_number} • Room ${s.room_number || 'Unallocated'}, ${s.bed_label || ''}
                 </div>
               </div>
-              <span class="badge ${s.latest_cycle_status === 'paid' ? 'badge-success' : 'badge-danger'}">
-                ${s.latest_cycle_status === 'paid' ? 'Paid' : 'Due'}
+              <span class="badge ${(s.fee_status === 'paid' || s.latest_cycle_status === 'paid') ? 'badge-success' : 'badge-danger'}">
+                ${(s.fee_status === 'paid' || s.latest_cycle_status === 'paid') ? 'Paid' : 'Due'}
               </span>
             </div>
           `).join('');

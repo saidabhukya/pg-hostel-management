@@ -482,10 +482,11 @@
         // Find payments corresponding to this cycle
         const matchingPayments = studentPayments.filter(p => 
           Number(p.fee_cycle_id) === cycle.id || 
-          (!p.fee_cycle_id && studentPayments.length === 1)
+          (!p.fee_cycle_id && studentPayments.length === 1) ||
+          (p.reg_number && p.reg_number === student.reg_number)
         );
 
-        if (cycle.status === 'paid' || student.fee_status === 'paid' || matchingPayments.length > 0) {
+        if (cycle.status === 'paid' || student.fee_status === 'paid' || matchingPayments.length > 0 || studentPayments.length > 0) {
           cycle.status = 'paid';
           cycle.paid_amount = cycleAmount;
           if (!cycle.payment_date) cycle.payment_date = cycle.start_date || new Date().toISOString().slice(0, 10);

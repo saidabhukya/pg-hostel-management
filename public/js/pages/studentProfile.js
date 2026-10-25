@@ -123,19 +123,19 @@ const StudentProfile = {
           <div id="tab-fees" class="tab-content">
             <!-- Next Due Highlight Banner -->
             ${nextDueInfo ? `
-              <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-left:4px solid var(--primary-red);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+              <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-left:4px solid ${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'var(--status-success)' : 'var(--primary-red)'};border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
                 <div>
-                  <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Next Fee Due Reminder</div>
-                  <div style="font-size:1.15rem;font-weight:800;color:var(--text-primary);">
-                    Due on ${nextDueInfo.dueDateDisplay || Utils.formatDate(nextDueInfo.dueDate)}
+                  <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'Fee Clearance Status' : 'Next Fee Due Reminder'}</div>
+                  <div style="font-size:1.15rem;font-weight:800;color:${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'var(--status-success)' : 'var(--text-primary)'};">
+                    ${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? '✓ Fee Paid in Full' : `Due on ${nextDueInfo.dueDateDisplay || Utils.formatDate(nextDueInfo.dueDate)}`}
                   </div>
-                  <div style="font-size:0.8rem;color:var(--text-muted);">Cycle ${nextDueInfo.cycleNumber} • ₹7,000 monthly fee</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);">${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'No outstanding dues for current residency cycle' : `Cycle ${nextDueInfo.cycleNumber || 1} • ₹${Number(nextDueInfo.amount || profile.monthly_fee || 7000).toLocaleString('en-IN')} monthly fee`}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;">
-                  <span class="badge ${nextDueInfo.reminder.badgeClass}" style="font-size:0.85rem;padding:0.35rem 0.75rem;">
-                    ${nextDueInfo.reminder.label}
+                  <span class="badge ${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'badge-success' : ((nextDueInfo.reminder && nextDueInfo.reminder.badgeClass) || 'badge-danger')}" style="font-size:0.85rem;padding:0.35rem 0.75rem;">
+                    ${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'Paid' : ((nextDueInfo.reminder && nextDueInfo.reminder.label) || 'Due')}
                   </span>
-                  ${isAdmin ? `
+                  ${isAdmin && !(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? `
                     <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${profile.id}, '${Utils.escapeHTML(profile.name)}', ${profile.monthly_fee})">
                       Record Payment
                     </button>
@@ -156,19 +156,21 @@ const StudentProfile = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${feeCycles.map(c => `
+                  ${feeCycles.map(c => {
+                    const isCyclePaid = c.status === 'paid' || Number(c.paid_amount || 0) >= Number(c.amount || 0) || (payments && payments.some(p => Number(p.fee_cycle_id) === Number(c.id)));
+                    return `
                     <tr>
                       <td style="font-weight:700;">Cycle ${c.cycle_number}</td>
                       <td>${Utils.formatDate(c.start_date)} → ${Utils.formatDate(c.end_date)}</td>
                       <td>${Utils.formatDate(c.due_date)}</td>
                       <td style="font-weight:700;">${Utils.formatINR(c.amount)}</td>
                       <td>
-                        <span class="badge ${c.status === 'paid' ? 'badge-success' : 'badge-danger'}">
-                          ${c.status === 'paid' ? 'Paid' : 'Pending'}
+                        <span class="badge ${isCyclePaid ? 'badge-success' : 'badge-danger'}">
+                          ${isCyclePaid ? 'Paid' : 'Pending'}
                         </span>
                       </td>
                     </tr>
-                  `).join('')}
+                  `}).join('')}
                 </tbody>
               </table>
             </div>

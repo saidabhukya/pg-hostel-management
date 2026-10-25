@@ -292,7 +292,27 @@ const API = {
         };
       }
 
-      let list = [...MockData.students];
+      let list = (MockData.students || []).map(s => {
+        const sId = Number(s.id);
+        const sReg = (s.reg_number || '').trim().toLowerCase();
+        const studentCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId || (c.reg_number && c.reg_number.toLowerCase() === sReg));
+        const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId || (p.reg_number && p.reg_number.toLowerCase() === sReg));
+
+        let isPaid = (s.fee_status === 'paid');
+        if (studentPayments.length > 0) {
+          isPaid = true;
+        } else if (studentCycles.length > 0) {
+          const hasPending = studentCycles.some(c => c.status !== 'paid');
+          if (!hasPending) isPaid = true;
+        }
+
+        return {
+          ...s,
+          fee_status: isPaid ? 'paid' : 'pending',
+          latest_cycle_status: isPaid ? 'paid' : 'pending'
+        };
+      });
+
       try {
         const urlObj = new URL('http://dummy' + endpoint);
         const search = (urlObj.searchParams.get('search') || '').toLowerCase().trim();
@@ -349,14 +369,50 @@ const API = {
           sId = Number(myStudent.id);
         }
       }
-      const student = MockData.students.find(s => s.id === sId) || (currentUser && currentUser.role === 'student' ? this.getStudent() : MockData.studentProfile);
-      const studentFeeCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId);
-      const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId);
+      const studentRaw = MockData.students.find(s => s.id === sId) || (currentUser && currentUser.role === 'student' ? this.getStudent() : MockData.studentProfile);
+      const studentFeeCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId || (studentRaw && c.reg_number === studentRaw.reg_number));
+      const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId || (studentRaw && p.reg_number === studentRaw.reg_number));
       const studentComplaints = (MockData.complaints || []).filter(c => 
         Number(c.student_id) === sId ||
-        (student && student.reg_number && c.reg_number === student.reg_number)
+        (studentRaw && studentRaw.reg_number && c.reg_number === studentRaw.reg_number)
       );
       const studentLeaves = (MockData.leaveRequests || []).filter(l => Number(l.student_id) === sId);
+
+      const hasPayments = studentPayments.length > 0;
+      const pendingCycles = studentFeeCycles.filter(c => c.status !== 'paid');
+      const isPaid = (studentRaw && studentRaw.fee_status === 'paid') || (studentFeeCycles.length > 0 && pendingCycles.length === 0) || hasPayments;
+
+      const student = studentRaw ? {
+        ...studentRaw,
+        fee_status: isPaid ? 'paid' : 'pending',
+        latest_cycle_status: isPaid ? 'paid' : 'pending'
+      } : studentRaw;
+
+      const pendingCycle = pendingCycles[0];
+      const today = new Date().toISOString().slice(0, 10);
+      const nextDueInfo = pendingCycle ? {
+        cycleNumber: pendingCycle.cycle_number || 1,
+        dueDate: pendingCycle.due_date || (student ? student.joining_date : null),
+        dueDateDisplay: pendingCycle.due_date ? Utils.formatDate(pendingCycle.due_date) : 'Upcoming',
+        amount: pendingCycle.amount || (student ? student.monthly_fee : 7000),
+        status: 'pending',
+        isPaid: false,
+        reminder: {
+          label: 'Payment Due',
+          badgeClass: 'badge-danger'
+        }
+      } : {
+        cycleNumber: (studentFeeCycles.length || 0) + 1,
+        dueDate: student ? student.joining_date : null,
+        dueDateDisplay: student && student.joining_date ? Utils.formatDate(student.joining_date) : 'Upcoming',
+        amount: Number(student ? student.monthly_fee : 7000),
+        status: isPaid ? 'paid' : 'pending',
+        isPaid: isPaid,
+        reminder: {
+          label: isPaid ? 'Paid' : 'Payment Due',
+          badgeClass: isPaid ? 'badge-success' : 'badge-danger'
+        }
+      };
 
       return {
         success: true,
@@ -367,10 +423,7 @@ const API = {
           payments: studentPayments,
           complaints: studentComplaints,
           leaveRequests: studentLeaves,
-          nextDueInfo: {
-            dueDate: student ? student.joining_date : null,
-            status: student ? student.fee_status : 'pending'
-          }
+          nextDueInfo: nextDueInfo
         },
         student: student
       };
@@ -442,7 +495,21 @@ const API = {
     // 5. Fees & Payments
     if (cleanEndpoint === '/fees/cycles' || cleanEndpoint === '/fees') {
       const currentUser = this.getUser();
-      let list = [...(MockData.feeCycles || [])];
+      let list = (MockData.feeCycles || []).map(c => {
+        const studentPayments = (MockData.payments || []).filter(p => 
+          Number(p.fee_cycle_id) === Number(c.id) ||
+          (Number(p.student_id) === Number(c.student_id) && (!p.fee_cycle_id || Number(p.fee_cycle_id) === Number(c.id))) ||
+          (c.reg_number && p.reg_number === c.reg_number)
+        );
+        const hasPayment = studentPayments.length > 0;
+        const isPaid = c.status === 'paid' || (Number(c.paid_amount || 0) >= Number(c.amount || 0)) || hasPayment;
+        return {
+          ...c,
+          status: isPaid ? 'paid' : (c.status || 'pending'),
+          paid_amount: isPaid ? (Number(c.paid_amount) || Number(c.amount) || 7000) : (Number(c.paid_amount) || 0)
+        };
+      });
+
       if (currentUser && currentUser.role === 'student') {
         const student = this.getStudent();
         if (student) {
