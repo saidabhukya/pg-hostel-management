@@ -146,10 +146,35 @@ const API = {
     }
 
     if (cleanEndpoint === '/students') {
+      let list = [...MockData.students];
+      try {
+        const urlObj = new URL('http://dummy' + endpoint);
+        const search = (urlObj.searchParams.get('search') || '').toLowerCase().trim();
+        const floor = urlObj.searchParams.get('floor');
+        const feeStatus = urlObj.searchParams.get('feeStatus');
+
+        if (search) {
+          list = list.filter(s => 
+            (s.name && s.name.toLowerCase().includes(search)) ||
+            (s.reg_number && s.reg_number.toLowerCase().includes(search)) ||
+            (s.college && s.college.toLowerCase().includes(search)) ||
+            (s.course && s.course.toLowerCase().includes(search)) ||
+            (s.room_number && String(s.room_number).includes(search)) ||
+            (s.phone && s.phone.includes(search))
+          );
+        }
+        if (floor) {
+          list = list.filter(s => String(s.floor_number) === String(floor));
+        }
+        if (feeStatus) {
+          list = list.filter(s => s.fee_status === feeStatus);
+        }
+      } catch (e) {}
+
       return {
         success: true,
-        data: MockData.students,
-        pagination: { total: MockData.students.length, page: 1, limit: 15, totalPages: 1 }
+        data: list,
+        pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
       };
     }
     if (cleanEndpoint.startsWith('/students/')) {

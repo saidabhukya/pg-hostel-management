@@ -92,13 +92,73 @@ const AddStudentModal = {
             </div>
 
             <div class="form-group">
-              <label class="form-label">College / University</label>
-              <input type="text" id="as-college" class="form-control" value="National Institute of Technology" />
+              <label class="form-label required">College / University</label>
+              <select id="as-college" class="form-control" onchange="AddStudentModal.onCollegeChange(this.value)" required>
+                <option value="" disabled selected>-- Select College / University --</option>
+                <optgroup label="Vignan Group of Institutions">
+                  <option value="Vignan's Foundation for Science, Technology and Research (Vignan University, Vadlamudi)">Vignan's Foundation for Science, Technology and Research (Vignan University, Vadlamudi)</option>
+                  <option value="Vignan's Lara Institute of Technology & Science (Lara, Vadlamudi)">Vignan's Lara Institute of Technology & Science (Lara, Vadlamudi)</option>
+                  <option value="Vignan's Nirula Institute of Technology & Science for Women (VNITSW, Guntur)">Vignan's Nirula Institute of Technology & Science for Women (VNITSW, Guntur)</option>
+                  <option value="Vignan Pharmacy College (Vadlamudi)">Vignan Pharmacy College (Vadlamudi)</option>
+                </optgroup>
+                <optgroup label="Regional Universities & Engineering Colleges">
+                  <option value="K L Deemed to be University (KLEF, Vaddeswaram)">K L Deemed to be University (KLEF, Vaddeswaram)</option>
+                  <option value="Acharya Nagarjuna University (ANU, Nambur)">Acharya Nagarjuna University (ANU, Nambur)</option>
+                  <option value="RVR & JC College of Engineering (Chowdavaram)">RVR & JC College of Engineering (Chowdavaram)</option>
+                  <option value="Vasireddy Venkatadri Institute of Technology (VVIT, Nambur)">Vasireddy Venkatadri Institute of Technology (VVIT, Nambur)</option>
+                  <option value="SRM University AP (Amaravati)">SRM University AP (Amaravati)</option>
+                  <option value="VIT-AP University (Amaravati)">VIT-AP University (Amaravati)</option>
+                  <option value="Bapatla Engineering College (BEC, Bapatla)">Bapatla Engineering College (BEC, Bapatla)</option>
+                </optgroup>
+                <option value="Other">Other College / University (Type Manually)</option>
+              </select>
+              <div id="as-college-other-wrap" style="display:none;margin-top:0.5rem;">
+                <input type="text" id="as-college-other" class="form-control" placeholder="Enter Full College / University Name" />
+              </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Course / Degree</label>
-              <input type="text" id="as-course" class="form-control" placeholder="e.g. B.Tech Computer Science" value="B.Tech Computer Science" />
+              <label class="form-label required">Course / Degree</label>
+              <select id="as-course" class="form-control" onchange="AddStudentModal.onCourseChange(this.value)" required>
+                <option value="" disabled selected>-- Select Course / Degree --</option>
+                <optgroup label="B.Tech (Bachelor of Technology) Programs">
+                  <option value="B.Tech - Artificial Intelligence and Machine Learning (CSE - AI & ML)">B.Tech - Artificial Intelligence and Machine Learning (CSE - AI & ML)</option>
+                  <option value="B.Tech - Computer Science and Engineering (CSE)">B.Tech - Computer Science and Engineering (CSE)</option>
+                  <option value="B.Tech - Information Technology (IT)">B.Tech - Information Technology (IT)</option>
+                  <option value="B.Tech - Electronics and Communication Engineering (ECE)">B.Tech - Electronics and Communication Engineering (ECE)</option>
+                  <option value="B.Tech - Electrical and Electronics Engineering (EEE)">B.Tech - Electrical and Electronics Engineering (EEE)</option>
+                  <option value="B.Tech - Mechanical Engineering (ME)">B.Tech - Mechanical Engineering (ME)</option>
+                  <option value="B.Tech - Civil Engineering (CE)">B.Tech - Civil Engineering (CE)</option>
+                  <option value="B.Tech - Computer Science and Business Systems (CSBS)">B.Tech - Computer Science and Business Systems (CSBS)</option>
+                  <option value="B.Tech - Cyber Security (CSE - Cyber Security)">B.Tech - Cyber Security (CSE - Cyber Security)</option>
+                  <option value="B.Tech - Data Science (CSE - Data Science)">B.Tech - Data Science (CSE - Data Science)</option>
+                  <option value="B.Tech - Biotechnology (BT)">B.Tech - Biotechnology (BT)</option>
+                  <option value="B.Tech - Biomedical Engineering (BME)">B.Tech - Biomedical Engineering (BME)</option>
+                  <option value="B.Tech - Food Technology (FT)">B.Tech - Food Technology (FT)</option>
+                  <option value="B.Tech - Agricultural Engineering (Agri)">B.Tech - Agricultural Engineering (Agri)</option>
+                  <option value="B.Tech - Chemical Engineering (Chem)">B.Tech - Chemical Engineering (Chem)</option>
+                  <option value="B.Tech - Robotics and Automation (RA)">B.Tech - Robotics and Automation (RA)</option>
+                  <option value="B.Tech - Automobile Engineering">B.Tech - Automobile Engineering</option>
+                  <option value="B.Tech - Textile Technology (TT)">B.Tech - Textile Technology (TT)</option>
+                </optgroup>
+                <optgroup label="Pharmacy Programs">
+                  <option value="B.Pharm - Bachelor of Pharmacy">B.Pharm - Bachelor of Pharmacy</option>
+                  <option value="Pharm.D - Doctor of Pharmacy">Pharm.D - Doctor of Pharmacy</option>
+                  <option value="M.Pharm - Master of Pharmacy">M.Pharm - Master of Pharmacy</option>
+                </optgroup>
+                <optgroup label="Management, Applications & Postgraduate">
+                  <option value="BBA - Bachelor of Business Administration">BBA - Bachelor of Business Administration</option>
+                  <option value="BCA - Bachelor of Computer Applications">BCA - Bachelor of Computer Applications</option>
+                  <option value="B.Sc - Bachelor of Science">B.Sc - Bachelor of Science</option>
+                  <option value="MCA - Master of Computer Applications">MCA - Master of Computer Applications</option>
+                  <option value="MBA - Master of Business Administration">MBA - Master of Business Administration</option>
+                  <option value="M.Tech - Master of Technology">M.Tech - Master of Technology</option>
+                </optgroup>
+                <option value="Other">Other Course / Degree (Type Manually)</option>
+              </select>
+              <div id="as-course-other-wrap" style="display:none;margin-top:0.5rem;">
+                <input type="text" id="as-course-other" class="form-control" placeholder="Enter Full Course / Degree Name" />
+              </div>
             </div>
 
             <div class="form-group">
@@ -352,25 +412,73 @@ const AddStudentModal = {
     if (nameEl) nameEl.textContent = file.name;
   },
 
+  onCollegeChange(val) {
+    const wrap = document.getElementById('as-college-other-wrap');
+    const input = document.getElementById('as-college-other');
+    if (wrap) {
+      if (val === 'Other') {
+        wrap.style.display = 'block';
+        if (input) input.focus();
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+  },
+
+  onCourseChange(val) {
+    const wrap = document.getElementById('as-course-other-wrap');
+    const input = document.getElementById('as-course-other');
+    if (wrap) {
+      if (val === 'Other') {
+        wrap.style.display = 'block';
+        if (input) input.focus();
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+  },
+
   async handleSubmit(e) {
     e.preventDefault();
     const submitBtn = document.getElementById('as-submit-btn');
 
-    const name       = document.getElementById('as-name').value;
-    const regNumber  = document.getElementById('as-regNumber').value;
-    const phone      = document.getElementById('as-phone').value;
-    const email      = document.getElementById('as-email').value;
-    const college    = document.getElementById('as-college').value;
-    const course     = document.getElementById('as-course').value;
+    const name       = document.getElementById('as-name').value.trim();
+    const regNumber  = document.getElementById('as-regNumber').value.trim();
+    const phone      = document.getElementById('as-phone').value.trim();
+    const email      = document.getElementById('as-email').value.trim();
+
+    const collegeSelect = document.getElementById('as-college');
+    const collegeOther  = document.getElementById('as-college-other');
+    let college = collegeSelect ? collegeSelect.value : '';
+    if (college === 'Other' && collegeOther && collegeOther.value.trim()) {
+      college = collegeOther.value.trim();
+    }
+
+    const courseSelect  = document.getElementById('as-course');
+    const courseOther   = document.getElementById('as-course-other');
+    let course = courseSelect ? courseSelect.value : '';
+    if (course === 'Other' && courseOther && courseOther.value.trim()) {
+      course = courseOther.value.trim();
+    }
+
     const year       = document.getElementById('as-year').value;
     const gender     = document.getElementById('as-gender').value;
-    const parentName  = document.getElementById('as-parentName').value;
-    const parentPhone = document.getElementById('as-parentPhone').value;
-    const address    = document.getElementById('as-address').value;
+    const parentName  = document.getElementById('as-parentName').value.trim();
+    const parentPhone = document.getElementById('as-parentPhone').value.trim();
+    const address    = document.getElementById('as-address').value.trim();
     const joiningDate = document.getElementById('as-joiningDate').value;
     const monthlyFee = document.getElementById('as-monthlyFee').value;
     const bedId      = document.getElementById('as-bed').value;
     const photoInput = document.getElementById('as-photo-input');
+
+    if (!college) {
+      Toast.error('Please select or enter the Student College / University.');
+      return;
+    }
+    if (!course) {
+      Toast.error('Please select or enter the Student Course / Degree.');
+      return;
+    }
 
     if (!bedId) {
       Toast.error('Please select an available bed for the student.');
