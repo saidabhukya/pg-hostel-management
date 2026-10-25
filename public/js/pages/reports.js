@@ -74,7 +74,7 @@ const ReportsPage = {
                 <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.4px;" id="report-main-title">
                   Student Directory Report
                 </h2>
-                <div style="font-size:0.78rem;color:var(--text-muted);">SRI RAM PG • Opp. Vignan University, Vadlamudi</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);">SRI RAM PG • Official Residency Report</div>
               </div>
             </div>
             <div style="text-align:right;">

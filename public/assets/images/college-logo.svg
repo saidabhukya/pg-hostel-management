@@ -43,7 +43,7 @@
     <!-- College Tagline / Crest Subtext -->
     <text x="0" y="20" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
           font-size="12" font-weight="700" letter-spacing="2.5" fill="#dc2626" text-transform="uppercase">
-      OPP. VIGNAN UNIVERSITY
+      STUDENT RESIDENCE
     </text>
 
     <!-- Main Title -->
@@ -60,7 +60,7 @@
 
     <text x="0" y="72" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
           font-size="11" font-weight="500" letter-spacing="1" fill="#64748b">
-      Vadlamudi, Guntur • Student Living
+      Excellence in Campus Living • Estd. 1985
     </text>
   </g>
 </svg>

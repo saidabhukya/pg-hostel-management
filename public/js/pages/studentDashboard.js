@@ -89,7 +89,7 @@ const StudentDashboard = {
           </div>
           <div class="kpi-value">10:00 PM</div>
           <div class="kpi-footer">
-            <span>Opp. Vignan University, Vadlamudi</span>
+            <span>Gate closes at curfew</span>
           </div>
         </div>
       </div>

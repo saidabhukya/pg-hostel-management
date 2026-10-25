@@ -1122,7 +1122,7 @@ const API = {
         else if (q.includes('rule') || q.includes('curfew') || q.includes('time') || q.includes('contact') || q.includes('warden') || q.includes('phone') || q.includes('emergency')) {
           category = 'rules';
           answer = `**SRI RAM PG Rules & Guidelines:**\n\n` +
-            `• **Hostel Address:** ${settings.hostel_address || 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213'}\n` +
+            `• **Hostel Address:** ${settings.hostel_address || 'OPP. VIGNAN UNIVERSITY'}\n` +
             `• **Night Curfew:** ${settings.curfew_time || '10:00 PM'} (Gate closes strictly).\n` +
             `• **Visitor Hours:** 9:00 AM to 6:00 PM in the reception lounge only.\n` +
             `• **Warden Helpline:** ${settings.contact_phone || '+91 98765 43210'}\n` +
@@ -1133,10 +1133,9 @@ const API = {
         else if (q.includes('address') || q.includes('location') || q.includes('where') || q.includes('situated') || q.includes('landmark')) {
           category = 'address';
           answer = `**SRI RAM PG Address & Location:**\n\n` +
-            `📍 **Address:** ${settings.hostel_address || 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213'}\n` +
+            `📍 **Address:** ${settings.hostel_address || 'OPP. VIGNAN UNIVERSITY'}\n` +
             `📞 **Warden Contact:** ${settings.contact_phone || '+91 98765 43210'}\n` +
-            `✉️ **Email:** ${settings.contact_email || 'warden@srirampg.in'}\n\n` +
-            `We are conveniently located right opposite Vignan University campus entrance, Vadlamudi.`;
+            `✉️ **Email:** ${settings.contact_email || 'warden@srirampg.in'}`;
           quickActions = [
             { label: 'View Dashboard', link: '#dashboard' }
           ];

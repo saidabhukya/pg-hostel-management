@@ -30,7 +30,7 @@ const ReceiptModal = {
               <div>
                 <h3 style="font-size:1.15rem;font-weight:800;color:#0f172a;letter-spacing:-0.3px;margin:0;">SRI RAM PG</h3>
                 <p style="font-size:0.75rem;color:#64748b;margin:2px 0 0;">Student Housing & Residency</p>
-                <p style="font-size:0.7rem;color:#94a3b8;margin:0;">${(typeof MockData !== 'undefined' && MockData.settings && MockData.settings.hostel_address) || 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213'}</p>
+                <p style="font-size:0.7rem;color:#94a3b8;margin:0;">${(typeof MockData !== 'undefined' && MockData.settings && MockData.settings.hostel_address) || 'OPP. VIGNAN UNIVERSITY'}</p>
               </div>
             </div>
             <div style="text-align:right;">
