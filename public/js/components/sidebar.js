@@ -59,8 +59,7 @@ const Sidebar = {
         <div class="sidebar-header">
           <img src="./assets/images/hanuman.svg" alt="Lord Hanuman" class="sidebar-logo" style="border-radius:50%;border:2px solid #FFD700;background:#FFF9C4;" />
           <div class="sidebar-title-block">
-            <span class="sidebar-title">SRI RAM PG</span>
-            <span class="sidebar-subtitle">OPP. VIGNAN UNIVERSITY</span>
+            <span class="sidebar-title" style="font-size:1.15rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.3px;">SRI RAM PG</span>
           </div>
         </div>
 
