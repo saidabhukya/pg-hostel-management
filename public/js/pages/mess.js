@@ -26,12 +26,23 @@ const MessPage = {
           <h1>Hostel Mess & Dining Schedule</h1>
           <p>Nutritious 7-day meal plan, service hours, and dining feedback</p>
         </div>
-        <div class="page-actions">
+        <div class="page-actions" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          ${isAdmin ? `
+            <button class="btn btn-primary" onclick="MessPage.openCustomBroadcastModal()">
+              <i data-lucide="bell-ring" style="width:14px;height:14px;"></i>
+              <span>Send Food Call-Out</span>
+            </button>
+          ` : ''}
           <button class="btn btn-secondary" onclick="MessPage.openFeedbackModal()">
             <i data-lucide="message-square" style="color:var(--primary-red);"></i>
             <span>Food Feedback / Complaint</span>
           </button>
         </div>
+      </div>
+
+      <!-- 15-MINUTE DINING HALL CALL-OUT ALERT SYSTEM -->
+      <div id="meal-alerts-container">
+        ${this.getMealAlertsHtml(isAdmin)}
       </div>
 
       <!-- TODAY'S FEATURED MENU HERO CARD -->
@@ -213,6 +224,9 @@ const MessPage = {
         const isAdmin = user && user.role === 'admin';
         if (container) container.innerHTML = this.getWeeklyHtml(weeklyMenu, todayDayName, isAdmin);
 
+        const alertsContainer = document.getElementById('meal-alerts-container');
+        if (alertsContainer) alertsContainer.innerHTML = this.getMealAlertsHtml(isAdmin);
+
         Utils.renderIcons();
       }
     } catch (e) {
@@ -330,6 +344,168 @@ const MessPage = {
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to submit feedback.');
+    }
+  },
+
+  getMealAlertsHtml(isAdmin) {
+    const statuses = (typeof MockData !== 'undefined' && typeof MockData.getMealAlertsStatus === 'function')
+      ? MockData.getMealAlertsStatus()
+      : [];
+
+    return `
+      <div class="card" style="margin-bottom:1.75rem;border:1px solid rgba(220, 38, 38, 0.25);background:var(--bg-card);box-shadow:0 4px 15px rgba(220, 38, 38, 0.05);">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+          <div>
+            <h3 class="card-title" style="display:flex;align-items:center;gap:0.5rem;color:var(--text-primary);font-size:1.08rem;">
+              <i data-lucide="bell-ring" style="color:var(--primary-red);"></i>
+              15-Minute Dining Hall Call-Out Alerts (Come to Mess)
+            </h3>
+            <span style="font-size:0.79rem;color:var(--text-muted);display:block;margin-top:0.2rem;">
+              Automated & instant notifications sent 15 minutes before meal times to <strong>every resident student</strong> & <strong>admin portal</strong> calling all to eat food.
+            </span>
+          </div>
+          ${isAdmin ? `
+            <button class="btn btn-sm btn-primary" onclick="MessPage.openCustomBroadcastModal()" style="display:flex;align-items:center;gap:0.35rem;">
+              <i data-lucide="megaphone" style="width:13px;height:13px;"></i>
+              <span>Broadcast Custom Alert</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <div style="padding:1.15rem;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:1rem;">
+            ${statuses.map(s => `
+              <div style="background:var(--bg-secondary);border:1px solid ${s.isSent ? 'rgba(34, 197, 94, 0.45)' : 'var(--border-color)'};border-radius:var(--radius-md);padding:1rem;display:flex;flex-direction:column;justify-content:space-between;">
+                <div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.45rem;">
+                    <span style="font-size:0.95rem;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:0.35rem;">
+                      <span>${s.icon}</span> ${s.name}
+                    </span>
+                    ${s.isSent ? `
+                      <span class="badge badge-success" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:0.25rem;">
+                        <i data-lucide="check" style="width:11px;height:11px;"></i> Sent Today
+                      </span>
+                    ` : `
+                      <span class="badge badge-warning" style="font-size:0.68rem;display:inline-flex;align-items:center;gap:0.25rem;">
+                        <i data-lucide="clock" style="width:11px;height:11px;"></i> Auto-Scheduled
+                      </span>
+                    `}
+                  </div>
+
+                  <div style="font-size:0.77rem;color:var(--text-muted);margin-bottom:0.25rem;">
+                    ⏰ Dining Time: <strong>${s.timing}</strong>
+                  </div>
+                  <div style="font-size:0.75rem;color:var(--primary-red);font-weight:700;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.3rem;">
+                    <i data-lucide="bell" style="width:12px;height:12px;"></i>
+                    <span>Alert Time: ${s.alertTimeDisplay}</span>
+                  </div>
+
+                  <div style="font-size:0.77rem;color:var(--text-secondary);background:var(--bg-card);padding:0.45rem 0.6rem;border-radius:var(--radius-sm);border:1px solid var(--border-color);line-height:1.35;max-height:55px;overflow:hidden;text-overflow:ellipsis;">
+                    <strong style="color:var(--text-primary);">Menu:</strong> ${Utils.escapeHTML(s.menu)}
+                  </div>
+                </div>
+
+                <div style="margin-top:0.85rem;">
+                  ${isAdmin ? `
+                    <button class="btn btn-sm ${s.isSent ? 'btn-secondary' : 'btn-primary'}" onclick="MessPage.sendMealAlert('${s.key}')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.35rem;font-size:0.75rem;padding:0.38rem 0.5rem;">
+                      <i data-lucide="${s.isSent ? 'refresh-cw' : 'send'}" style="width:12px;height:12px;"></i>
+                      <span>${s.isSent ? 'Re-send Call to Mess' : 'Send Come to Mess Alert'}</span>
+                    </button>
+                  ` : `
+                    <div style="font-size:0.73rem;color:var(--text-muted);text-align:center;padding:0.2rem 0;">
+                      ${s.isSent ? `Delivered to your notification bell (${s.sentAt || 'Today'})` : `Notification will pop up 15m before`}
+                    </div>
+                  `}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  async sendMealAlert(mealKey) {
+    try {
+      Toast.info('Sending dining alert to all residents & admin...');
+      const res = await API.post('/mess/send-alert', { mealType: mealKey });
+      if (res.success) {
+        Toast.success(res.message || 'Notification sent to all residents and admin!');
+        if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+          await window.NotificationCenter.fetchNotifications();
+        }
+        await this.loadMenu();
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Failed to send meal notification.');
+    }
+  },
+
+  openCustomBroadcastModal() {
+    Modal.open({
+      title: 'Broadcast Meal Call-Out (Come to Mess)',
+      content: `
+        <form onsubmit="MessPage.submitCustomBroadcast(event)">
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Select Meal</label>
+            <select id="broadcast-meal-type" class="form-control" required>
+              <option value="breakfast">🍳 Break Fast (Starts 7:30 AM)</option>
+              <option value="lunch">🍲 Lunch (Starts 12:30 PM)</option>
+              <option value="snacks">☕ Evening Snacks (Starts 4:30 PM)</option>
+              <option value="dinner" selected>🍽️ Dinner (Starts 7:30 PM)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Notification Title</label>
+            <input type="text" id="broadcast-meal-title" class="form-control" value="🍽️ Food is Ready - Please Come to Mess!" required />
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label class="form-label required">Message (Delivered to All Students & Admin)</label>
+            <textarea id="broadcast-meal-msg" class="form-control" rows="3" required>Dear Residents, delicious hot food is now ready and being served in the Ground Floor Dining Hall. Please come down to the mess to eat food!</textarea>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;">
+              🔔 This alert will appear instantly in the notification bell for every resident student and admin portal.
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="display:flex;align-items:center;gap:0.4rem;">
+              <i data-lucide="send" style="width:14px;height:14px;"></i>
+              <span>Broadcast to All</span>
+            </button>
+          </div>
+        </form>
+      `,
+      maxWidth: '540px'
+    });
+    Utils.renderIcons();
+  },
+
+  async submitCustomBroadcast(e) {
+    e.preventDefault();
+    const mealType = document.getElementById('broadcast-meal-type').value;
+    const customTitle = document.getElementById('broadcast-meal-title').value;
+    const customMessage = document.getElementById('broadcast-meal-msg').value;
+
+    try {
+      Toast.info('Broadcasting meal call-out...');
+      const res = await API.post('/mess/send-alert', {
+        mealType,
+        customTitle,
+        customMessage
+      });
+      if (res.success) {
+        Toast.success('Notification broadcasted to all students & admin portal!');
+        Modal.close();
+        if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+          await window.NotificationCenter.fetchNotifications();
+        }
+        await this.loadMenu();
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Failed to send alert.');
     }
   }
 };

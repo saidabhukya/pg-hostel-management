@@ -243,8 +243,16 @@ const StudentDashboard = {
                 <p style="margin-top:2px;">${Utils.escapeHTML(tm.lunch)}</p>
               </div>
               <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);">
+                <strong style="color:var(--primary-red);font-size:0.75rem;text-transform:uppercase;">Evening Snacks (${tm.snacks_timing || '4:30 - 6:00 PM'}):</strong>
+                <p style="margin-top:2px;">${Utils.escapeHTML(tm.snacks || 'Tea & Evening Snacks')}</p>
+              </div>
+              <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);">
                 <strong style="color:var(--primary-red);font-size:0.75rem;text-transform:uppercase;">Dinner (${tm.dinner_timing || '7:30 - 9:30 PM'}):</strong>
                 <p style="margin-top:2px;">${Utils.escapeHTML(tm.dinner)}</p>
+              </div>
+              <div style="padding:0.5rem 0.75rem;background:rgba(220, 38, 38, 0.08);border-left:3px solid var(--primary-red);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:0.4rem;">
+                <i data-lucide="bell-ring" style="width:13px;height:13px;color:var(--primary-red);"></i>
+                <span>Mess Alerts are sent 15 minutes before every meal calling students to come eat food.</span>
               </div>
             </div>
           `;

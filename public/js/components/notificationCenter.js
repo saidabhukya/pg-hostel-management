@@ -256,6 +256,7 @@ const NotificationCenter = {
       payment:      'check-circle-2',
       complaint:    'wrench',
       announcement: 'megaphone',
+      mess:         'utensils',
       leave:        'calendar',
       system:       'info',
       warning:      'triangle-alert',

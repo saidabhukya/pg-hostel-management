@@ -347,6 +347,7 @@
       visitors: getDefaultVisitors(),
       announcements: getDefaultAnnouncements(),
       leaveRequests: [],
+      mealAlerts: [],
       settings: {
         hostel_name: 'SRI RAM PG',
         hostel_address: 'OPP. VIGNAN UNIVERSITY',
@@ -411,6 +412,7 @@
     if (!Array.isArray(store.notifications) || store.notifications.length === 0) {
       store.notifications = getDefaultNotifications();
     }
+    if (!Array.isArray(store.mealAlerts)) store.mealAlerts = [];
     if (!store.settings) {
       store.settings = {
         hostel_name: 'SRI RAM PG',
@@ -632,6 +634,97 @@
     const parts = String(dateStr).slice(0, 10).split('-');
     if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
     return dateStr;
+  }
+
+  const MEAL_CONFIGS = [
+    {
+      key: 'breakfast',
+      name: 'Break Fast',
+      icon: '🍳',
+      timingProp: 'breakfast_timing',
+      menuProp: 'breakfast',
+      fallbackStartH: 7,
+      fallbackStartM: 30,
+      fallbackEndH: 9,
+      fallbackEndM: 30,
+      defaultTitle: '🍳 Break Fast is Ready - Come to Mess!',
+      defaultMessage: 'Dear Residents, hot & fresh Break Fast is being served in the Ground Floor Dining Hall. Food service begins in 15 minutes. Please come down to eat food and enjoy your breakfast!'
+    },
+    {
+      key: 'lunch',
+      name: 'Lunch',
+      icon: '🍲',
+      timingProp: 'lunch_timing',
+      menuProp: 'lunch',
+      fallbackStartH: 12,
+      fallbackStartM: 30,
+      fallbackEndH: 14,
+      fallbackEndM: 30,
+      defaultTitle: '🍲 Lunch is Ready - Come to Mess!',
+      defaultMessage: 'Dear Residents, freshly prepared warm Lunch is ready in the Dining Hall. Lunch service begins in 15 minutes. Please come down to the mess to eat food and enjoy a nutritious lunch!'
+    },
+    {
+      key: 'snacks',
+      name: 'Evening Snacks',
+      icon: '☕',
+      timingProp: 'snacks_timing',
+      menuProp: 'snacks',
+      fallbackStartH: 16,
+      fallbackStartM: 30,
+      fallbackEndH: 18,
+      fallbackEndM: 0,
+      defaultTitle: '☕ Evening Snacks are Ready - Come to Mess!',
+      defaultMessage: 'Dear Residents, hot tea and fresh Evening Snacks are being served in the Dining Hall. Snacks begin in 15 minutes. Please come down to the mess to eat snacks and relax!'
+    },
+    {
+      key: 'dinner',
+      name: 'Dinner',
+      icon: '🍽️',
+      timingProp: 'dinner_timing',
+      menuProp: 'dinner',
+      fallbackStartH: 19,
+      fallbackStartM: 30,
+      fallbackEndH: 21,
+      fallbackEndM: 30,
+      defaultTitle: '🍽️ Dinner is Ready - Come to Mess!',
+      defaultMessage: 'Dear Residents, hot, fresh & nutritious Dinner is now served in the Dining Hall. Dinner service begins in 15 minutes. Please come down to the mess to eat food before dining hours conclude!'
+    }
+  ];
+
+  function parseTimePart(part, fallbackH, fallbackM) {
+    if (!part) return { h: fallbackH, m: fallbackM };
+    const m = part.trim().match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return { h: fallbackH, m: fallbackM };
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const ampm = m[3].toUpperCase();
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return { h, m: min };
+  }
+
+  function parseTimingRange(timingStr, defStartH, defStartM, defEndH, defEndM) {
+    if (!timingStr || typeof timingStr !== 'string') {
+      return {
+        startH: defStartH,
+        startM: defStartM,
+        endH: defEndH,
+        endM: defEndM,
+        startMinutes: defStartH * 60 + defStartM,
+        endMinutes: defEndH * 60 + defEndM
+      };
+    }
+    const parts = timingStr.split('-');
+    const s = parseTimePart(parts[0], defStartH, defStartM);
+    const e = parseTimePart(parts[1], defEndH, defEndM);
+    return {
+      startH: s.h,
+      startM: s.m,
+      endH: e.h,
+      endM: e.m,
+      startMinutes: s.h * 60 + s.m,
+      endMinutes: e.h * 60 + e.m
+    };
   }
 
   const MockData = {
@@ -1774,6 +1867,120 @@
         store.notifications = store.notifications.filter(n => !n.is_read);
         saveStore();
       }
+    },
+
+    getMealAlertsStatus() {
+      sanitizeStore();
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const schedule = MockData.messSchedule;
+      const todayMenu = schedule?.todayMenu || {};
+
+      return MEAL_CONFIGS.map(cfg => {
+        const timingStr = todayMenu[cfg.timingProp] || '';
+        const range = parseTimingRange(timingStr, cfg.fallbackStartH, cfg.fallbackStartM, cfg.fallbackEndH, cfg.fallbackEndM);
+        let alertMinutes = range.startMinutes - 15;
+        if (alertMinutes < 0) alertMinutes += 24 * 60;
+        const alertH = Math.floor(alertMinutes / 60);
+        const alertM = alertMinutes % 60;
+        const alertAmpm = alertH >= 12 ? 'PM' : 'AM';
+        const displayH = alertH % 12 || 12;
+        const alertTimeDisplay = `${displayH}:${String(alertM).padStart(2, '0')} ${alertAmpm}`;
+
+        const alertRecord = (store.mealAlerts || []).find(a => a.date === todayStr && a.meal_type === cfg.key);
+
+        return {
+          key: cfg.key,
+          name: cfg.name,
+          icon: cfg.icon,
+          timing: timingStr || `${range.startH}:${String(range.startM).padStart(2, '0')} - ${range.endH}:${String(range.endM).padStart(2, '0')}`,
+          alertTimeDisplay: `${alertTimeDisplay} (15 mins before)`,
+          menu: todayMenu[cfg.menuProp] || 'Hostel Special Menu',
+          isSent: !!alertRecord,
+          sentAt: alertRecord ? (alertRecord.sent_at_display || formatDisplayDateTime(alertRecord.sent_at)) : null,
+          sentBy: alertRecord ? alertRecord.sent_by : null
+        };
+      });
+    },
+
+    triggerMealAlert(mealKey, customTitle, customMessage, sentBy) {
+      sanitizeStore();
+      const cfg = MEAL_CONFIGS.find(c => c.key === mealKey);
+      if (!cfg) return null;
+
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const schedule = MockData.messSchedule;
+      const todayMenu = schedule?.todayMenu || {};
+      const menuItems = todayMenu[cfg.menuProp] || '';
+
+      if (!Array.isArray(store.notifications)) store.notifications = [];
+      const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+
+      const finalTitle = (customTitle && customTitle.trim()) || cfg.defaultTitle;
+      const finalMessage = (customMessage && customMessage.trim()) || 
+        (cfg.defaultMessage + (menuItems ? ` Today's Menu: ${menuItems}` : ''));
+
+      const newNotif = {
+        id: notifId,
+        title: finalTitle,
+        message: finalMessage,
+        type: 'mess',
+        target: 'all',
+        meal_type: cfg.key,
+        alert_date: todayStr,
+        is_read: 0,
+        link: '#mess',
+        created_at: now.toISOString()
+      };
+
+      store.notifications.unshift(newNotif);
+
+      if (!Array.isArray(store.mealAlerts)) store.mealAlerts = [];
+      store.mealAlerts.unshift({
+        id: Date.now(),
+        date: todayStr,
+        meal_type: cfg.key,
+        meal_name: cfg.name,
+        sent_at: now.toISOString(),
+        sent_at_display: formatDisplayDateTime(now.toISOString()),
+        sent_by: sentBy || 'Hostel Mess Notification System',
+        notif_id: notifId,
+        title: finalTitle,
+        message: finalMessage
+      });
+
+      saveStore();
+      return newNotif;
+    },
+
+    checkAndTriggerMealAlerts() {
+      sanitizeStore();
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const schedule = MockData.messSchedule;
+      const todayMenu = schedule?.todayMenu || {};
+
+      const triggered = [];
+
+      MEAL_CONFIGS.forEach(cfg => {
+        const timingStr = todayMenu[cfg.timingProp] || '';
+        const range = parseTimingRange(timingStr, cfg.fallbackStartH, cfg.fallbackStartM, cfg.fallbackEndH, cfg.fallbackEndM);
+        const alertMinutes = range.startMinutes - 15; // exactly 15 minutes before start
+        const endMinutes = range.endMinutes;
+
+        // If current time is within [alertMinutes, endMinutes]
+        if (currentMinutes >= alertMinutes && currentMinutes <= endMinutes) {
+          const alreadySent = (store.mealAlerts || []).some(a => a.date === todayStr && a.meal_type === cfg.key);
+          if (!alreadySent) {
+            const notif = this.triggerMealAlert(cfg.key, null, null, 'Automatic 15-Min Scheduler');
+            if (notif) triggered.push(notif);
+          }
+        }
+      });
+
+      return triggered;
     },
 
     updateSettings(data) {

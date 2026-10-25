@@ -764,6 +764,37 @@ const API = {
       return { success: true, data: schedule };
     }
 
+    if (cleanEndpoint === '/mess/alert-status') {
+      const statuses = (MockData && typeof MockData.getMealAlertsStatus === 'function')
+        ? MockData.getMealAlertsStatus()
+        : [];
+      return { success: true, data: statuses };
+    }
+
+    if (cleanEndpoint === '/mess/send-alert' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const mealType = body.mealType;
+      const customTitle = body.customTitle;
+      const customMessage = body.customMessage;
+      const user = this.getUser();
+      const sentBy = (user && user.name) ? `${user.name} (Admin)` : 'Chief Warden';
+
+      if (!MockData.triggerMealAlert) {
+        throw new Error('Meal alert engine not available.');
+      }
+
+      const notif = MockData.triggerMealAlert(mealType, customTitle, customMessage, sentBy);
+      return {
+        success: true,
+        message: 'Meal alert notification sent to all residents & admin successfully!',
+        data: notif
+      };
+    }
+
     if (cleanEndpoint.startsWith('/mess/') && method === 'PUT') {
       const dayOfWeek = decodeURIComponent(cleanEndpoint.replace('/mess/', ''));
       let body = {};
@@ -1100,6 +1131,11 @@ const API = {
     }
 
     if (cleanEndpoint === '/notifications') {
+      // Auto-check and trigger any due meal alerts (15 minutes before meal times)
+      if (typeof MockData !== 'undefined' && typeof MockData.checkAndTriggerMealAlerts === 'function') {
+        MockData.checkAndTriggerMealAlerts();
+      }
+
       const currentUser = this.getUser();
       let notifs = MockData.notifications || [];
       if (currentUser && currentUser.role === 'student') {
@@ -1108,7 +1144,7 @@ const API = {
         const sReg = student ? (student.reg_number || '').toLowerCase() : (currentUser ? (currentUser.username || '').toLowerCase() : '');
 
         notifs = notifs.filter(n => {
-          if (n.type === 'announcement' || n.link === '#announcements') return true;
+          if (n.target === 'all' || n.type === 'mess' || n.type === 'announcement' || n.link === '#announcements' || n.link === '#mess') return true;
           if (n.student_id && Number(n.student_id) === sId) return true;
           if (n.reg_number && String(n.reg_number).toLowerCase() === sReg) return true;
           const msg = (n.message || '') + ' ' + (n.title || '');
