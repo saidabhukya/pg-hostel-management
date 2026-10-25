@@ -49,6 +49,21 @@ const API = {
 
   getStudent() {
     try {
+      const user = this.getUser();
+      if (user && user.role === 'student' && typeof MockData !== 'undefined' && Array.isArray(MockData.students)) {
+        const found = MockData.students.find(s => 
+          Number(s.id) === Number(user.id) || 
+          (s.reg_number && user.username && s.reg_number.trim().toLowerCase() === user.username.trim().toLowerCase())
+        );
+        if (found) {
+          const enhanced = {
+            ...found,
+            joiningDateDisplay: found.joiningDateDisplay || (found.joining_date ? Utils.formatDate(found.joining_date) : 'Today')
+          };
+          localStorage.setItem('pg_hostel_student', JSON.stringify(enhanced));
+          return enhanced;
+        }
+      }
       const s = localStorage.getItem('pg_hostel_student');
       return s ? JSON.parse(s) : null;
     } catch (e) {
@@ -234,7 +249,49 @@ const API = {
       };
     }
 
+    if (cleanEndpoint === '/students/me') {
+      const myStudent = this.getStudent();
+      if (!myStudent) {
+        return { success: false, message: 'Student profile not found.' };
+      }
+      const sId = Number(myStudent.id);
+      const studentFeeCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId);
+      const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId);
+      const studentComplaints = (MockData.complaints || []).filter(c => 
+        Number(c.student_id) === sId || (c.reg_number && myStudent.reg_number && c.reg_number.toLowerCase() === myStudent.reg_number.toLowerCase())
+      );
+      const studentLeaves = (MockData.leaveRequests || []).filter(l => Number(l.student_id) === sId);
+
+      return {
+        success: true,
+        data: {
+          profile: myStudent,
+          student: myStudent,
+          feeCycles: studentFeeCycles,
+          payments: studentPayments,
+          complaints: studentComplaints,
+          leaveRequests: studentLeaves,
+          nextDueInfo: {
+            dueDate: myStudent.joining_date,
+            status: myStudent.fee_status || 'pending'
+          }
+        },
+        student: myStudent
+      };
+    }
+
     if (cleanEndpoint === '/students') {
+      const currentUser = this.getUser();
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        const list = student ? [student] : [];
+        return {
+          success: true,
+          data: list,
+          pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
+        };
+      }
+
       let list = [...MockData.students];
       try {
         const urlObj = new URL('http://dummy' + endpoint);
@@ -284,14 +341,20 @@ const API = {
     }
 
     if (cleanEndpoint.startsWith('/students/')) {
-      const sId = Number(cleanEndpoint.replace('/students/', ''));
-      const student = MockData.students.find(s => s.id === sId) || MockData.studentProfile;
+      let sId = Number(cleanEndpoint.replace('/students/', ''));
+      const currentUser = this.getUser();
+      if (currentUser && currentUser.role === 'student') {
+        const myStudent = this.getStudent();
+        if (myStudent) {
+          sId = Number(myStudent.id);
+        }
+      }
+      const student = MockData.students.find(s => s.id === sId) || (currentUser && currentUser.role === 'student' ? this.getStudent() : MockData.studentProfile);
       const studentFeeCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId);
       const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId);
       const studentComplaints = (MockData.complaints || []).filter(c => 
         Number(c.student_id) === sId ||
-        (student && student.reg_number && c.reg_number === student.reg_number) ||
-        (student && student.room_number && String(c.room_number) === String(student.room_number))
+        (student && student.reg_number && c.reg_number === student.reg_number)
       );
       const studentLeaves = (MockData.leaveRequests || []).filter(l => Number(l.student_id) === sId);
 
@@ -378,7 +441,19 @@ const API = {
 
     // 5. Fees & Payments
     if (cleanEndpoint === '/fees/cycles' || cleanEndpoint === '/fees') {
+      const currentUser = this.getUser();
       let list = [...(MockData.feeCycles || [])];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          const sId = Number(student.id);
+          const sReg = (student.reg_number || '').trim().toLowerCase();
+          list = list.filter(c => Number(c.student_id) === sId || (c.reg_number && c.reg_number.toLowerCase() === sReg));
+        } else {
+          list = [];
+        }
+      }
+
       try {
         const urlObj = new URL('http://dummy' + endpoint);
         const search = (urlObj.searchParams.get('search') || '').toLowerCase().trim();
@@ -409,7 +484,19 @@ const API = {
     }
 
     if (cleanEndpoint === '/fees/reminders') {
-      const cycles = MockData.feeCycles || [];
+      const currentUser = this.getUser();
+      let cycles = MockData.feeCycles || [];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          const sId = Number(student.id);
+          const sReg = (student.reg_number || '').trim().toLowerCase();
+          cycles = cycles.filter(c => Number(c.student_id) === sId || (c.reg_number && c.reg_number.toLowerCase() === sReg));
+        } else {
+          cycles = [];
+        }
+      }
+
       const paidCount = cycles.filter(c => c.status === 'paid').length;
       const pendingCycles = cycles.filter(c => c.status !== 'paid');
       const dueSoonCount = pendingCycles.length;
@@ -433,7 +520,14 @@ const API = {
     }
 
     if (cleanEndpoint.startsWith('/fees/student/')) {
-      const sId = Number(cleanEndpoint.replace('/fees/student/', ''));
+      let sId = Number(cleanEndpoint.replace('/fees/student/', ''));
+      const currentUser = this.getUser();
+      if (currentUser && currentUser.role === 'student') {
+        const myStudent = this.getStudent();
+        if (myStudent) {
+          sId = Number(myStudent.id);
+        }
+      }
       const student = (MockData.students || []).find(s => Number(s.id) === sId) || this.getStudent() || {};
       const allCycles = MockData.feeCycles || [];
       const studentCycles = allCycles.filter(c => Number(c.student_id) === sId);
@@ -514,16 +608,35 @@ const API = {
       const pId = Number(cleanEndpoint.replace('/payments/', ''));
       const details = MockData.getPaymentDetails ? MockData.getPaymentDetails(pId) : null;
       if (details) {
+        const currentUser = this.getUser();
+        if (currentUser && currentUser.role === 'student') {
+          const student = this.getStudent();
+          if (student && Number(details.student_id) !== Number(student.id) && details.reg_number !== student.reg_number) {
+            return { success: false, message: 'Unauthorized access to payment receipt.' };
+          }
+        }
         return { success: true, data: details };
       }
       return { success: false, message: 'Payment record not found.' };
     }
 
     if (cleanEndpoint === '/payments') {
+      const currentUser = this.getUser();
+      let list = [...(MockData.payments || [])];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          const sId = Number(student.id);
+          const sReg = (student.reg_number || '').trim().toLowerCase();
+          list = list.filter(p => Number(p.student_id) === sId || (p.reg_number && p.reg_number.toLowerCase() === sReg));
+        } else {
+          list = [];
+        }
+      }
       return {
         success: true,
-        data: MockData.payments,
-        pagination: { total: MockData.payments.length, page: 1, limit: 15, totalPages: 1 }
+        data: list,
+        pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
       };
     }
 
@@ -616,18 +729,17 @@ const API = {
         if (student) {
           const sId = Number(student.id);
           const sReg = (student.reg_number || '').trim().toLowerCase();
-          const sRoom = String(student.room_number || '').trim().toLowerCase();
 
           list = list.filter(c => {
             const cId = Number(c.student_id);
             const cReg = String(c.reg_number || '').trim().toLowerCase();
-            const cRoom = String(c.room_number || '').trim().toLowerCase();
             return (
               (sId && cId === sId) ||
-              (sReg && cReg && cReg === sReg) ||
-              (sRoom && cRoom && (cRoom === sRoom || cRoom.includes(sRoom) || sRoom.includes(cRoom)))
+              (sReg && cReg && cReg === sReg)
             );
           });
+        } else {
+          list = [];
         }
       }
 
@@ -733,11 +845,76 @@ const API = {
       return { success: true, data: MockData.announcements };
     }
     if (cleanEndpoint === '/visitors') {
-      return { success: true, data: MockData.visitors };
+      const currentUser = this.getUser();
+      let list = [...(MockData.visitors || [])];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          const sId = Number(student.id);
+          const sReg = (student.reg_number || '').trim().toLowerCase();
+          list = list.filter(v => Number(v.student_id) === sId || (v.reg_number && v.reg_number.toLowerCase() === sReg));
+        } else {
+          list = [];
+        }
+      }
+      return { success: true, data: list };
     }
+
+    if (cleanEndpoint.startsWith('/leave-requests/') && cleanEndpoint.endsWith('/status') && method === 'PUT') {
+      const parts = cleanEndpoint.split('/');
+      const lId = parts[2];
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+      const updated = MockData.updateLeaveRequestStatus ? MockData.updateLeaveRequestStatus(lId, body.status, body.remarks) : null;
+      return {
+        success: true,
+        message: `Leave request status updated to '${body.status}'.`,
+        data: updated
+      };
+    }
+
+    if (cleanEndpoint === '/leave-requests' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const currentUser = this.getUser();
+      const student = this.getStudent() || {};
+      const newLeave = MockData.addLeaveRequest ? MockData.addLeaveRequest({
+        ...body,
+        student_id: student.id || (currentUser ? currentUser.id : 1),
+        student_name: student.name || (currentUser ? currentUser.name : 'Resident'),
+        reg_number: student.reg_number || (currentUser ? currentUser.username : ''),
+        room_number: student.room_number,
+        bed_label: student.bed_label
+      }) : body;
+
+      return {
+        success: true,
+        message: 'Leave application submitted successfully! Warden approval pending.',
+        data: newLeave
+      };
+    }
+
     if (cleanEndpoint === '/leave-requests' || cleanEndpoint === '/leaves') {
-      return { success: true, data: MockData.leaveRequests };
+      const currentUser = this.getUser();
+      let list = [...(MockData.leaveRequests || [])];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          const sId = Number(student.id);
+          const sReg = (student.reg_number || '').trim().toLowerCase();
+          list = list.filter(l => Number(l.student_id) === sId || (l.reg_number && l.reg_number.toLowerCase() === sReg));
+        } else {
+          list = [];
+        }
+      }
+      return { success: true, data: list };
     }
+
     if (cleanEndpoint.startsWith('/notifications/') && cleanEndpoint.endsWith('/read') && method === 'PUT') {
       const parts = cleanEndpoint.split('/');
       const notifId = parts[2];
@@ -762,7 +939,22 @@ const API = {
     }
 
     if (cleanEndpoint === '/notifications') {
-      const notifs = MockData.notifications || [];
+      const currentUser = this.getUser();
+      let notifs = MockData.notifications || [];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        const sId = student ? Number(student.id) : (currentUser ? Number(currentUser.id) : 0);
+        const sReg = student ? (student.reg_number || '').toLowerCase() : (currentUser ? (currentUser.username || '').toLowerCase() : '');
+
+        notifs = notifs.filter(n => {
+          if (n.type === 'announcement' || n.link === '#announcements') return true;
+          if (n.student_id && Number(n.student_id) === sId) return true;
+          if (n.reg_number && String(n.reg_number).toLowerCase() === sReg) return true;
+          const msg = (n.message || '') + ' ' + (n.title || '');
+          if (sReg && msg.toLowerCase().includes(sReg)) return true;
+          return false;
+        });
+      }
       const unreadCount = notifs.filter(n => !n.is_read || n.is_read === 0 || n.is_read === false).length;
       return {
         success: true,
@@ -797,8 +989,17 @@ const API = {
 
       // STUDENT CONTEXT
       if (isStudent && student) {
+        // Privacy Guard: Prevent leakage of other students' info or administrative financial data
+        if (q.includes('all student') || q.includes('other student') || q.includes('who lives in') || q.includes('who is in room') || q.includes('student list') || q.includes('total revenue') || q.includes('total expense') || q.includes('profit and loss') || q.includes('p&l')) {
+          category = 'privacy';
+          answer = `As a resident student, privacy policies ensure you only have access to your own personal profile, room assignment, fee records, and maintenance tickets. For administrative or hostel-wide inquiries, please consult the Warden's Office.`;
+          quickActions = [
+            { label: 'My Dashboard', link: '#student-dashboard' },
+            { label: 'My Profile', link: '#student-profile' }
+          ];
+        }
         // Fee Due Query
-        if (q.includes('fee') || q.includes('due') || q.includes('pay') || q.includes('next fee') || q.includes('pending') || q.includes('rent') || q.includes('charge')) {
+        else if (q.includes('fee') || q.includes('due') || q.includes('pay') || q.includes('next fee') || q.includes('pending') || q.includes('rent') || q.includes('charge')) {
           category = 'fees';
           const studentCycles = feeCycles.filter(c => Number(c.student_id) === Number(student.id));
           const pendingCycle = studentCycles.find(c => c.status !== 'paid');

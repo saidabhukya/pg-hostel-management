@@ -8,21 +8,26 @@ const PaymentsPage = {
   currentMethod: '',
 
   async render() {
+    const user = API.getUser();
+    const isAdmin = !user || user.role === 'admin';
+
     return `
       <div class="page-header">
         <div class="page-title-group">
-          <h1>Payments & Official Receipts</h1>
-          <p>Recorded resident transactions, digital receipts, and bank reconciliations</p>
+          <h1>${isAdmin ? 'Payments & Official Receipts' : 'My Payment Receipts & Invoices'}</h1>
+          <p>${isAdmin ? 'Recorded resident transactions, digital receipts, and bank reconciliations' : 'Official digital receipts and transaction history for your hostel room fees'}</p>
         </div>
         <div class="page-actions">
           <button class="btn btn-secondary" onclick="PaymentsPage.exportCSV()">
             <i data-lucide="download"></i>
             <span>Export CSV</span>
           </button>
-          <button class="btn btn-primary" onclick="PaymentsPage.openRecordPaymentModal()">
-            <i data-lucide="plus-circle"></i>
-            <span>Record New Payment</span>
-          </button>
+          ${isAdmin ? `
+            <button class="btn btn-primary" onclick="PaymentsPage.openRecordPaymentModal()">
+              <i data-lucide="plus-circle"></i>
+              <span>Record New Payment</span>
+            </button>
+          ` : ''}
         </div>
       </div>
 
@@ -37,7 +42,7 @@ const PaymentsPage = {
               id="payment-search-input" 
               class="form-control" 
               style="padding-left:2.2rem;" 
-              placeholder="Search by receipt no, student name, transaction ID..."
+              placeholder="${isAdmin ? 'Search by receipt no, student name, transaction ID...' : 'Search by receipt no, transaction ID...'}"
               oninput="PaymentsPage.handleSearch(this.value)"
             />
           </div>
@@ -62,7 +67,7 @@ const PaymentsPage = {
             <tr>
               <th>Receipt Number</th>
               <th>Paid Date</th>
-              <th>Resident Student</th>
+              ${isAdmin ? `<th>Resident Student</th>` : ''}
               <th>Billing Cycle Covered</th>
               <th>Payment Method</th>
               <th>Amount Paid</th>
@@ -72,7 +77,7 @@ const PaymentsPage = {
           </thead>
           <tbody id="payments-tbody">
             <tr>
-              <td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+              <td colspan="${isAdmin ? '8' : '7'}" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
                 Loading payment records...
               </td>
             </tr>
@@ -131,10 +136,13 @@ const PaymentsPage = {
     const paginationEl = document.getElementById('payments-pagination');
     if (!tbody) return;
 
+    const user = API.getUser();
+    const isAdmin = !user || user.role === 'admin';
+
     if (payments.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center;padding:3rem;color:var(--text-muted);">
+          <td colspan="${isAdmin ? '8' : '7'}" style="text-align:center;padding:3rem;color:var(--text-muted);">
             <i data-lucide="receipt" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
             <p style="font-weight:600;">No payment transactions found.</p>
           </td>
@@ -157,10 +165,12 @@ const PaymentsPage = {
           <div style="font-weight:600;">${p.paymentDateDisplay}</div>
         </td>
 
-        <td data-label="Student">
-          <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(p.student_name)}</div>
-          <div style="font-size:0.75rem;color:var(--text-muted);">${p.reg_number} • Rm ${p.room_number || '-'}</div>
-        </td>
+        ${isAdmin ? `
+          <td data-label="Student">
+            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(p.student_name)}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">${p.reg_number} • Rm ${p.room_number || '-'}</div>
+          </td>
+        ` : ''}
 
         <td data-label="Cycle Covered">
           <div style="font-weight:600;">${p.cycleStartDisplay} → ${p.cycleEndDisplay}</div>

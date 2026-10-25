@@ -1480,6 +1480,79 @@
       }
     },
 
+    addLeaveRequest(data) {
+      if (!Array.isArray(store.leaveRequests)) store.leaveRequests = [];
+      const lId = store.leaveRequests.length ? Math.max(...store.leaveRequests.map(l => Number(l.id) || 0)) + 1 : 1;
+      const today = new Date().toISOString().slice(0, 10);
+      const newLeave = {
+        id: lId,
+        student_id: Number(data.student_id) || 1,
+        student_name: data.student_name || 'Resident Student',
+        student_phone: data.student_phone || data.emergencyContact || '',
+        reg_number: data.reg_number || '',
+        room_number: data.room_number || '',
+        bed_label: data.bed_label || '',
+        start_date: data.startDate || today,
+        end_date: data.endDate || today,
+        startDateDisplay: formatDisplayDate(data.startDate || today),
+        endDateDisplay: formatDisplayDate(data.endDate || today),
+        reason: data.reason || 'Personal / Outstation Leave',
+        emergency_contact: data.emergencyContact || data.parent_phone || '',
+        status: 'Pending',
+        admin_remarks: '',
+        created_at: new Date().toISOString()
+      };
+      store.leaveRequests.unshift(newLeave);
+
+      // Add notification for leave application
+      if (!Array.isArray(store.notifications)) store.notifications = [];
+      const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+      store.notifications.unshift({
+        id: notifId,
+        student_id: newLeave.student_id,
+        reg_number: newLeave.reg_number,
+        title: `Leave Application Submitted`,
+        message: `Leave applied for ${newLeave.startDateDisplay} to ${newLeave.endDateDisplay}. Awaiting warden approval.`,
+        type: 'leave',
+        is_read: 0,
+        link: '#leave-requests',
+        created_at: new Date().toISOString()
+      });
+
+      saveStore();
+      return newLeave;
+    },
+
+    updateLeaveRequestStatus(id, status, remarks) {
+      const lId = Number(id);
+      if (Array.isArray(store.leaveRequests)) {
+        const item = store.leaveRequests.find(l => Number(l.id) === lId);
+        if (item) {
+          item.status = status;
+          if (remarks !== undefined) item.admin_remarks = remarks;
+
+          // Notification for the student
+          if (!Array.isArray(store.notifications)) store.notifications = [];
+          const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+          store.notifications.unshift({
+            id: notifId,
+            student_id: item.student_id,
+            reg_number: item.reg_number,
+            title: `Leave Request ${status}`,
+            message: `Your leave application from ${item.startDateDisplay} to ${item.endDateDisplay} has been ${status.toLowerCase()}.${remarks ? ' Warden remarks: ' + remarks : ''}`,
+            type: 'leave',
+            is_read: 0,
+            link: '#leave-requests',
+            created_at: new Date().toISOString()
+          });
+
+          saveStore();
+          return item;
+        }
+      }
+      return null;
+    },
+
     markNotificationRead(id) {
       const nId = Number(id);
       if (Array.isArray(store.notifications)) {

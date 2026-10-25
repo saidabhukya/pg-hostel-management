@@ -12,8 +12,8 @@ const ComplaintsPage = {
     return `
       <div class="page-header">
         <div class="page-title-group">
-          <h1>Hostel Grievances & Maintenance Complaints</h1>
-          <p>Track electrical, plumbing, Wi-Fi, cleaning, and dining issues</p>
+          <h1>${isAdmin ? 'Hostel Grievances & Maintenance Complaints' : 'My Grievances & Maintenance Complaints'}</h1>
+          <p>${isAdmin ? 'Track electrical, plumbing, Wi-Fi, cleaning, and dining issues' : 'Track maintenance tickets and repairs for your room'}</p>
         </div>
         <div class="page-actions">
           <button class="btn btn-primary" onclick="ComplaintsPage.openSubmitModal()">

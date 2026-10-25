@@ -142,6 +142,7 @@ const App = {
 
       case 'hostel-structure':
       case 'beds':
+        if (this.user.role !== 'admin') return this.navigate('student-dashboard');
         pageContainer.innerHTML = await HostelStructurePage.render();
         await HostelStructurePage.afterRender();
         break;
@@ -164,6 +165,7 @@ const App = {
         break;
 
       case 'visitors':
+        if (this.user.role !== 'admin') return this.navigate('student-dashboard');
         pageContainer.innerHTML = await VisitorsPage.render();
         await VisitorsPage.afterRender();
         break;

@@ -9,8 +9,8 @@ const LeaveRequestsPage = {
     return `
       <div class="page-header">
         <div class="page-title-group">
-          <h1>Hostel Leave Applications & Gate Passes</h1>
-          <p>Official overnight absence permissions, outstations, and family visits</p>
+          <h1>${isAdmin ? 'Hostel Leave Applications & Gate Passes' : 'My Leave Applications & Gate Passes'}</h1>
+          <p>${isAdmin ? 'Official overnight absence permissions, outstations, and family visits' : 'Apply for overnight outstation, vacation, and view gate pass approvals'}</p>
         </div>
         <div class="page-actions">
           <button class="btn btn-primary" onclick="LeaveRequestsPage.openApplyModal()">
@@ -25,8 +25,10 @@ const LeaveRequestsPage = {
         <table class="data-table data-table-responsive-cards" id="leaves-table">
           <thead>
             <tr>
-              <th>Resident Student</th>
-              <th>Room & Bed</th>
+              ${isAdmin ? `
+                <th>Resident Student</th>
+                <th>Room & Bed</th>
+              ` : ''}
               <th>Leave Period</th>
               <th>Reason for Absence</th>
               <th>Emergency Contact</th>
@@ -37,7 +39,7 @@ const LeaveRequestsPage = {
           </thead>
           <tbody id="leaves-tbody">
             <tr>
-              <td colspan="${isAdmin ? '8' : '7'}" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+              <td colspan="${isAdmin ? '8' : '5'}" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
                 Loading leave requests...
               </td>
             </tr>
@@ -72,7 +74,7 @@ const LeaveRequestsPage = {
     if (requests.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="${isAdmin ? '8' : '7'}" style="text-align:center;padding:3rem;color:var(--text-muted);">
+          <td colspan="${isAdmin ? '8' : '5'}" style="text-align:center;padding:3rem;color:var(--text-muted);">
             <i data-lucide="calendar-check" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
             <p style="font-weight:600;">No pending or active leave requests.</p>
           </td>
@@ -88,14 +90,16 @@ const LeaveRequestsPage = {
 
       return `
         <tr>
-          <td data-label="Resident">
-            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(l.student_name)}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">${l.reg_number} • ${l.student_phone}</div>
-          </td>
+          ${isAdmin ? `
+            <td data-label="Resident">
+              <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(l.student_name)}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${l.reg_number} • ${l.student_phone}</div>
+            </td>
 
-          <td data-label="Room & Bed">
-            <span class="badge badge-info">${l.room_number ? `Rm ${l.room_number} • ${l.bed_label}` : '-'}</span>
-          </td>
+            <td data-label="Room & Bed">
+              <span class="badge badge-info">${l.room_number ? `Rm ${l.room_number} • ${l.bed_label}` : '-'}</span>
+            </td>
+          ` : ''}
 
           <td data-label="Period">
             <div style="font-weight:700;">${l.startDateDisplay} → ${l.endDateDisplay}</div>

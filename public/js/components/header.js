@@ -5,6 +5,8 @@ const Header = {
   render(user) {
     const isDark = Utils.getTheme() === 'dark';
 
+    const isAdmin = user && user.role === 'admin';
+
     return `
       <header class="top-header">
         <div class="header-left">
@@ -12,20 +14,26 @@ const Header = {
             <i data-lucide="menu"></i>
           </button>
 
-          <!-- Global Real-Time Search -->
-          <div class="global-search-box">
-            <i data-lucide="search" class="search-icon"></i>
-            <input 
-              type="text" 
-              class="search-input" 
-              id="global-search-input"
-              placeholder="Search students (name, reg no, room) or rooms..."
-              autocomplete="off"
-              oninput="Header.handleSearch(this.value)"
-              onfocus="Header.handleSearch(this.value)"
-            />
-            <div id="search-dropdown" class="search-results-dropdown"></div>
-          </div>
+          ${isAdmin ? `
+            <!-- Global Real-Time Search (Admin Only) -->
+            <div class="global-search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input 
+                type="text" 
+                class="search-input" 
+                id="global-search-input"
+                placeholder="Search students (name, reg no, room) or rooms..."
+                autocomplete="off"
+                oninput="Header.handleSearch(this.value)"
+                onfocus="Header.handleSearch(this.value)"
+              />
+              <div id="search-dropdown" class="search-results-dropdown"></div>
+            </div>
+          ` : `
+            <div style="font-weight:700;font-size:0.95rem;color:var(--text-primary);letter-spacing:-0.2px;">
+              SRI RAM PG <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">• Resident Portal</span>
+            </div>
+          `}
         </div>
 
         <div class="header-right">

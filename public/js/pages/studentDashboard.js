@@ -18,10 +18,10 @@ const StudentDashboard = {
             <div>
               <span class="badge badge-info" style="margin-bottom:0.25rem;">Student Resident Portal</span>
               <h1 style="font-size:1.5rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.4px;">
-                Welcome, ${Utils.escapeHTML(user ? user.name : 'Resident')}!
+                Welcome, ${Utils.escapeHTML((student && student.name) || (user ? user.name : 'Resident'))}!
               </h1>
               <p style="font-size:0.84rem;color:var(--text-muted);margin-top:0.2rem;">
-                Roll No: <strong>${student ? student.reg_number : '2024IT123'}</strong> • ${student ? student.course : 'B.Tech IT'}
+                Roll No: <strong>${Utils.escapeHTML((student && student.reg_number) || (user ? user.username : '—'))}</strong> • ${Utils.escapeHTML((student && student.course) || 'Resident Student')}
               </p>
             </div>
           </div>
@@ -48,10 +48,10 @@ const StudentDashboard = {
             <div class="kpi-icon-wrap"><i data-lucide="door-closed"></i></div>
           </div>
           <div class="kpi-value" style="color:var(--primary-red);">
-            Room ${student ? student.room_number : '205'}
+            Room ${student && student.room_number ? student.room_number : '—'}
           </div>
           <div class="kpi-footer">
-            <span>Floor ${student ? student.floor_number : '2'} • ${student ? student.bed_label : 'Bed 3'}</span>
+            <span>Floor ${student && student.floor_number ? student.floor_number : '—'} • ${student && student.bed_label ? student.bed_label : 'Bed Assigned'}</span>
           </div>
         </div>
 
@@ -62,10 +62,10 @@ const StudentDashboard = {
             <div class="kpi-icon-wrap"><i data-lucide="credit-card"></i></div>
           </div>
           <div class="kpi-value">
-            ${Utils.formatINR(student ? student.monthly_fee : 7000)}
+            ${Utils.formatINR(student && student.monthly_fee ? student.monthly_fee : 7000)}
           </div>
           <div class="kpi-footer">
-            <span>Joining Date: <strong>${Utils.formatDate(student ? student.joining_date : '2026-09-16')}</strong></span>
+            <span>Joining Date: <strong>${student && student.joining_date ? Utils.formatDate(student.joining_date) : 'Today'}</strong></span>
           </div>
         </div>
 
@@ -75,7 +75,7 @@ const StudentDashboard = {
             <span class="kpi-title">Next Fee Due</span>
             <div class="kpi-icon-wrap"><i data-lucide="clock"></i></div>
           </div>
-          <div class="kpi-value" id="stu-due-date-val" style="font-size:1.35rem;">15-11-2026</div>
+          <div class="kpi-value" id="stu-due-date-val" style="font-size:1.35rem;">${student && student.joiningDateDisplay ? student.joiningDateDisplay : 'Upcoming'}</div>
           <div class="kpi-footer">
             <span class="badge badge-info" id="stu-due-badge">Upcoming Cycle</span>
           </div>

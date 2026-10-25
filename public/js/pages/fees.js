@@ -6,22 +6,27 @@ const FeesPage = {
   currentFilter: 'all',
 
   async render() {
+    const user = API.getUser();
+    const isAdmin = !user || user.role === 'admin';
+
     return `
       <div class="page-header">
         <div class="page-title-group">
-          <h1>Fee Management & Joining-Date Cycles</h1>
-          <p>Personalized billing cycles anchored to each student's date of admission</p>
+          <h1>${isAdmin ? 'Fee Management & Joining-Date Cycles' : 'My Fee Dues & Billing Cycles'}</h1>
+          <p>${isAdmin ? 'Personalized billing cycles anchored to each student\'s date of admission' : 'Your personal room rental billing cycles anchored to your date of admission'}</p>
         </div>
-        <div class="page-actions">
-          <button class="btn btn-secondary" onclick="FeesPage.loadRemindersModal()">
-            <i data-lucide="bell-ring" style="color:var(--primary-red);"></i>
-            <span>Fee Reminders Center</span>
-          </button>
-          <button class="btn btn-primary" onclick="PaymentsPage.openRecordPaymentModal()">
-            <i data-lucide="plus-circle"></i>
-            <span>Record Payment</span>
-          </button>
-        </div>
+        ${isAdmin ? `
+          <div class="page-actions">
+            <button class="btn btn-secondary" onclick="FeesPage.loadRemindersModal()">
+              <i data-lucide="bell-ring" style="color:var(--primary-red);"></i>
+              <span>Fee Reminders Center</span>
+            </button>
+            <button class="btn btn-primary" onclick="PaymentsPage.openRecordPaymentModal()">
+              <i data-lucide="plus-circle"></i>
+              <span>Record Payment</span>
+            </button>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Overview Reminder Notice Cards -->
@@ -32,7 +37,7 @@ const FeesPage = {
             <span class="badge badge-success">Settled</span>
           </div>
           <div class="kpi-value" id="count-paid-cycles">0</div>
-          <div class="kpi-footer">Fully settled student cycles</div>
+          <div class="kpi-footer">${isAdmin ? 'Fully settled student cycles' : 'My fully settled cycles'}</div>
         </div>
 
         <div class="kpi-card" style="border-left:4px solid var(--status-warning);">
@@ -41,7 +46,7 @@ const FeesPage = {
             <span class="badge badge-warning">Awaiting Fee</span>
           </div>
           <div class="kpi-value" id="count-due-soon-cycles">0</div>
-          <div class="kpi-footer">Upcoming due reminders</div>
+          <div class="kpi-footer">${isAdmin ? 'Upcoming due reminders' : 'My upcoming due cycles'}</div>
         </div>
 
         <div class="kpi-card" style="border-left:4px solid var(--status-danger);">
@@ -50,7 +55,7 @@ const FeesPage = {
             <span class="badge badge-danger">Action Required</span>
           </div>
           <div class="kpi-value" id="count-overdue-cycles">₹0</div>
-          <div class="kpi-footer" id="pending-amount-footer">Pending fee collection</div>
+          <div class="kpi-footer" id="pending-amount-footer">${isAdmin ? 'Pending fee collection' : 'My total pending dues'}</div>
         </div>
       </div>
 
@@ -63,17 +68,19 @@ const FeesPage = {
             <button class="btn btn-sm btn-secondary" onclick="FeesPage.setFilter('paid', this)">Paid Only</button>
           </div>
 
-          <div style="min-width:260px;position:relative;">
-            <i data-lucide="search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);width:16px;height:16px;"></i>
-            <input 
-              type="text" 
-              id="fee-search-input" 
-              class="form-control" 
-              style="padding-left:2.2rem;" 
-              placeholder="Search by student name, room, reg no..."
-              oninput="FeesPage.handleSearch(this.value)"
-            />
-          </div>
+          ${isAdmin ? `
+            <div style="min-width:260px;position:relative;">
+              <i data-lucide="search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);width:16px;height:16px;"></i>
+              <input 
+                type="text" 
+                id="fee-search-input" 
+                class="form-control" 
+                style="padding-left:2.2rem;" 
+                placeholder="Search by student name, room, reg no..."
+                oninput="FeesPage.handleSearch(this.value)"
+              />
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -82,8 +89,10 @@ const FeesPage = {
         <table class="data-table data-table-responsive-cards" id="fee-cycles-table">
           <thead>
             <tr>
-              <th>Resident Student</th>
-              <th>Room & Bed</th>
+              ${isAdmin ? `
+                <th>Resident Student</th>
+                <th>Room & Bed</th>
+              ` : ''}
               <th>Cycle #</th>
               <th>Billing Period (Anchor)</th>
               <th>Due Date</th>
@@ -94,7 +103,7 @@ const FeesPage = {
           </thead>
           <tbody id="fee-cycles-tbody">
             <tr>
-              <td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+              <td colspan="${isAdmin ? '8' : '6'}" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
                 Loading fee cycles...
               </td>
             </tr>
@@ -178,10 +187,13 @@ const FeesPage = {
     const paginationEl = document.getElementById('fee-pagination');
     if (!tbody) return;
 
+    const user = API.getUser();
+    const isAdmin = !user || user.role === 'admin';
+
     if (cycles.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center;padding:3rem;color:var(--text-muted);">
+          <td colspan="${isAdmin ? '8' : '6'}" style="text-align:center;padding:3rem;color:var(--text-muted);">
             <i data-lucide="calendar-x" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
             <p style="font-weight:600;">No fee cycles found matching filter.</p>
           </td>
@@ -200,14 +212,16 @@ const FeesPage = {
 
       return `
         <tr>
-          <td data-label="Student">
-            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(c.student_name)}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">${c.reg_number} • Joining: ${c.joining_date ? Utils.formatDate(c.joining_date) : (c.start_date ? Utils.formatDate(c.start_date) : '-')}</div>
-          </td>
+          ${isAdmin ? `
+            <td data-label="Student">
+              <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(c.student_name)}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${c.reg_number} • Joining: ${c.joining_date ? Utils.formatDate(c.joining_date) : (c.start_date ? Utils.formatDate(c.start_date) : '-')}</div>
+            </td>
 
-          <td data-label="Room & Bed">
-            <span class="badge badge-info">${c.room_number ? `Rm ${c.room_number} • ${c.bed_label}` : 'Unallocated'}</span>
-          </td>
+            <td data-label="Room & Bed">
+              <span class="badge badge-info">${c.room_number ? `Rm ${c.room_number} • ${c.bed_label}` : 'Unallocated'}</span>
+            </td>
+          ` : ''}
 
           <td data-label="Cycle" style="font-weight:700;">
             Cycle ${c.cycle_number || 1}
@@ -238,12 +252,14 @@ const FeesPage = {
                 <i data-lucide="receipt" style="width:14px;height:14px;"></i>
                 <span>Receipt</span>
               </button>
-            ` : `
+            ` : (isAdmin ? `
               <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${c.student_id}, '${Utils.escapeHTML(c.student_name)}', ${c.amount}, '${c.start_date}', '${c.end_date}', ${c.id})">
                 <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
                 <span>Record Pay</span>
               </button>
-            `}
+            ` : `
+              <span class="badge badge-danger" style="font-size:0.78rem;">Payment Due</span>
+            `)}
           </td>
         </tr>
       `;
