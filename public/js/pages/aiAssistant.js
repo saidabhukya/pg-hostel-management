@@ -12,13 +12,14 @@ const AiAssistantModal = {
     const suggestedPrompts = isStudent ? [
       'When is my next fee due?',
       'What is today\'s menu?',
+      'What is the status of my complaints?',
       'What is my room and bed number?',
       'What are the hostel curfew hours?'
     ] : [
+      'What complaints need attention?',
       'What is the current bed occupancy rate?',
       'Give me a summary of hostel financials',
-      'How much fee is pending this month?',
-      'What complaints need attention?'
+      'How much fee is pending this month?'
     ];
 
     const content = `

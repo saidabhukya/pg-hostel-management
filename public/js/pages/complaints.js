@@ -100,7 +100,7 @@ const ComplaintsPage = {
     const user = API.getUser();
     const isAdmin = user && user.role === 'admin';
 
-    if (complaints.length === 0) {
+    if (!complaints || complaints.length === 0) {
       container.innerHTML = `
         <div class="card" style="text-align:center;padding:3rem;color:var(--text-muted);">
           <i data-lucide="check-circle" style="width:48px;height:48px;margin-bottom:0.5rem;color:var(--status-success);opacity:0.7;"></i>
@@ -115,19 +115,26 @@ const ComplaintsPage = {
     container.innerHTML = complaints.map(c => `
       <div class="card" style="border-left:4px solid ${c.status === 'Resolved' ? 'var(--status-success)' : c.status === 'In Progress' ? 'var(--status-warning)' : 'var(--primary-red)'};">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-          <div>
-            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.35rem;">
-              <span class="badge badge-info">${c.category}</span>
+          <div style="flex:1;min-width:280px;">
+            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.35rem;flex-wrap:wrap;">
+              <span class="badge badge-info">${Utils.escapeHTML(c.category || 'General')}</span>
               <span class="badge ${c.status === 'Resolved' ? 'badge-success' : c.status === 'In Progress' ? 'badge-warning' : 'badge-danger'}">
-                ${c.status}
+                ${c.status || 'Pending'}
               </span>
-              <span style="font-size:0.75rem;color:var(--text-muted);">Submitted: ${c.createdAtDisplay}</span>
+              <span style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:0.25rem;">
+                <i data-lucide="clock" style="width:12px;height:12px;"></i>
+                Submitted: ${c.createdAtDisplay || (c.created_at ? Utils.formatDate(c.created_at) : 'Today')}
+              </span>
             </div>
-            <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(c.title)}</h3>
-            <p style="font-size:0.88rem;color:var(--text-secondary);margin:0.5rem 0;">${Utils.escapeHTML(c.description)}</p>
+            <h3 style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin-top:0.25rem;">${Utils.escapeHTML(c.title || 'Hostel Maintenance Ticket')}</h3>
+            <p style="font-size:0.88rem;color:var(--text-secondary);margin:0.5rem 0;line-height:1.5;">${Utils.escapeHTML(c.description || 'No additional details provided.')}</p>
             
-            <div style="font-size:0.78rem;color:var(--text-muted);">
-              Resident: <strong>${Utils.escapeHTML(c.student_name)}</strong> (${c.reg_number}) • Room ${c.room_number || '-'}, ${c.bed_label || '-'}
+            <div style="font-size:0.78rem;color:var(--text-muted);display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+              <i data-lucide="user" style="width:12px;height:12px;"></i>
+              <span>Resident: <strong>${Utils.escapeHTML(c.student_name || 'Hostel Resident')}</strong> ${c.reg_number ? `(${Utils.escapeHTML(c.reg_number)})` : ''}</span>
+              <span>•</span>
+              <i data-lucide="map-pin" style="width:12px;height:12px;"></i>
+              <span>Room ${c.room_number ? Utils.escapeHTML(String(c.room_number)) : 'General'}${c.bed_label ? `, ${Utils.escapeHTML(c.bed_label)}` : ''}</span>
             </div>
           </div>
 
@@ -142,9 +149,12 @@ const ComplaintsPage = {
 
             ${isAdmin ? `
               <div style="display:flex;gap:0.4rem;">
-                <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.openUpdateStatusModal(${c.id}, '${c.status}', '${Utils.escapeHTML(c.admin_notes || '')}')">
+                <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.openUpdateStatusModal(${c.id}, '${c.status}', '${Utils.escapeHTML(c.admin_notes || '')}')" title="Update Status">
                   <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
-                  Update Status
+                  <span>Status</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.deleteComplaint(${c.id})" title="Delete Ticket" style="color:var(--primary-red);">
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
                 </button>
               </div>
             ` : ''}
@@ -163,6 +173,11 @@ const ComplaintsPage = {
   },
 
   openSubmitModal() {
+    const user = API.getUser();
+    const isStudent = user && user.role === 'student';
+    const student = isStudent ? API.getStudent() : null;
+    const defaultRoom = student ? (student.room_number || '') : '';
+
     Modal.open({
       title: 'Submit Maintenance Complaint',
       content: `
@@ -178,6 +193,12 @@ const ComplaintsPage = {
               <option value="Room">Room Furniture / Lock</option>
               <option value="Other">Other</option>
             </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label">Room Number / Location</label>
+            <input type="text" id="comp-room" class="form-control" value="${defaultRoom}" placeholder="e.g. 101, Dining Hall, 2nd Floor Corridor" />
+            <small style="color:var(--text-muted);font-size:0.72rem;">Room number or specific area in the hostel needing repair.</small>
           </div>
 
           <div class="form-group" style="margin-bottom:1.15rem;">
@@ -207,6 +228,7 @@ const ComplaintsPage = {
       `,
       maxWidth: '560px'
     });
+    Utils.renderIcons();
   },
 
   async handleSubmit(e) {
@@ -214,12 +236,14 @@ const ComplaintsPage = {
     const btn = document.getElementById('comp-submit-btn');
 
     const category = document.getElementById('comp-category').value;
+    const roomNumber = document.getElementById('comp-room') ? document.getElementById('comp-room').value.trim() : '';
     const title = document.getElementById('comp-title').value;
     const description = document.getElementById('comp-desc').value;
     const photoInput = document.getElementById('comp-photo');
 
     const formData = new FormData();
     formData.append('category', category);
+    if (roomNumber) formData.append('room_number', roomNumber);
     formData.append('title', title);
     formData.append('description', description);
     if (photoInput && photoInput.files[0]) {
@@ -236,7 +260,7 @@ const ComplaintsPage = {
       if (res.success) {
         Toast.success(res.message);
         Modal.close();
-        ComplaintsPage.loadComplaints();
+        await ComplaintsPage.loadComplaints();
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to submit complaint.');
@@ -288,10 +312,23 @@ const ComplaintsPage = {
       if (res.success) {
         Toast.success(res.message);
         Modal.close();
-        ComplaintsPage.loadComplaints();
+        await ComplaintsPage.loadComplaints();
       }
     } catch (err) {
       Toast.error(err.message);
+    }
+  },
+
+  async deleteComplaint(id) {
+    if (!confirm('Are you sure you want to delete this maintenance complaint record?')) return;
+    try {
+      const res = await API.delete(`/complaints/${id}`);
+      if (res.success) {
+        Toast.success(res.message || 'Complaint deleted successfully.');
+        await ComplaintsPage.loadComplaints();
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Failed to delete complaint.');
     }
   }
 };

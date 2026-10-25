@@ -561,6 +561,31 @@ const API = {
         message: 'Feedback submitted successfully to the Hostel Food & Mess Committee!'
       };
     }
+    if (cleanEndpoint.startsWith('/complaints/') && cleanEndpoint.endsWith('/status') && method === 'PUT') {
+      const parts = cleanEndpoint.split('/');
+      const cId = parts[2];
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const updated = MockData.updateComplaintStatus ? MockData.updateComplaintStatus(cId, body.status, body.adminNotes) : null;
+      return {
+        success: true,
+        message: `Complaint ticket #${cId} status updated to '${body.status}'.`,
+        data: updated
+      };
+    }
+
+    if (cleanEndpoint.startsWith('/complaints/') && method === 'DELETE') {
+      const cId = cleanEndpoint.replace('/complaints/', '');
+      if (MockData.deleteComplaint) MockData.deleteComplaint(cId);
+      return {
+        success: true,
+        message: 'Complaint record removed successfully.'
+      };
+    }
+
     if (cleanEndpoint === '/complaints' && method === 'POST') {
       let body = {};
       if (options.body instanceof FormData) {
@@ -585,9 +610,27 @@ const API = {
       if (currentUser && currentUser.role === 'student') {
         const student = this.getStudent();
         if (student) {
-          list = list.filter(c => Number(c.student_id) === Number(student.id) || (c.room_number && String(c.room_number) === String(student.room_number)));
+          list = list.filter(c => 
+            Number(c.student_id) === Number(student.id) ||
+            (c.reg_number && c.reg_number === student.reg_number) ||
+            (c.room_number && String(c.room_number) === String(student.room_number))
+          );
         }
       }
+
+      // Filter by category or status if provided in query string
+      try {
+        const urlObj = new URL('http://dummy' + endpoint);
+        const cat = urlObj.searchParams.get('category');
+        const st = urlObj.searchParams.get('status');
+        if (cat) {
+          list = list.filter(c => (c.category || '').toLowerCase() === cat.toLowerCase());
+        }
+        if (st) {
+          list = list.filter(c => (c.status || '').toLowerCase() === st.toLowerCase());
+        }
+      } catch (e) {}
+
       return { success: true, data: list };
     }
     if (cleanEndpoint === '/expenses' && method === 'POST') {
@@ -751,11 +794,32 @@ const API = {
 
           quickActions = [{ label: 'Full 7-Day Schedule', link: '#mess' }];
         }
-        // Complaints Query
-        else if (q.includes('complaint') || q.includes('wifi') || q.includes('tap') || q.includes('plumb') || q.includes('broken') || q.includes('repair') || q.includes('clean') || q.includes('fan') || q.includes('light') || q.includes('water')) {
+        // Complaints & Maintenance Query
+        else if (q.includes('complaint') || q.includes('ticket') || q.includes('wifi') || q.includes('tap') || q.includes('plumb') || q.includes('broken') || q.includes('repair') || q.includes('clean') || q.includes('fan') || q.includes('light') || q.includes('water') || q.includes('grievance') || q.includes('issue')) {
           category = 'complaint';
-          answer = `To report an issue with Wi-Fi, plumbing, electrical fittings, or room housekeeping, navigate to the **Complaints** section and click **"+ New Ticket"**. Our maintenance team will attend to it promptly.`;
-          quickActions = [{ label: 'Submit Ticket', link: '#complaints' }];
+          const myComplaints = complaints.filter(c => 
+            Number(c.student_id) === Number(student.id) ||
+            (c.reg_number && c.reg_number === student.reg_number) ||
+            (c.room_number && String(c.room_number) === String(student.room_number))
+          );
+          
+          if (myComplaints.length > 0) {
+            answer = `**Maintenance & Grievance Tickets for Room ${student.room_number || '-'} (${student.name}):**\n\n` +
+              myComplaints.map(c => 
+                `• **${c.title}** [${c.category}]\n` +
+                `  Status: **${c.status}** | Date: ${c.createdAtDisplay || (c.created_at ? Utils.formatDate(c.created_at) : 'Recent')}\n` +
+                `  Issue: ${c.description || '-'}\n` +
+                (c.admin_notes ? `  *Warden Action Note:* ${c.admin_notes}` : '  *Warden Action Note:* Awaiting technician assignment.')
+              ).join('\n\n') +
+              `\n\nNeed to submit another issue? Click **Submit Ticket** below.`;
+          } else {
+            answer = `You currently have **no open complaints or maintenance tickets** filed for Room **${student.room_number || '-'}**.\n\n` +
+              `If you are experiencing any issues with Wi-Fi, plumbing, electrical fittings, furniture, or housekeeping, click **Submit Ticket** below to alert the hostel maintenance team immediately.`;
+          }
+          quickActions = [
+            { label: 'Submit Ticket', link: '#complaints' },
+            { label: 'View Grievances', link: '#complaints' }
+          ];
         }
         // Leave / Gate pass Query
         else if (q.includes('leave') || q.includes('out') || q.includes('gate pass') || q.includes('vacation') || q.includes('holiday') || q.includes('permission')) {
@@ -867,19 +931,30 @@ const API = {
           ];
         }
         // Maintenance & Complaints
-        else if (q.includes('complaint') || q.includes('ticket') || q.includes('repair') || q.includes('maintenance')) {
+        else if (q.includes('complaint') || q.includes('ticket') || q.includes('repair') || q.includes('maintenance') || q.includes('grievance') || q.includes('issue') || q.includes('broken')) {
           category = 'complaints';
           const pendingCount = complaints.filter(c => c.status === 'Pending').length;
           const inProgressCount = complaints.filter(c => c.status === 'In Progress').length;
           const resolvedCount = complaints.filter(c => c.status === 'Resolved').length;
+          const activeComplaints = complaints.filter(c => c.status !== 'Resolved');
 
-          answer = `**Maintenance & Complaints Status:**\n\n` +
-            `• Pending Tickets: **${pendingCount}**\n` +
-            `• In Progress: **${inProgressCount}**\n` +
-            `• Resolved: **${resolvedCount}**\n\n` +
-            (pendingCount > 0 ? `Please review open tickets in the Complaints management console.` : `All reported maintenance tickets have been resolved!`);
+          answer = `**Hostel Grievances & Maintenance Status (Live):**\n\n` +
+            `• **Pending Review:** **${pendingCount}** tickets\n` +
+            `• **In Progress / Dispatched:** **${inProgressCount}** tickets\n` +
+            `• **Resolved:** **${resolvedCount}** tickets\n\n` +
+            (activeComplaints.length > 0
+              ? `**Active Tickets Requiring Attention:**\n` +
+                activeComplaints.slice(0, 5).map(c => 
+                  `• **[${c.status}]** Room ${c.room_number || 'General'} (${c.student_name || 'Resident'}): **${c.title}** (${c.category})\n` +
+                  `  *Details:* ${c.description ? c.description.slice(0, 90) + (c.description.length > 90 ? '...' : '') : '-'}` +
+                  (c.admin_notes ? `\n  *Notes:* ${c.admin_notes}` : '')
+                ).join('\n\n') +
+                (activeComplaints.length > 5 ? `\n\n*+ ${activeComplaints.length - 5} more active tickets in queue.*` : '')
+              : `All reported hostel facilities and maintenance tickets are currently **Resolved**.`);
 
-          quickActions = [{ label: 'Manage Complaints', link: '#complaints' }];
+          quickActions = [
+            { label: 'Manage Complaints Console', link: '#complaints' }
+          ];
         }
         // Mess / Dining Schedule
         else if (q.includes('food') || q.includes('mess') || q.includes('menu') || q.includes('lunch') || q.includes('dinner') || q.includes('breakfast')) {

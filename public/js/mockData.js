@@ -164,6 +164,60 @@
     ];
   }
 
+  function getDefaultComplaints() {
+    const today = new Date().toISOString().slice(0, 10);
+    return [
+      {
+        id: 1,
+        student_id: 1,
+        student_name: 'Sai Teja',
+        reg_number: '2024CS101',
+        room_number: '101',
+        bed_label: 'Bed-A',
+        title: 'Bathroom tap leaking on Floor 1',
+        description: 'Water is dripping continuously from the washbasin faucet. Please arrange for a washer replacement.',
+        category: 'Plumbing',
+        priority: 'High',
+        status: 'In Progress',
+        admin_notes: 'Plumber assigned, ceramic valve being replaced.',
+        created_at: new Date(Date.now() - 86400000).toISOString().slice(0, 19).replace('T', ' '),
+        createdAtDisplay: formatDisplayDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))
+      },
+      {
+        id: 2,
+        student_id: 2,
+        student_name: 'Vikramaditya',
+        reg_number: '2024CS102',
+        room_number: '102',
+        bed_label: 'Bed-B',
+        title: 'Wi-Fi access point reboot required in corridor',
+        description: 'Signal strength is intermittent in the study zone near Rooms 101 to 105 during evening study hours.',
+        category: 'Wi-Fi',
+        priority: 'Medium',
+        status: 'Pending',
+        admin_notes: '',
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        createdAtDisplay: formatDisplayDate(today)
+      },
+      {
+        id: 3,
+        student_id: 3,
+        student_name: 'Ravi Kumar',
+        reg_number: '2024IT103',
+        room_number: '201',
+        bed_label: 'Bed-A',
+        title: 'Ceiling fan regulator switch repaired',
+        description: 'Wall regulator switch was loose and unable to control speed.',
+        category: 'Electrical',
+        priority: 'Low',
+        status: 'Resolved',
+        admin_notes: 'Electrician replaced the modular regulator unit.',
+        created_at: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 19).replace('T', ' '),
+        createdAtDisplay: formatDisplayDate(new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10))
+      }
+    ];
+  }
+
   function getCleanInitialState() {
     return {
       adminUser: {
@@ -179,7 +233,7 @@
       maintenanceBeds: [], // Array of unique bed identifiers e.g. "101_Bed-C"
       feeCycles: [],
       payments: [],
-      complaints: [],
+      complaints: getDefaultComplaints(),
       expenses: [],
       visitors: [],
       announcements: getDefaultAnnouncements(),
@@ -372,6 +426,9 @@
       if (!Array.isArray(store.announcements) || store.announcements.length === 0) {
         store.announcements = getDefaultAnnouncements();
       }
+      if (!Array.isArray(store.complaints) || store.complaints.length === 0) {
+        store.complaints = getDefaultComplaints();
+      }
       // Always adopt the latest Vignan Vihar Boys Hostel menu
       store.messMenu = getVignanMessMenu();
     } else {
@@ -453,7 +510,23 @@
       sanitizeStore();
       return store.payments;
     },
-    get complaints() { return store.complaints; },
+    get complaints() {
+      if (!Array.isArray(store.complaints) || store.complaints.length === 0) {
+        store.complaints = getDefaultComplaints();
+        saveStore();
+      }
+      return (store.complaints || []).map(c => {
+        const student = (store.students || []).find(s => Number(s.id) === Number(c.student_id));
+        return {
+          ...c,
+          student_name: c.student_name || (student ? student.name : 'Resident Student'),
+          reg_number: c.reg_number || (student ? student.reg_number : 'RESIDENT'),
+          room_number: c.room_number || (student ? student.room_number : '101'),
+          bed_label: c.bed_label || (student ? student.bed_label : 'Bed-A'),
+          createdAtDisplay: c.createdAtDisplay || (c.created_at ? formatDisplayDate(c.created_at.slice(0, 10)) : 'Today')
+        };
+      });
+    },
     get expenses() {
       return (store.expenses || []).map(e => ({
         ...e,
@@ -1250,24 +1323,69 @@
       if (!Array.isArray(store.complaints)) store.complaints = [];
       const cId = store.complaints.length ? Math.max(...store.complaints.map(c => Number(c.id) || 0)) + 1 : 1;
       const user = (window.API && typeof window.API.getUser === 'function' && window.API.getUser()) || {};
-      const student = (window.API && typeof window.API.getStudent === 'function' && window.API.getStudent()) || {};
+      const student = (window.API && typeof window.API.getStudent === 'function' && window.API.getStudent()) || 
+                      (store.students && store.students[0]) || {};
+      const isStudent = user && user.role === 'student';
+      const today = new Date().toISOString().slice(0, 10);
+
+      const studentName = isStudent ? (student.name || user.name) : (data.student_name || user.name || 'Resident Student');
+      const regNumber = isStudent ? (student.reg_number || user.username || 'RESIDENT') : (data.reg_number || (student ? student.reg_number : 'ADMIN'));
+      const roomNum = isStudent ? (student.room_number || data.room_number || '101') : (data.room_number || (student ? student.room_number : '101'));
+      const bedLabel = isStudent ? (student.bed_label || data.bed_label || 'Bed-A') : (data.bed_label || (student ? student.bed_label : 'Bed-A'));
 
       const newComplaint = {
         id: cId,
-        student_id: student.id || user.id || 1,
-        student_name: student.name || user.name || data.student_name || 'Resident Student',
-        room_number: student.room_number || data.room_number || '101',
-        title: (data.title || '').trim(),
+        student_id: isStudent ? (student.id || user.id || 1) : 1,
+        student_name: studentName,
+        reg_number: regNumber,
+        room_number: roomNum,
+        bed_label: bedLabel,
+        title: (data.title || 'Hostel Maintenance Issue').trim(),
         description: (data.description || '').trim(),
         category: data.category || 'Maintenance & Repairs',
         priority: data.priority || 'Medium',
         status: 'Pending',
-        created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        admin_notes: '',
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        createdAtDisplay: formatDisplayDate(today)
       };
 
       store.complaints.unshift(newComplaint);
+
+      // Notification
+      if (!Array.isArray(store.notifications)) store.notifications = [];
+      const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+      store.notifications.unshift({
+        id: notifId,
+        title: `Maintenance Ticket Filed: ${newComplaint.title}`,
+        message: `${newComplaint.category} issue reported in Room ${roomNum} (${studentName}).`,
+        type: 'complaint',
+        is_read: 0,
+        link: '#complaints',
+        created_at: 'Just now'
+      });
+
       saveStore();
       return newComplaint;
+    },
+
+    updateComplaintStatus(id, status, adminNotes) {
+      const cId = Number(id);
+      const comp = (store.complaints || []).find(c => Number(c.id) === cId);
+      if (comp) {
+        comp.status = status;
+        if (adminNotes !== undefined) comp.admin_notes = adminNotes;
+        saveStore();
+      }
+      return comp;
+    },
+
+    deleteComplaint(id) {
+      const cId = Number(id);
+      if (Array.isArray(store.complaints)) {
+        store.complaints = store.complaints.filter(c => Number(c.id) !== cId);
+        saveStore();
+      }
     },
 
     saveStore() {
