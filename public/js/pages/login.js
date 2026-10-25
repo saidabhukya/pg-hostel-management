@@ -119,7 +119,7 @@ const LoginPage = {
                   type="text" 
                   id="login-username" 
                   class="sri-ram-input" 
-                  placeholder="Username or Email" 
+                  placeholder="Username, Roll/Reg Number, or Email" 
                   required 
                   autocomplete="username"
                 />
@@ -132,7 +132,7 @@ const LoginPage = {
                   type="password" 
                   id="login-password" 
                   class="sri-ram-input has-toggle" 
-                  placeholder="Password" 
+                  placeholder="Password (Default: Reg Number)" 
                   required 
                   autocomplete="current-password"
                 />
@@ -146,6 +146,10 @@ const LoginPage = {
                 >
                   <i id="pwd-eye-icon" data-lucide="eye"></i>
                 </button>
+              </div>
+
+              <div style="font-size:0.75rem;color:var(--text-muted);margin:0.25rem 0 0.85rem;background:rgba(255,255,255,0.06);padding:0.4rem 0.6rem;border-radius:var(--radius-sm);border-left:3px solid var(--primary-red);line-height:1.4;">
+                🎓 <strong>Students:</strong> Enter your <strong>Registration Number</strong> as both Username & Password.
               </div>
 
               <!-- Options Row: Remember Me & Forgot Password -->

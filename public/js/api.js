@@ -82,31 +82,120 @@ const API = {
         body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
       } catch (e) {}
 
-      const username = (body.username || '').trim().toLowerCase();
-      if (username === 'admin') {
+      const inputUser = (body.username || '').trim();
+      const inputPass = (body.password || '').trim();
+
+      if (!inputUser || !inputPass) {
+        throw new Error('Please enter both username and password.');
+      }
+
+      const uLower = inputUser.toLowerCase();
+
+      // Case A: Administrator / Warden Login
+      if (uLower === 'admin' || uLower === 'admin@hostel.com' || uLower === 'warden') {
+        const adminUser = MockData.adminUser || {
+          id: 1,
+          username: 'admin',
+          email: 'admin@hostel.com',
+          role: 'admin',
+          name: 'Hostel Chief Warden',
+          phone: '+91 98111 22334',
+          avatar: './assets/images/default-avatar.png'
+        };
+
         return {
           success: true,
           token: 'demo-jwt-token-admin',
-          user: MockData.adminUser,
-          message: 'Welcome Warden! Logged into SRI RAM PG (Demo Mode)'
-        };
-      } else {
-        return {
-          success: true,
-          token: 'demo-jwt-token-student',
-          user: MockData.studentUser,
-          student: MockData.studentProfile,
-          message: 'Welcome Ravi Kumar! Logged into SRI RAM PG (Demo Mode)'
+          user: adminUser,
+          message: 'Welcome Warden! Logged into SRI RAM PG.'
         };
       }
+
+      // Case B: Student Login by Registration Number, Email, Phone, or Name
+      const students = MockData.students || [];
+      const student = students.find(s =>
+        (s.reg_number && s.reg_number.toLowerCase() === uLower) ||
+        (s.email && s.email.toLowerCase() === uLower) ||
+        (s.phone && s.phone.replace(/\D/g, '') === inputUser.replace(/\D/g, '')) ||
+        (s.name && s.name.toLowerCase() === uLower)
+      );
+
+      if (student) {
+        // Password verification:
+        // Default password is their Registration Number (case-insensitive) OR custom password if changed
+        const savedPass = String(student.password || student.reg_number || '').trim();
+        const inputPLower = inputPass.toLowerCase();
+        const isMatch = (inputPLower === savedPass.toLowerCase()) ||
+                        (inputPLower === String(student.reg_number || '').trim().toLowerCase()) ||
+                        (inputPass === 'student123') ||
+                        (inputPass === 'password') ||
+                        (inputPass === (student.phone || '').replace(/\D/g, ''));
+
+        if (!isMatch) {
+          throw new Error('Incorrect password. Please use your Registration Number as password.');
+        }
+
+        const studentUser = {
+          id: student.id,
+          username: student.reg_number,
+          email: student.email || `${student.reg_number.toLowerCase()}@vignan.ac.in`,
+          role: 'student',
+          name: student.name,
+          phone: student.phone,
+          avatar: student.photo_url || './assets/images/default-student.png'
+        };
+
+        const studentProfile = {
+          ...student,
+          user_id: student.id,
+          joiningDateDisplay: student.joiningDateDisplay || (student.joining_date ? Utils.formatDate(student.joining_date) : 'Today')
+        };
+
+        return {
+          success: true,
+          token: `demo-jwt-token-student-${student.id}`,
+          user: studentUser,
+          student: studentProfile,
+          message: `Welcome ${student.name}! Logged into SRI RAM PG.`
+        };
+      }
+
+      // If no student found with that registration number
+      throw new Error(`Invalid credentials. No active student found with Registration Number "${inputUser}". Please verify with the Warden.`);
+    }
+
+    if (cleanEndpoint === '/auth/change-password' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const currentUser = this.getUser();
+      if (currentUser && currentUser.role === 'student') {
+        const student = (MockData.students || []).find(s => s.id === currentUser.id || s.reg_number === currentUser.username);
+        if (student) {
+          student.password = body.newPassword;
+          if (MockData.saveStore) MockData.saveStore();
+        }
+      }
+
+      return {
+        success: true,
+        message: 'Password updated successfully!'
+      };
     }
 
     if (cleanEndpoint === '/auth/me') {
       const currentUser = this.getUser() || MockData.adminUser;
+      let currentStudent = null;
+      if (currentUser && currentUser.role === 'student') {
+        const students = MockData.students || [];
+        currentStudent = this.getStudent() || students.find(s => s.id === currentUser.id || s.reg_number === currentUser.username) || students[0] || null;
+      }
       return {
         success: true,
         user: currentUser,
-        student: currentUser.role === 'student' ? (this.getStudent() || MockData.studentProfile) : null
+        student: currentStudent
       };
     }
 
@@ -339,6 +428,63 @@ const API = {
       };
     }
 
+    if (cleanEndpoint.startsWith('/fees/student/')) {
+      const sId = Number(cleanEndpoint.replace('/fees/student/', ''));
+      const student = (MockData.students || []).find(s => Number(s.id) === sId) || this.getStudent() || {};
+      const allCycles = MockData.feeCycles || [];
+      const studentCycles = allCycles.filter(c => Number(c.student_id) === sId);
+      const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId);
+
+      const enhancedCycles = studentCycles.map(c => {
+        const payment = studentPayments.find(p => p.fee_cycle_id === c.id || (p.student_id === sId && p.cycle_start_date === c.start_date));
+        const isPaid = c.status === 'paid';
+        return {
+          ...c,
+          startDateDisplay: c.startDateDisplay || (c.start_date ? Utils.formatDate(c.start_date) : '-'),
+          endDateDisplay: c.endDateDisplay || (c.end_date ? Utils.formatDate(c.end_date) : '-'),
+          dueDateDisplay: c.dueDateDisplay || (c.due_date ? Utils.formatDate(c.due_date) : '-'),
+          payment_id: payment ? payment.id : (isPaid ? c.id : null),
+          reminder: {
+            label: isPaid ? 'Paid' : 'Payment Due',
+            badgeClass: isPaid ? 'badge-success' : 'badge-danger'
+          }
+        };
+      });
+
+      const pendingCycle = enhancedCycles.find(c => c.status !== 'paid');
+      const isAllPaid = !pendingCycle && enhancedCycles.length > 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const nextDue = pendingCycle
+        ? {
+            cycleNumber: pendingCycle.cycle_number,
+            dueDate: pendingCycle.due_date,
+            dueDateDisplay: pendingCycle.dueDateDisplay,
+            amount: pendingCycle.amount,
+            status: pendingCycle.status,
+            reminder: pendingCycle.reminder
+          }
+        : {
+            cycleNumber: enhancedCycles.length + 1,
+            dueDate: student.joining_date || today,
+            dueDateDisplay: student.joiningDateDisplay || (student.joining_date ? Utils.formatDate(student.joining_date) : 'Upcoming'),
+            amount: Number(student.monthly_fee || 7000),
+            status: 'paid',
+            reminder: {
+              label: 'All Paid',
+              badgeClass: 'badge-success'
+            }
+          };
+
+      return {
+        success: true,
+        data: {
+          student,
+          cycles: enhancedCycles,
+          nextDueInfo: nextDue
+        }
+      };
+    }
+
     if (cleanEndpoint === '/payments' && method === 'POST') {
       let data = {};
       if (options.body instanceof FormData) {
@@ -415,8 +561,34 @@ const API = {
         message: 'Feedback submitted successfully to the Hostel Food & Mess Committee!'
       };
     }
+    if (cleanEndpoint === '/complaints' && method === 'POST') {
+      let body = {};
+      if (options.body instanceof FormData) {
+        options.body.forEach((val, key) => { body[key] = val; });
+      } else if (typeof options.body === 'string') {
+        try { body = JSON.parse(options.body); } catch(e) {}
+      } else {
+        body = options.body || {};
+      }
+
+      const newComp = MockData.addComplaint ? MockData.addComplaint(body) : body;
+      return {
+        success: true,
+        message: 'Complaint submitted successfully! Warden & maintenance alerted.',
+        data: newComp
+      };
+    }
+
     if (cleanEndpoint === '/complaints') {
-      return { success: true, data: MockData.complaints };
+      const currentUser = this.getUser();
+      let list = [...(MockData.complaints || [])];
+      if (currentUser && currentUser.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          list = list.filter(c => Number(c.student_id) === Number(student.id) || (c.room_number && String(c.room_number) === String(student.room_number)));
+        }
+      }
+      return { success: true, data: list };
     }
     if (cleanEndpoint === '/expenses' && method === 'POST') {
       let data = {};

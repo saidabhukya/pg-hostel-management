@@ -225,6 +225,9 @@
       if (s.college && (s.college.includes("Vignan's Foundation") || s.college === 'Vignan University, Vadlamudi' || s.college === 'Vignan University')) {
         s.college = 'VIGNAN UNIVERSITY';
       }
+      if (!s.password) {
+        s.password = s.reg_number;
+      }
       activeStudentMap.set(s.id, s);
     });
 
@@ -819,6 +822,7 @@
         bed_label: bedLabel,
         bed_id: Number(data.bedId || data.bed_id || 0),
         fee_status: feeStatus,
+        password: data.password || data.regNumber || data.reg_number,
         status: 'active'
       };
 
@@ -1240,6 +1244,34 @@
         store.announcements = store.announcements.filter(a => Number(a.id) !== annId);
         saveStore();
       }
+    },
+
+    addComplaint(data) {
+      if (!Array.isArray(store.complaints)) store.complaints = [];
+      const cId = store.complaints.length ? Math.max(...store.complaints.map(c => Number(c.id) || 0)) + 1 : 1;
+      const user = (window.API && typeof window.API.getUser === 'function' && window.API.getUser()) || {};
+      const student = (window.API && typeof window.API.getStudent === 'function' && window.API.getStudent()) || {};
+
+      const newComplaint = {
+        id: cId,
+        student_id: student.id || user.id || 1,
+        student_name: student.name || user.name || data.student_name || 'Resident Student',
+        room_number: student.room_number || data.room_number || '101',
+        title: (data.title || '').trim(),
+        description: (data.description || '').trim(),
+        category: data.category || 'Maintenance & Repairs',
+        priority: data.priority || 'Medium',
+        status: 'Pending',
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      };
+
+      store.complaints.unshift(newComplaint);
+      saveStore();
+      return newComplaint;
+    },
+
+    saveStore() {
+      saveStore();
     },
 
     resetToClean() {
