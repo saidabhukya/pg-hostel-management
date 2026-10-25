@@ -89,7 +89,7 @@ const StudentDashboard = {
           </div>
           <div class="kpi-value">10:00 PM</div>
           <div class="kpi-footer">
-            <span>Helpline: +91 120 232 4000</span>
+            <span>Opp. Vignan University, Vadlamudi</span>
           </div>
         </div>
       </div>

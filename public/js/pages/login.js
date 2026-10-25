@@ -108,7 +108,7 @@ const LoginPage = {
 
             <!-- Title & Subtitle -->
             <h1 class="sri-ram-card-title">SRI RAM <span class="title-highlight">PG</span></h1>
-            <p class="sri-ram-card-subtitle">Your comfort, your home away from home.</p>
+            <p class="sri-ram-card-subtitle">Opposite Vignan University, Vadlamudi • Your home away from home</p>
 
             <!-- Login Form -->
             <form id="login-form" onsubmit="LoginPage.handleSubmit(event)" novalidate>

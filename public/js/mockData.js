@@ -348,8 +348,8 @@
       leaveRequests: [],
       settings: {
         hostel_name: 'SRI RAM PG',
-        hostel_address: 'Knowledge Park III, Institutional Area, Greater Noida, UP - 201306',
-        contact_phone: '+91 120 232 4000',
+        hostel_address: 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213',
+        contact_phone: '+91 98111 22334',
         contact_email: 'warden@srirampg.in',
         default_monthly_fee: '7000',
         curfew_time: '10:00 PM'
@@ -390,6 +390,20 @@
     }
     if (!Array.isArray(store.notifications) || store.notifications.length === 0) {
       store.notifications = getDefaultNotifications();
+    }
+    if (!store.settings) {
+      store.settings = {
+        hostel_name: 'SRI RAM PG',
+        hostel_address: 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213',
+        contact_phone: '+91 98111 22334',
+        contact_email: 'warden@srirampg.in',
+        default_monthly_fee: '7000',
+        curfew_time: '10:00 PM'
+      };
+    } else {
+      if (!store.settings.hostel_address || store.settings.hostel_address.includes('Greater Noida') || store.settings.hostel_address.includes('Knowledge Park')) {
+        store.settings.hostel_address = 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213';
+      }
     }
 
     const activeStudentMap = new Map();
@@ -1723,6 +1737,13 @@
         store.notifications = store.notifications.filter(n => !n.is_read);
         saveStore();
       }
+    },
+
+    updateSettings(data) {
+      if (!store.settings) store.settings = {};
+      Object.assign(store.settings, data);
+      saveStore();
+      return store.settings;
     },
 
     saveStore() {

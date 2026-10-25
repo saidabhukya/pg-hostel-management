@@ -82,7 +82,7 @@ const SettingsPage = {
 
               <div class="form-group" style="margin-bottom:1.5rem;">
                 <label class="form-label">Campus Address</label>
-                <input type="text" id="set-hostel-addr" class="form-control" value="Knowledge Park III, Institutional Area, Greater Noida, UP - 201306" />
+                <input type="text" id="set-hostel-addr" class="form-control" value="Opposite Vignan University, Vadlamudi, Guntur, AP - 522213" />
               </div>
 
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
