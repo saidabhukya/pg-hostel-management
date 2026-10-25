@@ -315,6 +315,7 @@ const StudentsPage = {
       if (res.success) {
         Toast.success(res.message || `${studentName} has been vacated and their bed is now free.`);
         this.loadStudents();
+        if (window.HostelStructurePage) HostelStructurePage.loadStructure();
         // Refresh dashboard counts if visible
         if (window.AdminDashboard && App.currentRoute === 'dashboard') {
           AdminDashboard.loadData();

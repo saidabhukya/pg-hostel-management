@@ -89,6 +89,10 @@ const RoomDetailModal = {
                           <i data-lucide="arrow-right-left" style="width:14px;height:14px;"></i>
                           <span>Transfer</span>
                         </button>
+                        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;" onclick="RoomDetailModal.vacateOccupant(${b.student_id}, '${Utils.escapeHTML(b.student_name)}', '${room.room_number}', '${b.bed_label}')" title="Vacate student and make bed available">
+                          <i data-lucide="user-minus" style="width:14px;height:14px;"></i>
+                          <span>Vacate</span>
+                        </button>
                       ` : ''}
                     ` : `
                       ${isAdmin ? `
@@ -207,6 +211,25 @@ const RoomDetailModal = {
       }
     } catch (e) {
       Toast.error('Transfer failed: ' + e.message);
+    }
+  },
+
+  async vacateOccupant(studentId, studentName, roomNumber, bedLabel) {
+    if (!confirm(`Are you sure you want to remove ${studentName} from PG? This will immediately free up ${bedLabel} in Room ${roomNumber} and show it as Available.`)) {
+      return;
+    }
+    try {
+      Toast.info(`Vacating ${studentName}...`);
+      const res = await API.delete(`/students/${studentId}`);
+      if (res.success) {
+        Toast.success(`${studentName} removed! ${bedLabel} in Room ${roomNumber} is now Available.`);
+        this.open(roomNumber);
+        if (window.HostelStructurePage) HostelStructurePage.loadStructure();
+        if (window.StudentsPage) StudentsPage.loadStudents();
+        if (window.AdminDashboard && App.currentRoute === 'dashboard') AdminDashboard.loadData();
+      }
+    } catch (e) {
+      Toast.error(e.message || 'Failed to vacate student.');
     }
   }
 };

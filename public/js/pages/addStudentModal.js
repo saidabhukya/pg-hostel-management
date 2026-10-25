@@ -533,6 +533,19 @@ const AddStudentModal = {
       fd.append('monthlyFee',  monthlyFee);
       fd.append('bedId',       bedId);
 
+      const selectedBed = this.allAvailableBeds.find(b => String(b.bed_id) === String(bedId));
+      const roomNum = selectedBed ? selectedBed.room_number : (document.getElementById('as-room')?.value || '');
+      const floorNum = selectedBed ? selectedBed.floor_number : (document.getElementById('as-floor')?.value || '');
+      
+      const bedSelect = document.getElementById('as-bed');
+      const bedText = bedSelect && bedSelect.selectedIndex >= 0 ? bedSelect.options[bedSelect.selectedIndex].text : '';
+      const matchedLabel = (bedText.match(/Bed-[A-E]/i) || [])[0];
+      const bedLabel = selectedBed ? selectedBed.bed_label : (matchedLabel || 'Bed-A');
+
+      fd.append('roomNumber',  roomNum);
+      fd.append('floorNumber', floorNum);
+      fd.append('bedLabel',    bedLabel);
+
       const paymentStatusEl = document.getElementById('as-paymentStatus');
       const paymentMethodEl = document.getElementById('as-paymentMethod');
       fd.append('paymentStatus', paymentStatusEl ? paymentStatusEl.value : 'pending');
@@ -581,15 +594,9 @@ const AddStudentModal = {
         Utils.renderIcons();
 
         // Refresh views if open
-        if (window.StudentsPage && App.currentRoute === 'students') {
-          StudentsPage.loadStudents();
-        }
-        if (window.HostelStructurePage && App.currentRoute === 'hostel-structure') {
-          HostelStructurePage.loadStructure();
-        }
-        if (window.AdminDashboard && App.currentRoute === 'dashboard') {
-          AdminDashboard.loadData();
-        }
+        if (window.StudentsPage) StudentsPage.loadStudents();
+        if (window.HostelStructurePage) HostelStructurePage.loadStructure();
+        if (window.AdminDashboard && App.currentRoute === 'dashboard') AdminDashboard.loadData();
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to add student.');

@@ -196,6 +196,30 @@ const API = {
     }
 
     // 4. Hostel Structure & Rooms
+    if (cleanEndpoint === '/rooms/beds/transfer' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+      if (MockData.transferStudent) {
+        MockData.transferStudent(body.studentId, body.targetBedId, body.reason);
+      }
+      return { success: true, message: 'Student transferred successfully!' };
+    }
+
+    if (cleanEndpoint.startsWith('/rooms/beds/') && cleanEndpoint.endsWith('/status') && method === 'PUT') {
+      const parts = cleanEndpoint.split('/');
+      const bedId = parts[3];
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+      if (MockData.updateBedStatus) {
+        MockData.updateBedStatus(bedId, body.status);
+      }
+      return { success: true, message: `Bed status updated to ${body.status}` };
+    }
+
     if (cleanEndpoint === '/rooms/options/available') {
       return { success: true, data: MockData.availableBeds || [] };
     }

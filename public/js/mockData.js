@@ -1,70 +1,21 @@
 /**
  * Clean State Data Store for Static Hosting (GitHub Pages)
- * Zero sample data: Ready for real students, payments, rooms, and expenses.
- * Persists all newly added records to browser localStorage.
+ * Single Source of Truth: All room occupancy and available beds are dynamically
+ * calculated directly from `store.students`.
+ * When a student is enrolled, their bed is marked occupied.
+ * When a student is removed/vacated, their bed automatically and immediately becomes Available.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_clean_store_v4';
+  const STORAGE_KEY = 'sri_ram_pg_live_store_v5';
 
-  // Purge any old demo stores from browser localStorage
+  // Purge any older/conflicting demo stores
   try {
-    ['sri_ram_pg_clean_store_v1', 'sri_ram_pg_clean_store_v2', 'sri_ram_pg_clean_store_v3', 'sri_ram_pg_live_store_v1'].forEach(k => {
+    ['sri_ram_pg_clean_store_v1', 'sri_ram_pg_clean_store_v2', 'sri_ram_pg_clean_store_v3', 'sri_ram_pg_clean_store_v4', 'sri_ram_pg_live_store_v1'].forEach(k => {
       localStorage.removeItem(k);
     });
   } catch (e) {}
 
-  // Build 5 floors, 50 rooms (101-110, 201-210, etc.), 250 beds (Bed-A to Bed-E)
-  function buildCleanHostelStructure() {
-    const structure = [];
-    const availableBeds = [];
-    let bedIdCounter = 1;
-
-    for (let f = 1; f <= 5; f++) {
-      const rooms = [];
-      for (let r = 1; r <= 10; r++) {
-        const roomNum = `${f}${String(r).padStart(2, '0')}`;
-        rooms.push({
-          room_number: roomNum,
-          capacity: 5,
-          occupied_beds: 0,
-          available_beds: 5,
-          maintenance_beds: 0
-        });
-
-        // 5 beds per room: Bed-A, Bed-B, Bed-C, Bed-D, Bed-E
-        const bedLetters = ['A', 'B', 'C', 'D', 'E'];
-        for (let b = 1; b <= 5; b++) {
-          availableBeds.push({
-            bed_id: bedIdCounter++,
-            bed_number: b,
-            bed_label: `Bed-${bedLetters[b - 1]}`,
-            room_id: (f - 1) * 10 + r,
-            room_number: roomNum,
-            floor_id: f,
-            floor_number: f,
-            floor_name: `Floor ${f}`
-          });
-        }
-      }
-
-      structure.push({
-        floor_number: f,
-        name: `Floor ${f}`,
-        stats: {
-          totalBeds: 50,
-          occupiedBeds: 0,
-          availableBeds: 50
-        },
-        rooms: rooms
-      });
-    }
-
-    return { structure, availableBeds };
-  }
-
   function getCleanInitialState() {
-    const { structure, availableBeds } = buildCleanHostelStructure();
-
     return {
       adminUser: {
         id: 1,
@@ -76,8 +27,7 @@
         avatar: './assets/images/default-avatar.png'
       },
       students: [],
-      structure: structure,
-      availableBeds: availableBeds,
+      maintenanceBeds: [], // Array of unique bed identifiers e.g. "101_Bed-C"
       feeCycles: [],
       payments: [],
       complaints: [],
@@ -111,6 +61,10 @@
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       store = JSON.parse(saved);
+      if (!Array.isArray(store.students)) store.students = [];
+      if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
+      if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
+      if (!Array.isArray(store.payments)) store.payments = [];
     } else {
       store = getCleanInitialState();
     }
@@ -126,11 +80,11 @@
     }
   }
 
+  const bedLetters = ['A', 'B', 'C', 'D', 'E'];
+
   const MockData = {
     get adminUser() { return store.adminUser; },
     get students() { return store.students; },
-    get structure() { return store.structure; },
-    get availableBeds() { return store.availableBeds; },
     get feeCycles() { return store.feeCycles; },
     get payments() { return store.payments; },
     get complaints() { return store.complaints; },
@@ -141,11 +95,105 @@
     get settings() { return store.settings; },
     get messMenu() { return store.messMenu; },
 
+    /**
+     * Dynamically build hostel structure (5 floors, 50 rooms, 5 beds each)
+     * derived strictly from `store.students` and `store.maintenanceBeds`.
+     */
+    get structure() {
+      const floors = [];
+
+      for (let f = 1; f <= 5; f++) {
+        const rooms = [];
+        let floorOccupied = 0;
+        let floorMaintenance = 0;
+
+        for (let r = 1; r <= 10; r++) {
+          const roomNum = `${f}${String(r).padStart(2, '0')}`;
+          const occupants = store.students.filter(s => String(s.room_number) === roomNum);
+          const occupiedCount = occupants.length;
+
+          let maintenanceCount = 0;
+          for (let b = 1; b <= 5; b++) {
+            const key = `${roomNum}_Bed-${bedLetters[b - 1]}`;
+            if (store.maintenanceBeds.includes(key)) maintenanceCount++;
+          }
+
+          const availableCount = Math.max(0, 5 - occupiedCount - maintenanceCount);
+          floorOccupied += occupiedCount;
+          floorMaintenance += maintenanceCount;
+
+          rooms.push({
+            id: (f - 1) * 10 + r,
+            floor_id: f,
+            floor_number: f,
+            room_number: roomNum,
+            capacity: 5,
+            occupied_beds: occupiedCount,
+            available_beds: availableCount,
+            maintenance_beds: maintenanceCount
+          });
+        }
+
+        floors.push({
+          id: f,
+          floor_number: f,
+          name: `Floor ${f}`,
+          stats: {
+            totalRooms: 10,
+            totalBeds: 50,
+            occupiedBeds: floorOccupied,
+            availableBeds: Math.max(0, 50 - floorOccupied - floorMaintenance),
+            maintenanceBeds: floorMaintenance
+          },
+          rooms: rooms
+        });
+      }
+
+      return floors;
+    },
+
+    /**
+     * Dynamically return all unassigned beds across all 50 rooms.
+     */
+    get availableBeds() {
+      const list = [];
+
+      for (let f = 1; f <= 5; f++) {
+        for (let r = 1; r <= 10; r++) {
+          const roomNum = `${f}${String(r).padStart(2, '0')}`;
+          const occupants = store.students.filter(s => String(s.room_number) === roomNum);
+
+          for (let b = 1; b <= 5; b++) {
+            const label = `Bed-${bedLetters[b - 1]}`;
+            const key = `${roomNum}_${label}`;
+            const isOccupied = occupants.some(s => s.bed_label === label);
+            const isMaintenance = store.maintenanceBeds.includes(key);
+
+            if (!isOccupied && !isMaintenance) {
+              list.push({
+                bed_id: (f - 1) * 50 + (r - 1) * 5 + b,
+                bed_number: b,
+                bed_label: label,
+                room_id: (f - 1) * 10 + r,
+                room_number: roomNum,
+                floor_id: f,
+                floor_number: f,
+                floor_name: `Floor ${f}`
+              });
+            }
+          }
+        }
+      }
+
+      return list;
+    },
+
     get stats() {
       const totalStudents = store.students.length;
       const totalBeds = 250;
       const occupiedBeds = totalStudents;
-      const availableBeds = Math.max(0, totalBeds - occupiedBeds);
+      const maintenanceBeds = store.maintenanceBeds.length;
+      const availableBeds = Math.max(0, totalBeds - occupiedBeds - maintenanceBeds);
       const occupancyRate = ((occupiedBeds / totalBeds) * 100).toFixed(1);
 
       let feesCollected = 0;
@@ -174,7 +222,7 @@
         totalBeds,
         occupiedBeds,
         availableBeds,
-        maintenanceBeds: 0,
+        maintenanceBeds,
         occupancyRate,
         feesCollected,
         pendingFees,
@@ -186,7 +234,7 @@
     },
 
     get charts() {
-      const floorOccupancy = store.structure.map(f => ({
+      const floorOccupancy = this.structure.map(f => ({
         floor_number: f.floor_number,
         floor_name: f.name,
         total_beds: f.stats.totalBeds,
@@ -204,10 +252,97 @@
       };
     },
 
+    /**
+     * Returns exact 5 beds for any room, with real student details if occupied.
+     * Prevents duplicate beds and duplicate students across all rooms.
+     */
+    getRoomDetails(rNum) {
+      rNum = String(rNum);
+      const floorNum = parseInt(rNum.charAt(0), 10) || 1;
+      const studentsInRoom = store.students.filter(s => String(s.room_number) === rNum);
+      const beds = [];
+
+      for (let b = 1; b <= 5; b++) {
+        const label = `Bed-${bedLetters[b - 1]}`;
+        const key = `${rNum}_${label}`;
+        const bedId = (floorNum - 1) * 50 + (parseInt(rNum.slice(-2), 10) - 1) * 5 + b;
+
+        const student = studentsInRoom.find(s => s.bed_label === label);
+        const isMaintenance = store.maintenanceBeds.includes(key);
+
+        if (student) {
+          beds.push({
+            id: bedId,
+            bed_number: b,
+            bed_label: label,
+            status: 'occupied',
+            student_id: student.id,
+            student_name: student.name,
+            reg_number: student.reg_number,
+            student_phone: student.phone,
+            student_email: student.email,
+            college: student.college || 'Vignan University',
+            course: student.course || 'B.Tech',
+            year: student.year || '1st Year',
+            joining_date: student.joining_date
+          });
+        } else if (isMaintenance) {
+          beds.push({
+            id: bedId,
+            bed_number: b,
+            bed_label: label,
+            status: 'maintenance',
+            student_id: null,
+            student_name: null,
+            reg_number: null,
+            student_phone: null,
+            student_email: null,
+            college: null,
+            course: null,
+            year: null,
+            joining_date: null
+          });
+        } else {
+          beds.push({
+            id: bedId,
+            bed_number: b,
+            bed_label: label,
+            status: 'available',
+            student_id: null,
+            student_name: null,
+            reg_number: null,
+            student_phone: null,
+            student_email: null,
+            college: null,
+            course: null,
+            year: null,
+            joining_date: null
+          });
+        }
+      }
+
+      return {
+        room: {
+          id: (floorNum - 1) * 10 + (parseInt(rNum.slice(-2), 10) || 1),
+          room_number: rNum,
+          capacity: 5,
+          occupied_count: studentsInRoom.length,
+          type: 'Standard 5-Bed',
+          floor_number: floorNum,
+          floor_name: `Floor ${floorNum}`
+        },
+        beds: beds
+      };
+    },
+
     addStudent(data) {
       const studentId = store.students.length ? Math.max(...store.students.map(s => s.id)) + 1 : 1;
       const isPaidNow = (data.paymentStatus === 'paid' || data.payment_status === 'paid');
       const feeStatus = isPaidNow ? 'paid' : 'pending';
+
+      const bedLabel = (data.bedLabel || data.bed_label || 'Bed-A').trim();
+      const roomNumber = String(data.roomNumber || data.room_number || '101').trim();
+      const floorNumber = Number(data.floorNumber || data.floor_number || parseInt(roomNumber.charAt(0), 10) || 1);
 
       const newStudent = {
         id: studentId,
@@ -215,39 +350,19 @@
         name: data.name,
         email: data.email,
         phone: data.phone,
-        college: data.college || 'College',
-        course: data.course || 'Degree',
+        college: data.college || 'Vignan University, Vadlamudi',
+        course: data.course || 'B.Tech - Artificial Intelligence & Machine Learning (AI & ML)',
         joining_date: data.joiningDate || data.joining_date || new Date().toISOString().slice(0, 10),
         monthly_fee: Number(data.monthlyFee || data.monthly_fee || 7000),
-        room_number: String(data.roomNumber || data.room_number || ''),
-        floor_number: Number(data.floorNumber || data.floor_number || 1),
-        bed_label: data.bedLabel || data.bed_label || 'Bed-A',
+        room_number: roomNumber,
+        floor_number: floorNumber,
+        bed_label: bedLabel,
         bed_id: Number(data.bedId || data.bed_id || 0),
         fee_status: feeStatus,
         status: 'active'
       };
 
       store.students.unshift(newStudent);
-
-      // Mark bed occupied in structure
-      const floor = store.structure.find(f => f.floor_number === newStudent.floor_number);
-      if (floor) {
-        floor.stats.occupiedBeds = Math.min(floor.stats.totalBeds, floor.stats.occupiedBeds + 1);
-        floor.stats.availableBeds = Math.max(0, floor.stats.totalBeds - floor.stats.occupiedBeds);
-        const room = floor.rooms.find(r => r.room_number === newStudent.room_number);
-        if (room) {
-          room.occupied_beds = Math.min(room.capacity, room.occupied_beds + 1);
-          room.available_beds = Math.max(0, room.capacity - room.occupied_beds);
-        }
-      }
-
-      // Remove allocated bed from available list
-      if (newStudent.bed_id) {
-        store.availableBeds = store.availableBeds.filter(b => b.bed_id !== newStudent.bed_id);
-      } else {
-        const bedIdx = store.availableBeds.findIndex(b => b.room_number === newStudent.room_number && b.bed_label === newStudent.bed_label);
-        if (bedIdx !== -1) store.availableBeds.splice(bedIdx, 1);
-      }
 
       // Initial Fee Cycle (PENDING by default, unless marked Paid Now)
       const feeCycleId = store.feeCycles.length + 1;
@@ -291,6 +406,60 @@
       return newStudent;
     },
 
+    deleteStudent(studentId) {
+      const idNum = Number(studentId);
+      store.students = store.students.filter(s => s.id !== idNum);
+      store.feeCycles = store.feeCycles.filter(c => c.student_id !== idNum);
+      saveStore();
+    },
+
+    transferStudent(studentId, targetBedId, reason) {
+      const sId = Number(studentId);
+      const student = store.students.find(s => s.id === sId);
+      if (!student) throw new Error('Student not found.');
+
+      // Lookup target bed from available beds
+      const target = this.availableBeds.find(b => String(b.bed_id) === String(targetBedId));
+      if (!target) throw new Error('Destination bed is not available.');
+
+      student.room_number = target.room_number;
+      student.floor_number = target.floor_number;
+      student.bed_label = target.bed_label;
+      student.bed_id = target.bed_id;
+
+      // Update fee cycle room/bed references
+      store.feeCycles.forEach(c => {
+        if (c.student_id === sId) {
+          c.room_number = target.room_number;
+          c.bed_label = target.bed_label;
+        }
+      });
+
+      saveStore();
+      return student;
+    },
+
+    updateBedStatus(bedId, newStatus) {
+      // Find room and bed label from bedId (1..250)
+      const bId = Number(bedId);
+      const f = Math.floor((bId - 1) / 50) + 1;
+      const roomIdx = Math.floor(((bId - 1) % 50) / 5) + 1;
+      const bIdx = ((bId - 1) % 5) + 1;
+      const roomNum = `${f}${String(roomIdx).padStart(2, '0')}`;
+      const label = `Bed-${bedLetters[bIdx - 1]}`;
+      const key = `${roomNum}_${label}`;
+
+      if (newStatus === 'maintenance') {
+        if (!store.maintenanceBeds.includes(key)) {
+          store.maintenanceBeds.push(key);
+        }
+      } else {
+        store.maintenanceBeds = store.maintenanceBeds.filter(k => k !== key);
+      }
+
+      saveStore();
+    },
+
     recordPayment(data) {
       const studentId = Number(data.studentId || data.student_id);
       const student = store.students.find(s => s.id === studentId);
@@ -312,7 +481,6 @@
 
       store.payments.unshift(newPayment);
 
-      // Update student and fee cycle status to paid
       if (student) {
         student.fee_status = 'paid';
       }
@@ -324,102 +492,6 @@
 
       saveStore();
       return newPayment;
-    },
-
-    deleteStudent(studentId) {
-      const idx = store.students.findIndex(s => s.id === Number(studentId));
-      if (idx !== -1) {
-        const student = store.students[idx];
-        store.students.splice(idx, 1);
-
-        // Free up bed
-        const floor = store.structure.find(f => f.floor_number === student.floor_number);
-        if (floor) {
-          floor.stats.occupiedBeds = Math.max(0, floor.stats.occupiedBeds - 1);
-          floor.stats.availableBeds = Math.min(floor.stats.totalBeds, floor.stats.totalBeds - floor.stats.occupiedBeds);
-          const room = floor.rooms.find(r => r.room_number === student.room_number);
-          if (room) {
-            room.occupied_beds = Math.max(0, room.occupied_beds - 1);
-            room.available_beds = Math.min(room.capacity, room.capacity - room.occupied_beds);
-          }
-        }
-
-        // Add bed back to available list
-        store.availableBeds.push({
-          bed_id: Date.now(),
-          bed_number: 1,
-          bed_label: student.bed_label,
-          room_id: 1,
-          room_number: student.room_number,
-          floor_id: student.floor_number,
-          floor_number: student.floor_number,
-          floor_name: `Floor ${student.floor_number}`
-        });
-
-        saveStore();
-      }
-    },
-
-    getRoomDetails(rNum) {
-      rNum = String(rNum);
-      const floorNum = parseInt(rNum.charAt(0), 10) || 1;
-      const floor = store.structure.find(f => f.floor_number === floorNum);
-
-      // Find real students assigned to this room from store.students
-      const studentsInRoom = store.students.filter(s => String(s.room_number) === rNum);
-
-      const bedLetters = ['A', 'B', 'C', 'D', 'E'];
-      const beds = [];
-
-      for (let b = 1; b <= 5; b++) {
-        const label = `Bed-${bedLetters[b - 1]}`;
-        const student = studentsInRoom.find(s => s.bed_label === label || s.bed_number === b);
-
-        if (student) {
-          beds.push({
-            id: (floorNum - 1) * 50 + (parseInt(rNum.slice(-2), 10) - 1) * 5 + b,
-            bed_number: b,
-            bed_label: label,
-            status: 'occupied',
-            student_id: student.id,
-            student_name: student.name,
-            reg_number: student.reg_number,
-            student_phone: student.phone,
-            student_email: student.email,
-            course: student.course,
-            year: student.year || '1st Year',
-            joining_date: student.joining_date
-          });
-        } else {
-          beds.push({
-            id: (floorNum - 1) * 50 + (parseInt(rNum.slice(-2), 10) - 1) * 5 + b,
-            bed_number: b,
-            bed_label: label,
-            status: 'available',
-            student_id: null,
-            student_name: null,
-            reg_number: null,
-            student_phone: null,
-            student_email: null,
-            course: null,
-            year: null,
-            joining_date: null
-          });
-        }
-      }
-
-      return {
-        room: {
-          id: (floorNum - 1) * 10 + (parseInt(rNum.slice(-2), 10) || 1),
-          room_number: rNum,
-          capacity: 5,
-          occupied_count: studentsInRoom.length,
-          type: 'Standard 5-Bed',
-          floor_number: floorNum,
-          floor_name: `Floor ${floorNum}`
-        },
-        beds: beds
-      };
     },
 
     resetToClean() {
