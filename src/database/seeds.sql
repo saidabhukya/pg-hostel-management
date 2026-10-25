@@ -1,5 +1,5 @@
 -- ==========================================================
--- PG HOSTEL MANAGEMENT SYSTEM - SAMPLE DATA (MySQL 8.0+)
+-- SRI RAM PG - SAMPLE DATA (MySQL 8.0+)
 -- ==========================================================
 
 USE `pg_hostel_db`;
@@ -26,10 +26,10 @@ ON DUPLICATE KEY UPDATE `name`=VALUES(`name`);
 
 -- 4. Sample Settings
 INSERT INTO `settings` (`key_name`, `value`, `description`) VALUES
-('hostel_name', 'PG Hostel Management System', 'Hostel Name'),
-('hostel_address', 'Knowledge Park III, Institutional Area, Greater Noida, UP - 201306', 'Hostel Official Address'),
-('contact_phone', '+91 120 232 4000', 'Helpline Phone Number'),
-('contact_email', 'warden@pghostel.edu', 'Official Email'),
+('hostel_name', 'SRI RAM PG', 'Hostel Name'),
+('hostel_address', 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213', 'Hostel Official Address'),
+('contact_phone', '+91 98765 43210', 'Helpline Phone Number'),
+('contact_email', 'warden@srirampg.in', 'Official Email'),
 ('default_monthly_fee', '7000', 'Default Monthly Fee'),
 ('curfew_time', '10:00 PM', 'Night Curfew Time')
 ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);

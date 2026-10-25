@@ -184,7 +184,7 @@ const ReceiptModal = {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('PG HOSTEL MANAGEMENT SYSTEM', 105, 12, { align: 'center' });
+      doc.text('SRI RAM PG', 105, 12, { align: 'center' });
 
       // Subheader & Receipt #
       doc.setTextColor(15, 23, 42);

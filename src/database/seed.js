@@ -601,10 +601,10 @@ async function seed() {
 
   // 14. Seed Settings
   const settingsList = [
-    { key: 'hostel_name', val: 'PG Hostel Management System', desc: 'Hostel Name' },
-    { key: 'hostel_address', val: 'Knowledge Park III, Institutional Area, Greater Noida, UP - 201306', desc: 'Hostel Official Address' },
-    { key: 'contact_phone', val: '+91 120 232 4000', desc: 'Helpline Phone Number' },
-    { key: 'contact_email', val: 'warden@pghostel.edu', desc: 'Official Email' },
+    { key: 'hostel_name', val: 'SRI RAM PG', desc: 'Hostel Name' },
+    { key: 'hostel_address', val: 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213', desc: 'Hostel Official Address' },
+    { key: 'contact_phone', val: '+91 98765 43210', desc: 'Helpline Phone Number' },
+    { key: 'contact_email', val: 'warden@srirampg.in', desc: 'Official Email' },
     { key: 'default_monthly_fee', val: '7000', desc: 'Default Monthly Fee (₹)' },
     { key: 'curfew_time', val: '10:00 PM', desc: 'Night Curfew Time' },
     { key: 'gate_pass_rule', val: 'Parents must verify leave requests exceeding 3 days', desc: 'Gate Pass Policy' }

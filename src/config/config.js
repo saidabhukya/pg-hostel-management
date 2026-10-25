@@ -16,7 +16,7 @@ module.exports = {
     sqlitePath: path.join(__dirname, '../database/hostel.sqlite')
   },
   hostel: {
-    name: process.env.HOSTEL_NAME || 'PG Hostel Management System',
+    name: process.env.HOSTEL_NAME || 'SRI RAM PG',
     defaultMonthlyFee: parseFloat(process.env.DEFAULT_MONTHLY_FEE) || 7000.00,
     totalFloors: parseInt(process.env.TOTAL_FLOORS, 10) || 5,
     roomsPerFloor: parseInt(process.env.ROOMS_PER_FLOOR, 10) || 10,

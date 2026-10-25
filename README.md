@@ -1,12 +1,12 @@
-# PG Hostel Management System
+# SRI RAM PG
 
-A production-grade, full-stack **PG & College Hostel Management Web Application** designed with university portal aesthetics, responsive layouts (Desktop, Tablet, Mobile), joining-date based fee cycles, and multi-hostel SaaS scalability.
+A modern, full-stack **Hostel Web Application** designed for SRI RAM PG (Opposite Vignan University, Vadlamudi) featuring responsive layouts (Desktop, Tablet, Mobile), joining-date based fee cycles, and student residency management.
 
 ---
 
 ## 🏢 Project Overview
 
-The **PG Hostel Management System** is built for real-world hostel owners and university residence administrations. It features:
+**SRI RAM PG** is built for hostel owners and student residents. It features:
 
 - 🏛️ **College Portal Aesthetic**: Red (`#dc2626`), White (`#ffffff`), Dark/Near-Black (`#0f172a`), and Light Gray (`#f8fafc`).
 - 🌗 **Light & Dark Theme**: Toggle in header with persistent `localStorage` storage.

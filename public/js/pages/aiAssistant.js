@@ -38,7 +38,7 @@ const AiAssistantModal = {
               AI
             </div>
             <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-lg);border-top-left-radius:2px;padding:0.85rem 1.1rem;font-size:0.88rem;color:var(--text-primary);max-width:85%;line-height:1.5;">
-              Hello ${Utils.escapeHTML(user ? user.name : 'Resident')}! I am your <strong>PG Hostel AI Assistant</strong>. How can I help you today?
+              Hello ${Utils.escapeHTML(user ? user.name : 'Resident')}! I am your <strong>SRI RAM PG AI Assistant</strong>. How can I help you today?
             </div>
           </div>
         </div>

@@ -74,7 +74,7 @@ const ReportsPage = {
                 <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.4px;" id="report-main-title">
                   Student Directory Report
                 </h2>
-                <div style="font-size:0.78rem;color:var(--text-muted);">PG Hostel Institutional Residency Management</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);">SRI RAM PG • Opp. Vignan University, Vadlamudi</div>
               </div>
             </div>
             <div style="text-align:right;">
@@ -223,7 +223,7 @@ const ReportsPage = {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text('PG HOSTEL MANAGEMENT SYSTEM — OFFICIAL AUDIT REPORT', 148, 11, { align: 'center' });
+      doc.text('SRI RAM PG — OFFICIAL AUDIT REPORT', 148, 11, { align: 'center' });
 
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(16);

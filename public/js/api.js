@@ -1154,7 +1154,7 @@ const API = {
         }
         // General Student Help
         else {
-          answer = `Hello **${student.name || 'Resident'}**! I am your AI Hostel Assistant. You can ask me:\n\n` +
+          answer = `Hello **${student.name || 'Resident'}**! I am your **SRI RAM PG AI Assistant**. You can ask me:\n\n` +
             `• *"When is my next fee due?"*\n` +
             `• *"What is today's mess menu?"*\n` +
             `• *"What is my room and bed number?"*\n` +
@@ -1290,7 +1290,7 @@ const API = {
         }
         // General Warden Welcome / Help
         else {
-          answer = `Hello Warden! I am your **AI Hostel Management Assistant**. You can ask me:\n\n` +
+          answer = `Hello Warden! I am your **SRI RAM PG AI Assistant**. You can ask me:\n\n` +
             `• *"What is the current bed occupancy rate?"*\n` +
             `• *"Give me a summary of hostel financials (P&L)"*\n` +
             `• *"How much fee is pending this month?"*\n` +

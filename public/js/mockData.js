@@ -401,6 +401,9 @@
         curfew_time: '10:00 PM'
       };
     } else {
+      if (!store.settings.hostel_name || store.settings.hostel_name.includes('Management System')) {
+        store.settings.hostel_name = 'SRI RAM PG';
+      }
       if (!store.settings.hostel_address || store.settings.hostel_address.includes('Greater Noida') || store.settings.hostel_address.includes('Knowledge Park')) {
         store.settings.hostel_address = 'Opposite Vignan University, Vadlamudi, Guntur, AP - 522213';
       }

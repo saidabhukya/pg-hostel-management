@@ -1,5 +1,5 @@
 -- ==========================================================
--- PG HOSTEL MANAGEMENT SYSTEM - DATABASE SCHEMA (MySQL 8.0+)
+-- SRI RAM PG - DATABASE SCHEMA (MySQL 8.0+)
 -- ==========================================================
 
 CREATE DATABASE IF NOT EXISTS `pg_hostel_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
