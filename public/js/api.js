@@ -207,16 +207,20 @@ const API = {
     }
     if (cleanEndpoint.startsWith('/rooms/')) {
       const rNum = cleanEndpoint.replace('/rooms/', '');
+      const details = MockData.getRoomDetails ? MockData.getRoomDetails(rNum) : null;
+      if (details) {
+        return { success: true, data: details };
+      }
       return {
         success: true,
         data: {
-          room: { room_number: rNum, capacity: 5, occupied_count: 4, type: 'Standard 5-Bed' },
+          room: { room_number: rNum, capacity: 5, occupied_count: 0, type: 'Standard 5-Bed' },
           beds: [
-            { id: 1, bed_label: 'Bed-A', status: 'occupied', student_name: 'Ravi Kumar', reg_number: '2024IT123' },
-            { id: 2, bed_label: 'Bed-B', status: 'occupied', student_name: 'Aarav Sharma', reg_number: '2024CS045' },
-            { id: 3, bed_label: 'Bed-C', status: 'occupied', student_name: 'Priya Verma', reg_number: '2024EC012' },
-            { id: 4, bed_label: 'Bed-D', status: 'occupied', student_name: 'Aditi Patel', reg_number: '2024ME088' },
-            { id: 5, bed_label: 'Bed-E', status: 'available', student_name: null, reg_number: null }
+            { id: 1, bed_number: 1, bed_label: 'Bed-A', status: 'available' },
+            { id: 2, bed_number: 2, bed_label: 'Bed-B', status: 'available' },
+            { id: 3, bed_number: 3, bed_label: 'Bed-C', status: 'available' },
+            { id: 4, bed_number: 4, bed_label: 'Bed-D', status: 'available' },
+            { id: 5, bed_number: 5, bed_label: 'Bed-E', status: 'available' }
           ]
         }
       };

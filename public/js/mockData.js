@@ -360,6 +360,68 @@
       }
     },
 
+    getRoomDetails(rNum) {
+      rNum = String(rNum);
+      const floorNum = parseInt(rNum.charAt(0), 10) || 1;
+      const floor = store.structure.find(f => f.floor_number === floorNum);
+
+      // Find real students assigned to this room from store.students
+      const studentsInRoom = store.students.filter(s => String(s.room_number) === rNum);
+
+      const bedLetters = ['A', 'B', 'C', 'D', 'E'];
+      const beds = [];
+
+      for (let b = 1; b <= 5; b++) {
+        const label = `Bed-${bedLetters[b - 1]}`;
+        const student = studentsInRoom.find(s => s.bed_label === label || s.bed_number === b);
+
+        if (student) {
+          beds.push({
+            id: (floorNum - 1) * 50 + (parseInt(rNum.slice(-2), 10) - 1) * 5 + b,
+            bed_number: b,
+            bed_label: label,
+            status: 'occupied',
+            student_id: student.id,
+            student_name: student.name,
+            reg_number: student.reg_number,
+            student_phone: student.phone,
+            student_email: student.email,
+            course: student.course,
+            year: student.year || '1st Year',
+            joining_date: student.joining_date
+          });
+        } else {
+          beds.push({
+            id: (floorNum - 1) * 50 + (parseInt(rNum.slice(-2), 10) - 1) * 5 + b,
+            bed_number: b,
+            bed_label: label,
+            status: 'available',
+            student_id: null,
+            student_name: null,
+            reg_number: null,
+            student_phone: null,
+            student_email: null,
+            course: null,
+            year: null,
+            joining_date: null
+          });
+        }
+      }
+
+      return {
+        room: {
+          id: (floorNum - 1) * 10 + (parseInt(rNum.slice(-2), 10) || 1),
+          room_number: rNum,
+          capacity: 5,
+          occupied_count: studentsInRoom.length,
+          type: 'Standard 5-Bed',
+          floor_number: floorNum,
+          floor_name: `Floor ${floorNum}`
+        },
+        beds: beds
+      };
+    },
+
     resetToClean() {
       store = getCleanInitialState();
       saveStore();
