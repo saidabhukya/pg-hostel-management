@@ -69,7 +69,7 @@ const ReportsPage = {
         <div id="report-printable-area">
           <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--primary-red);padding-bottom:1rem;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
             <div style="display:flex;align-items:center;gap:1rem;">
-              <img src="/assets/images/college-logo.svg" alt="College Logo" style="height:48px;width:auto;" />
+              <img src="./assets/images/college-logo.svg" alt="College Logo" style="height:48px;width:auto;" />
               <div>
                 <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.4px;" id="report-main-title">
                   Student Directory Report

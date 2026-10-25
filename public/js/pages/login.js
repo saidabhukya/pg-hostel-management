@@ -11,31 +11,31 @@ const LoginPage = {
   slides: [
     {
       id: 1,
-      image: '/assets/images/hostel-slide-1.jpg',
+      image: './assets/images/hostel-slide-1.jpg',
       title: 'SRI RAM PG Main Campus',
       category: 'Exterior Architecture'
     },
     {
       id: 2,
-      image: '/assets/images/hostel-slide-2.jpg',
+      image: './assets/images/hostel-slide-2.jpg',
       title: 'Spacious Resident Rooms',
       category: 'Air-Conditioned Suites'
     },
     {
       id: 3,
-      image: '/assets/images/hostel-slide-3.jpg',
+      image: './assets/images/hostel-slide-3.jpg',
       title: 'Student Lounge & Recreation',
       category: 'Community Living'
     },
     {
       id: 4,
-      image: '/assets/images/hostel-slide-4.jpg',
+      image: './assets/images/hostel-slide-4.jpg',
       title: 'Quiet Study & Dining Hall',
       category: 'Academic Environment'
     },
     {
       id: 5,
-      image: '/assets/images/hostel-slide-5.jpg',
+      image: './assets/images/hostel-slide-5.jpg',
       title: 'Clean & Secure Corridors',
       category: '24/7 Monitored Residency'
     }
@@ -64,7 +64,7 @@ const LoginPage = {
         <header class="sri-ram-top-bar">
           <div class="sri-ram-top-left">
             <div class="sri-ram-brand-logo-wrap">
-              <img src="/assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG Logo" class="sri-ram-nav-logo" />
+              <img src="./assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG Logo" class="sri-ram-nav-logo" />
             </div>
             <div class="sri-ram-brand-text">
               <span class="sri-ram-nav-title">SRI RAM <span class="nav-title-red">PG</span></span>
@@ -103,7 +103,7 @@ const LoginPage = {
           <div class="sri-ram-login-card">
             <!-- House & Bed Logo -->
             <div class="sri-ram-card-logo-wrap">
-              <img src="/assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG" class="sri-ram-card-logo" />
+              <img src="./assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG" class="sri-ram-card-logo" />
             </div>
 
             <!-- Title & Subtitle -->
@@ -439,7 +439,7 @@ const LoginPage = {
       content: `
         <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.6;">
           <div style="text-align:center;margin-bottom:1.25rem;">
-            <img src="/assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG" style="width:65px;height:auto;margin:0 auto 0.5rem;" />
+            <img src="./assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG" style="width:65px;height:auto;margin:0 auto 0.5rem;" />
             <h3 style="font-size:1.15rem;font-weight:800;color:var(--text-primary);margin:0;">Admissions & Bed Allocation</h3>
             <p style="font-size:0.8rem;color:var(--text-muted);margin:0.25rem 0 0;">SRI RAM PG &bull; Better Stays, Brighter Futures</p>
           </div>

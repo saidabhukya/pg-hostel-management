@@ -60,8 +60,8 @@
     }
   </style>
   <script>
-    // If opened in browser directly, redirect to server if reachable, or public/index.html
-    window.location.href = window.location.protocol === 'file:' ? './public/index.html' : '/';
+    // Always navigate to public/index.html relative to this repository
+    window.location.replace('./public/index.html');
   </script>
 </head>
 <body>

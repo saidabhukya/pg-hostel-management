@@ -41,7 +41,7 @@ const AddStudentModal = {
             <div style="position:relative;cursor:pointer;" onclick="document.getElementById('as-photo-input').click()" title="Click to upload student photo">
               <img
                 id="as-photo-preview"
-                src="/assets/images/default-student.png"
+                src="./assets/images/default-student.png"
                 alt="Student Photo Preview"
                 style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-red-border);display:block;"
               />

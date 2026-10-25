@@ -26,7 +26,7 @@ const ReceiptModal = {
           <!-- Receipt Header: College Logo & Brand Info -->
           <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #dc2626;padding-bottom:1.25rem;margin-bottom:1.5rem;">
             <div style="display:flex;align-items:center;gap:1rem;">
-              <img src="/assets/images/college-logo.svg" alt="College Crest" style="height:55px;width:auto;object-fit:contain;" />
+              <img src="./assets/images/college-logo.svg" alt="College Crest" style="height:55px;width:auto;object-fit:contain;" />
               <div>
                 <h3 style="font-size:1.15rem;font-weight:800;color:#0f172a;letter-spacing:-0.3px;margin:0;">PG HOSTEL MANAGEMENT SYSTEM</h3>
                 <p style="font-size:0.75rem;color:#64748b;margin:2px 0 0;">Institutional Student Housing & Residency Office</p>
