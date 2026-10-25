@@ -844,6 +844,32 @@ const API = {
     if (cleanEndpoint === '/announcements') {
       return { success: true, data: MockData.announcements };
     }
+
+    if (cleanEndpoint === '/visitors' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      const newVisitor = MockData.addVisitor ? MockData.addVisitor(body) : body;
+      return {
+        success: true,
+        message: `Visitor entry logged successfully! Gate pass issued for ${newVisitor.visitor_name}.`,
+        data: newVisitor
+      };
+    }
+
+    if (cleanEndpoint.startsWith('/visitors/') && cleanEndpoint.endsWith('/checkout') && method === 'PUT') {
+      const parts = cleanEndpoint.split('/');
+      const vId = Number(parts[2]);
+      const updated = MockData.checkoutVisitor ? MockData.checkoutVisitor(vId) : null;
+      return {
+        success: true,
+        message: 'Visitor departure logged successfully.',
+        data: updated
+      };
+    }
+
     if (cleanEndpoint === '/visitors') {
       const currentUser = this.getUser();
       let list = [...(MockData.visitors || [])];
@@ -857,6 +883,27 @@ const API = {
           list = [];
         }
       }
+
+      // Filter by status or search
+      try {
+        const urlObj = new URL('http://dummy' + endpoint);
+        const search = (urlObj.searchParams.get('search') || '').toLowerCase().trim();
+        const status = (urlObj.searchParams.get('status') || '').toLowerCase().trim();
+
+        if (status) {
+          list = list.filter(v => (v.status || '').toLowerCase() === status);
+        }
+        if (search) {
+          list = list.filter(v => 
+            (v.visitor_name && v.visitor_name.toLowerCase().includes(search)) ||
+            (v.student_name && v.student_name.toLowerCase().includes(search)) ||
+            (v.phone && v.phone.includes(search)) ||
+            (v.reg_number && v.reg_number.toLowerCase().includes(search)) ||
+            (v.room_number && String(v.room_number).includes(search))
+          );
+        }
+      } catch (e) {}
+
       return { success: true, data: list };
     }
 
@@ -1331,6 +1378,33 @@ const API = {
               c.dueDateDisplay || c.due_date || '-',
               Utils.formatINR(c.amount),
               Utils.formatINR(Math.max(0, Number(c.amount || 0) - Number(c.paid_amount || 0)))
+            ])
+          }
+        };
+      }
+
+      if (type === 'visitors') {
+        const visitors = MockData.visitors || [];
+        return {
+          success: true,
+          data: {
+            title: 'Hostel Visitor Gate Registry Log',
+            summary: {
+              'Total Visitors Logged': visitors.length,
+              'Currently In Hostel': visitors.filter(v => v.status === 'in_hostel').length
+            },
+            columns: ['Visitor Name', 'Phone', 'Student Visited', 'Reg Number', 'Room', 'Relationship', 'Purpose', 'Entry Time', 'Exit Time', 'Status'],
+            rows: visitors.map(v => [
+              v.visitor_name || '-',
+              v.phone || '-',
+              v.student_name || '-',
+              v.reg_number || '-',
+              v.room_number ? `Room ${v.room_number}` : '-',
+              v.relation || '-',
+              v.purpose || '-',
+              v.entryTimeDisplay || '-',
+              v.exitTimeDisplay || '-',
+              v.status === 'in_hostel' ? 'In Hostel' : 'Checked Out'
             ])
           }
         };

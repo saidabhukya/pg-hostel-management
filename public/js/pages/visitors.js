@@ -5,7 +5,74 @@ const VisitorsPage = {
   currentStatus: '',
   currentSearch: '',
 
+  getRowsHtml(visitors) {
+    if (!visitors || visitors.length === 0) {
+      return `
+        <tr>
+          <td colspan="8" style="text-align:center;padding:3rem;color:var(--text-muted);">
+            <i data-lucide="user-x" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
+            <p style="font-weight:600;">No visitors logged.</p>
+          </td>
+        </tr>
+      `;
+    }
+
+    return visitors.map(v => {
+      const isInHostel = v.status === 'in_hostel';
+
+      return `
+        <tr>
+          <td data-label="Visitor">
+            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(v.visitor_name)}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">${Utils.escapeHTML(v.phone || '-')}</div>
+          </td>
+
+          <td data-label="Student Visited">
+            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(v.student_name || 'Resident')}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">${Utils.escapeHTML(v.reg_number || '')} • Room ${Utils.escapeHTML(String(v.room_number || '-'))}</div>
+          </td>
+
+          <td data-label="Relation">
+            <span class="badge badge-info">${Utils.escapeHTML(v.relation || 'Relative')}</span>
+          </td>
+
+          <td data-label="Purpose">
+            <span style="font-size:0.84rem;">${Utils.escapeHTML(v.purpose || '-')}</span>
+          </td>
+
+          <td data-label="Entry Time">
+            <div style="font-weight:600;font-size:0.82rem;">${v.entryTimeDisplay || '-'}</div>
+          </td>
+
+          <td data-label="Exit Time">
+            <div style="font-weight:600;font-size:0.82rem;color:${isInHostel ? 'var(--primary-red)' : 'var(--text-muted)'};">
+              ${v.exitTimeDisplay || '-'}
+            </div>
+          </td>
+
+          <td data-label="Status">
+            <span class="badge ${isInHostel ? 'badge-danger' : 'badge-success'}">
+              ${isInHostel ? 'In Hostel' : 'Checked Out'}
+            </span>
+          </td>
+
+          <td data-label="Action">
+            ${isInHostel ? `
+              <button class="btn btn-sm btn-primary" onclick="VisitorsPage.checkoutVisitor(${v.id})" title="Record Exit Time">
+                Check Out
+              </button>
+            ` : `
+              <span style="color:var(--text-muted);font-size:0.78rem;">Completed</span>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
   async render() {
+    const initialList = (typeof MockData !== 'undefined' && MockData.visitors) ? MockData.visitors : [];
+
     return `
       <div class="page-header">
         <div class="page-title-group">
@@ -64,11 +131,7 @@ const VisitorsPage = {
             </tr>
           </thead>
           <tbody id="visitors-tbody">
-            <tr>
-              <td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
-                Loading gate log...
-              </td>
-            </tr>
+            ${this.getRowsHtml(initialList)}
           </tbody>
         </table>
       </div>
@@ -100,11 +163,16 @@ const VisitorsPage = {
         search: this.currentSearch
       });
 
-      if (res.success) {
-        this.renderTable(res.data);
+      if (res && res.success) {
+        this.renderTable(res.data || []);
+      } else {
+        const fallback = (typeof MockData !== 'undefined' && MockData.visitors) ? MockData.visitors : [];
+        this.renderTable(fallback);
       }
     } catch (e) {
-      Toast.error('Failed to load visitors: ' + e.message);
+      console.warn('Failed to load visitors:', e);
+      const fallback = (typeof MockData !== 'undefined' && MockData.visitors) ? MockData.visitors : [];
+      this.renderTable(fallback);
     }
   },
 
@@ -112,71 +180,7 @@ const VisitorsPage = {
     const tbody = document.getElementById('visitors-tbody');
     if (!tbody) return;
 
-    if (visitors.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8" style="text-align:center;padding:3rem;color:var(--text-muted);">
-            <i data-lucide="user-x" style="width:40px;height:40px;margin-bottom:0.5rem;opacity:0.5;"></i>
-            <p style="font-weight:600;">No visitors logged.</p>
-          </td>
-        </tr>
-      `;
-      Utils.renderIcons();
-      return;
-    }
-
-    tbody.innerHTML = visitors.map(v => {
-      const isInHostel = v.status === 'in_hostel';
-
-      return `
-        <tr>
-          <td data-label="Visitor">
-            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(v.visitor_name)}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">${v.phone}</div>
-          </td>
-
-          <td data-label="Student Visited">
-            <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(v.student_name)}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">${v.reg_number} • Room ${v.room_number || '-'}</div>
-          </td>
-
-          <td data-label="Relation">
-            <span class="badge badge-info">${v.relation || 'Relative'}</span>
-          </td>
-
-          <td data-label="Purpose">
-            <span style="font-size:0.84rem;">${Utils.escapeHTML(v.purpose)}</span>
-          </td>
-
-          <td data-label="Entry Time">
-            <div style="font-weight:600;font-size:0.82rem;">${v.entryTimeDisplay}</div>
-          </td>
-
-          <td data-label="Exit Time">
-            <div style="font-weight:600;font-size:0.82rem;color:${isInHostel ? 'var(--primary-red)' : 'var(--text-muted)'};">
-              ${v.exitTimeDisplay}
-            </div>
-          </td>
-
-          <td data-label="Status">
-            <span class="badge ${isInHostel ? 'badge-danger' : 'badge-success'}">
-              ${isInHostel ? 'In Hostel' : 'Checked Out'}
-            </span>
-          </td>
-
-          <td data-label="Action">
-            ${isInHostel ? `
-              <button class="btn btn-sm btn-primary" onclick="VisitorsPage.checkoutVisitor(${v.id})" title="Record Exit Time">
-                Check Out
-              </button>
-            ` : `
-              <span style="color:var(--text-muted);font-size:0.78rem;">Completed</span>
-            `}
-          </td>
-        </tr>
-      `;
-    }).join('');
-
+    tbody.innerHTML = this.getRowsHtml(visitors);
     Utils.renderIcons();
   },
 
@@ -184,6 +188,11 @@ const VisitorsPage = {
     try {
       const res = await API.get('/students', { limit: 100 });
       const students = res.data || [];
+
+      if (students.length === 0) {
+        Toast.warning('No resident students found in the portal. Please add a student before logging visitors.');
+        return;
+      }
 
       Modal.open({
         title: 'Log Visitor Entry',
@@ -237,11 +246,16 @@ const VisitorsPage = {
 
   async submitLog(e) {
     e.preventDefault();
-    const visitorName = document.getElementById('vis-name').value;
-    const phone = document.getElementById('vis-phone').value;
+    const visitorName = (document.getElementById('vis-name').value || '').trim();
+    const phone = (document.getElementById('vis-phone').value || '').trim();
     const studentId = document.getElementById('vis-student').value;
-    const relation = document.getElementById('vis-rel').value;
-    const purpose = document.getElementById('vis-purpose').value;
+    const relation = (document.getElementById('vis-rel').value || '').trim();
+    const purpose = (document.getElementById('vis-purpose').value || '').trim();
+
+    if (!visitorName || !studentId) {
+      Toast.error('Please enter visitor name and select the student.');
+      return;
+    }
 
     try {
       const res = await API.post('/visitors', {
@@ -252,25 +266,29 @@ const VisitorsPage = {
         purpose
       });
 
-      if (res.success) {
-        Toast.success(res.message);
+      if (res && res.success) {
+        Toast.success(res.message || 'Visitor entry logged successfully!');
         Modal.close();
-        VisitorsPage.loadVisitors();
+        await this.loadVisitors();
+      } else {
+        Toast.error((res && res.message) || 'Failed to record visitor entry.');
       }
     } catch (err) {
-      Toast.error(err.message);
+      Toast.error(err.message || 'Error recording visitor entry.');
     }
   },
 
   async checkoutVisitor(id) {
     try {
       const res = await API.put(`/visitors/${id}/checkout`);
-      if (res.success) {
-        Toast.success('Visitor departure logged.');
-        this.loadVisitors();
+      if (res && res.success) {
+        Toast.success(res.message || 'Visitor departure logged.');
+        await this.loadVisitors();
+      } else {
+        Toast.error((res && res.message) || 'Failed to checkout visitor.');
       }
     } catch (e) {
-      Toast.error(e.message);
+      Toast.error(e.message || 'Error logging visitor departure.');
     }
   },
 

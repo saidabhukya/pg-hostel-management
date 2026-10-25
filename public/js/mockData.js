@@ -263,6 +263,68 @@
     ];
   }
 
+  function formatDisplayDateTime(isoStr) {
+    if (!isoStr) return '-';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return String(isoStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const mon = String(d.getMonth() + 1).padStart(2, '0');
+      const yr = d.getFullYear();
+      let hours = d.getHours();
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      return `${day}-${mon}-${yr} ${hours}:${mins} ${ampm}`;
+    } catch (e) {
+      return String(isoStr);
+    }
+  }
+
+  function getDefaultVisitors() {
+    const now = new Date();
+    const entryTime1 = new Date(now.getTime() - 2 * 3600000).toISOString();
+    const entryTime2 = new Date(now.getTime() - 26 * 3600000).toISOString();
+    const exitTime2 = new Date(now.getTime() - 24 * 3600000).toISOString();
+
+    return [
+      {
+        id: 1,
+        visitor_name: 'Ramesh Kumar',
+        phone: '+91 98765 43210',
+        student_id: 1,
+        student_name: 'Sunkara Sai Teja',
+        reg_number: '211FA04001',
+        room_number: '101',
+        relation: 'Parent (Father)',
+        purpose: 'Delivering winter clothes, laptop, and home snacks',
+        entry_time: entryTime1,
+        entryTimeDisplay: formatDisplayDateTime(entryTime1),
+        exit_time: null,
+        exitTimeDisplay: 'Currently Inside',
+        status: 'in_hostel',
+        created_at: entryTime1
+      },
+      {
+        id: 2,
+        visitor_name: 'Venkat Rao',
+        phone: '+91 98123 76540',
+        student_id: 2,
+        student_name: 'Kranthi Kumar',
+        reg_number: '211FA04002',
+        room_number: '101',
+        relation: 'Guardian (Uncle)',
+        purpose: 'Semester fee verification & family visit',
+        entry_time: entryTime2,
+        entryTimeDisplay: formatDisplayDateTime(entryTime2),
+        exit_time: exitTime2,
+        exitTimeDisplay: formatDisplayDateTime(exitTime2),
+        status: 'checked_out',
+        created_at: entryTime2
+      }
+    ];
+  }
+
   function getCleanInitialState() {
     return {
       adminUser: {
@@ -281,7 +343,7 @@
       complaints: getDefaultComplaints(),
       notifications: getDefaultNotifications(),
       expenses: [],
-      visitors: [],
+      visitors: getDefaultVisitors(),
       announcements: getDefaultAnnouncements(),
       leaveRequests: [],
       settings: {
@@ -317,7 +379,9 @@
     if (!Array.isArray(store.payments)) store.payments = [];
     if (!Array.isArray(store.expenses)) store.expenses = [];
     if (!Array.isArray(store.complaints)) store.complaints = [];
-    if (!Array.isArray(store.visitors)) store.visitors = [];
+    if (!Array.isArray(store.visitors) || store.visitors.length === 0) {
+      store.visitors = getDefaultVisitors();
+    }
     if (!Array.isArray(store.announcements) || store.announcements.length === 0) {
       store.announcements = getDefaultAnnouncements();
     } else {
@@ -591,7 +655,23 @@
         expenseDateDisplay: formatDisplayDate(e.date || e.expense_date)
       }));
     },
-    get visitors() { return store.visitors; },
+    get visitors() {
+      if (!Array.isArray(store.visitors) || store.visitors.length === 0) {
+        store.visitors = getDefaultVisitors();
+        saveStore();
+      }
+      return store.visitors.map(v => {
+        const student = (store.students || []).find(s => Number(s.id) === Number(v.student_id));
+        return {
+          ...v,
+          student_name: v.student_name || (student ? student.name : 'Resident Student'),
+          reg_number: v.reg_number || (student ? student.reg_number : ''),
+          room_number: v.room_number || (student ? student.room_number : '-'),
+          entryTimeDisplay: v.entryTimeDisplay || formatDisplayDateTime(v.entry_time || v.created_at),
+          exitTimeDisplay: v.exitTimeDisplay || (v.exit_time ? formatDisplayDateTime(v.exit_time) : (v.status === 'in_hostel' ? 'Currently Inside' : '-'))
+        };
+      });
+    },
     get announcements() {
       if (!Array.isArray(store.announcements) || store.announcements.length === 0) {
         store.announcements = getDefaultAnnouncements();
@@ -1546,6 +1626,73 @@
             created_at: new Date().toISOString()
           });
 
+          saveStore();
+          return item;
+        }
+      }
+      return null;
+    },
+
+    addVisitor(data) {
+      if (!Array.isArray(store.visitors)) store.visitors = [];
+      const vId = store.visitors.length ? Math.max(...store.visitors.map(v => Number(v.id) || 0)) + 1 : 1;
+      
+      const studentId = Number(data.studentId || data.student_id);
+      const student = (store.students || []).find(s => Number(s.id) === studentId) || {};
+      
+      const now = new Date();
+      const nowISO = now.toISOString();
+      const entryTimeFormatted = formatDisplayDateTime(nowISO);
+
+      const newVisitor = {
+        id: vId,
+        visitor_name: (data.visitorName || data.visitor_name || 'Visitor').trim(),
+        phone: (data.phone || '').trim(),
+        student_id: student.id || studentId || 1,
+        student_name: student.name || data.student_name || 'Resident Student',
+        reg_number: student.reg_number || data.reg_number || '',
+        room_number: student.room_number || data.room_number || '-',
+        relation: (data.relation || 'Parent / Relative').trim(),
+        purpose: (data.purpose || 'Personal Visit').trim(),
+        entry_time: nowISO,
+        entryTimeDisplay: entryTimeFormatted,
+        exit_time: null,
+        exitTimeDisplay: 'Currently Inside',
+        status: 'in_hostel',
+        created_at: nowISO
+      };
+
+      store.visitors.unshift(newVisitor);
+
+      // Notification
+      if (!Array.isArray(store.notifications)) store.notifications = [];
+      const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+      store.notifications.unshift({
+        id: notifId,
+        student_id: newVisitor.student_id,
+        reg_number: newVisitor.reg_number,
+        title: `Visitor Gate Entry Logged`,
+        message: `${newVisitor.visitor_name} (${newVisitor.relation}) checked in at the gate to visit ${newVisitor.student_name}.`,
+        type: 'visitor',
+        is_read: 0,
+        link: '#visitors',
+        created_at: nowISO
+      });
+
+      saveStore();
+      return newVisitor;
+    },
+
+    checkoutVisitor(id) {
+      const vId = Number(id);
+      if (Array.isArray(store.visitors)) {
+        const item = store.visitors.find(v => Number(v.id) === vId);
+        if (item) {
+          const now = new Date();
+          const nowISO = now.toISOString();
+          item.status = 'checked_out';
+          item.exit_time = nowISO;
+          item.exitTimeDisplay = formatDisplayDateTime(nowISO);
           saveStore();
           return item;
         }
