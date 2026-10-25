@@ -816,6 +816,93 @@
       saveStore();
     },
 
+    updateStudentFeeStatus(studentId, feeStatus, paymentData = {}) {
+      const sId = Number(studentId);
+      const student = store.students.find(s => s.id === sId);
+      if (!student) throw new Error('Student not found.');
+
+      student.fee_status = feeStatus;
+
+      // Find student's current fee cycle
+      let cycle = store.feeCycles.find(c => Number(c.student_id) === sId);
+      if (!cycle) {
+        const feeCycleId = store.feeCycles.length ? Math.max(...store.feeCycles.map(c => c.id)) + 1 : 1;
+        const today = new Date().toISOString().slice(0, 10);
+        cycle = {
+          id: feeCycleId,
+          student_id: sId,
+          student_name: student.name,
+          reg_number: student.reg_number,
+          room_number: student.room_number,
+          bed_label: student.bed_label,
+          college: student.college,
+          course: student.course,
+          cycle_number: 1,
+          start_date: student.joining_date || today,
+          end_date: today,
+          due_date: student.joining_date || today,
+          amount: Number(student.monthly_fee || 7000),
+          paid_amount: 0,
+          status: 'pending'
+        };
+        store.feeCycles.unshift(cycle);
+      }
+
+      if (feeStatus === 'paid') {
+        const cycleAmount = Number(cycle.amount || student.monthly_fee || 7000);
+        cycle.status = 'paid';
+        cycle.paid_amount = cycleAmount;
+        cycle.payment_date = paymentData.paymentDate || new Date().toISOString().slice(0, 10);
+
+        // Record or update payment record
+        let payment = store.payments.find(p => Number(p.fee_cycle_id) === Number(cycle.id));
+        if (!payment) {
+          const pId = store.payments.length ? Math.max(...store.payments.map(p => p.id)) + 1 : 1;
+          payment = {
+            id: pId,
+            paymentId: pId,
+            fee_cycle_id: cycle.id,
+            student_id: sId,
+            student_name: student.name,
+            reg_number: student.reg_number,
+            room_number: student.room_number,
+            floor_number: student.floor_number || 1,
+            bed_label: student.bed_label || 'Bed-A',
+            college: student.college,
+            course: student.course,
+            student_phone: student.phone || '',
+            student_email: student.email || '',
+            parent_name: student.parent_name || 'Parent / Guardian',
+            parent_phone: student.parent_phone || '+91 98765 00000',
+            amount: cycleAmount,
+            payment_method: paymentData.paymentMethod || 'UPI',
+            transaction_id: paymentData.transactionId || `TXN${Date.now()}`,
+            payment_date: cycle.payment_date,
+            cycle_start_date: cycle.start_date,
+            cycle_end_date: cycle.end_date,
+            receipt_number: `REC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(pId).padStart(4, '0')}`,
+            status: 'PAID'
+          };
+          store.payments.unshift(payment);
+        } else {
+          payment.amount = cycleAmount;
+          payment.payment_method = paymentData.paymentMethod || payment.payment_method || 'UPI';
+          payment.payment_date = cycle.payment_date;
+          payment.status = 'PAID';
+        }
+      } else {
+        // Reset to pending
+        cycle.status = 'pending';
+        cycle.paid_amount = 0;
+        cycle.payment_date = null;
+        store.payments = store.payments.filter(p => Number(p.student_id) !== sId);
+      }
+
+      sanitizeStore();
+      saveStore();
+      return student;
+    },
+
     transferStudent(studentId, targetBedId, reason) {
       const sId = Number(studentId);
       const student = store.students.find(s => s.id === sId);

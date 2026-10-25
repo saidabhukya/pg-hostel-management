@@ -165,7 +165,7 @@ const StudentsPage = {
     }
 
     tbody.innerHTML = students.map(s => {
-      const reminder = s.feeReminder || { status: 'pending', label: 'Pending', badgeClass: 'badge-danger' };
+      const isPaid = (s.fee_status === 'paid');
 
       return `
         <tr>
@@ -210,15 +210,25 @@ const StudentsPage = {
           </td>
 
           <td data-label="Fee Status">
-            <span class="badge ${reminder.badgeClass}">
-              ${reminder.label}
+            <span 
+              class="badge ${isPaid ? 'badge-success' : 'badge-warning'}" 
+              onclick="StudentsPage.openUpdateFeeModal(${s.id})"
+              style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;"
+              title="Click to update fee status"
+            >
+              <i data-lucide="${isPaid ? 'check-circle' : 'clock'}" style="width:12px;height:12px;"></i>
+              <span>${isPaid ? 'Paid' : 'Pending'}</span>
             </span>
           </td>
 
           <td data-label="Actions">
-            <div style="display:flex;gap:0.4rem;">
+            <div style="display:flex;gap:0.4rem;align-items:center;">
               <button class="btn btn-sm btn-secondary" onclick="StudentProfile.open(${s.id})" title="View Complete Profile & Dues">
                 <i data-lucide="eye" style="width:14px;height:14px;"></i>
+              </button>
+              <button class="btn btn-sm btn-secondary" onclick="StudentsPage.openUpdateFeeModal(${s.id})" title="Update Fee Status (Paid / Pending)">
+                <i data-lucide="receipt" style="width:14px;height:14px;color:var(--primary-red);"></i>
+                <span style="font-size:0.75rem;font-weight:600;">Fee Status</span>
               </button>
               <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openRecordPaymentModal(${s.id}, '${Utils.escapeHTML(s.name)}', ${s.monthly_fee})" title="Record Payment for this Student">
                 <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
@@ -323,6 +333,139 @@ const StudentsPage = {
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to remove student.');
+    }
+  },
+
+  async openUpdateFeeModal(studentId) {
+    try {
+      const res = await API.get(`/students/${studentId}`);
+      if (!res.success || !res.data) {
+        Toast.error('Could not find student details.');
+        return;
+      }
+      const student = res.data.profile || res.data.student || res.data;
+      const isPaid = student.fee_status === 'paid';
+      const today = new Date().toISOString().slice(0, 10);
+
+      Modal.open({
+        title: `Update Fee Status: ${Utils.escapeHTML(student.name)}`,
+        content: `
+          <form onsubmit="StudentsPage.submitUpdateFee(event, ${student.id})">
+            <div style="background:var(--bg-secondary);padding:0.9rem;border-radius:var(--radius-md);margin-bottom:1.15rem;font-size:0.86rem;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:0.35rem;">
+                <span style="color:var(--text-muted);">Registration No:</span>
+                <strong>${student.reg_number}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:0.35rem;">
+                <span style="color:var(--text-muted);">Allocated Room & Bed:</span>
+                <strong>Room ${student.room_number || '-'} • ${student.bed_label || '-'}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Monthly Hostel Fee:</span>
+                <strong style="color:var(--primary-red);">${Utils.formatINR(student.monthly_fee || 7000)}</strong>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1.15rem;">
+              <label class="form-label required">Select Fee Status</label>
+              <select id="ufs-status" class="form-control" onchange="StudentsPage.onFeeStatusChange(this.value)" required>
+                <option value="paid" ${isPaid ? 'selected' : ''}>✅ Paid (Fee cleared & receipt generated)</option>
+                <option value="pending" ${!isPaid ? 'selected' : ''}>⏳ Pending (Awaiting monthly fee payment)</option>
+              </select>
+            </div>
+
+            <div id="ufs-paid-details" style="display:${isPaid ? 'block' : 'none'};">
+              <div class="form-group" style="margin-bottom:1.15rem;">
+                <label class="form-label required">Payment Mode</label>
+                <select id="ufs-method" class="form-control">
+                  <option value="UPI">UPI (PhonePe / Google Pay / Paytm)</option>
+                  <option value="Cash">Cash (Hostel Reception)</option>
+                  <option value="Bank Transfer">Bank Transfer / IMPS / NEFT</option>
+                  <option value="Card">Debit / Credit Card</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom:1.15rem;">
+                <label class="form-label required">Payment Date</label>
+                <input type="date" id="ufs-date" class="form-control" value="${today}" />
+              </div>
+
+              <div class="form-group" style="margin-bottom:1.15rem;">
+                <label class="form-label">Transaction / Ref ID (Optional)</label>
+                <input type="text" id="ufs-txnid" class="form-control" placeholder="e.g. UPI-9843217740" />
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border-color);">
+              <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+              <button type="submit" id="ufs-submit-btn" class="btn btn-primary">
+                <i data-lucide="check-circle" style="width:15px;height:15px;"></i>
+                <span>Save Fee Status</span>
+              </button>
+            </div>
+          </form>
+        `,
+        maxWidth: '520px'
+      });
+      Utils.renderIcons();
+    } catch (e) {
+      Toast.error('Failed to open fee update modal: ' + e.message);
+    }
+  },
+
+  onFeeStatusChange(val) {
+    const wrap = document.getElementById('ufs-paid-details');
+    if (wrap) {
+      wrap.style.display = val === 'paid' ? 'block' : 'none';
+    }
+  },
+
+  async submitUpdateFee(e, studentId) {
+    e.preventDefault();
+    const submitBtn = document.getElementById('ufs-submit-btn');
+    const status = document.getElementById('ufs-status').value;
+    const paymentMethod = document.getElementById('ufs-method')?.value || 'UPI';
+    const paymentDate = document.getElementById('ufs-date')?.value || new Date().toISOString().slice(0, 10);
+    const transactionId = document.getElementById('ufs-txnid')?.value || '';
+
+    try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Saving...</span>';
+      }
+
+      const res = await API.put(`/students/${studentId}/fee-status`, {
+        feeStatus: status,
+        paymentMethod,
+        paymentDate,
+        transactionId
+      });
+
+      if (res.success) {
+        Toast.success(res.message || 'Fee status updated successfully!');
+        Modal.close();
+
+        // Refresh views
+        this.loadStudents();
+        if (window.FeesPage) {
+          FeesPage.loadCycles();
+          FeesPage.loadReminderStats();
+        }
+        if (window.PaymentsPage) {
+          PaymentsPage.loadPayments();
+        }
+        if (window.AdminDashboard && App.currentRoute === 'dashboard') {
+          AdminDashboard.loadData();
+        }
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Failed to update fee status.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i data-lucide="check-circle" style="width:15px;height:15px;"></i> <span>Save Fee Status</span>`;
+        Utils.renderIcons();
+      }
     }
   }
 };

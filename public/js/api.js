@@ -177,12 +177,45 @@ const API = {
         pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
       };
     }
+    if (cleanEndpoint.startsWith('/students/') && cleanEndpoint.endsWith('/fee-status') && method === 'PUT') {
+      const parts = cleanEndpoint.split('/');
+      const sId = Number(parts[2]);
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+
+      if (MockData.updateStudentFeeStatus) {
+        MockData.updateStudentFeeStatus(sId, body.feeStatus, body);
+      }
+      return {
+        success: true,
+        message: `Student fee status successfully updated to ${body.feeStatus === 'paid' ? 'Paid' : 'Pending'}!`
+      };
+    }
+
     if (cleanEndpoint.startsWith('/students/')) {
       const sId = Number(cleanEndpoint.replace('/students/', ''));
       const student = MockData.students.find(s => s.id === sId) || MockData.studentProfile;
+      const studentFeeCycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === sId);
+      const studentPayments = (MockData.payments || []).filter(p => Number(p.student_id) === sId);
+      const studentComplaints = (MockData.complaints || []).filter(c => Number(c.student_id) === sId);
+      const studentLeaves = (MockData.leaveRequests || []).filter(l => Number(l.student_id) === sId);
+
       return {
         success: true,
-        data: student,
+        data: {
+          profile: student,
+          student: student,
+          feeCycles: studentFeeCycles,
+          payments: studentPayments,
+          complaints: studentComplaints,
+          leaveRequests: studentLeaves,
+          nextDueInfo: {
+            dueDate: student ? student.joining_date : null,
+            status: student ? student.fee_status : 'pending'
+          }
+        },
         student: student
       };
     }
