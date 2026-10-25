@@ -54,10 +54,18 @@ const MessPage = {
   async loadMenu() {
     try {
       const res = await API.get('/mess');
-      if (res.success) {
+      if (res.success && res.data) {
         this.currentData = res.data;
-        this.renderToday(res.data.todayDayName, res.data.todayMenu);
-        this.renderWeekly(res.data.weeklyMenu, res.data.todayDayName);
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const currentDay = days[new Date().getDay()];
+        const todayDayName = res.data.todayDayName || currentDay;
+        const weeklyMenu = Array.isArray(res.data.weeklyMenu) ? res.data.weeklyMenu : (Array.isArray(res.data) ? res.data : []);
+        const todayMenu = res.data.todayMenu || weeklyMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weeklyMenu[0];
+
+        this.renderToday(todayDayName, todayMenu);
+        this.renderWeekly(weeklyMenu, todayDayName);
+      } else {
+        Toast.error('Failed to load mess schedule.');
       }
     } catch (e) {
       Toast.error('Failed to load mess schedule: ' + e.message);
@@ -69,7 +77,7 @@ const MessPage = {
     if (!card) return;
 
     if (!todayMenu) {
-      card.innerHTML = `<p style="padding:1rem;">Menu details unavailable.</p>`;
+      card.innerHTML = `<p style="padding:1.5rem;text-align:center;color:var(--text-muted);">Menu details unavailable.</p>`;
       return;
     }
 
@@ -93,7 +101,7 @@ const MessPage = {
             <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Breakfast</span>
             <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.breakfast)}</p>
+          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.breakfast || 'Idli, Sambar, Chutney, Tea')}</p>
         </div>
 
         <!-- Lunch -->
@@ -102,7 +110,7 @@ const MessPage = {
             <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Lunch</span>
             <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.lunch_timing || '12:30 PM - 2:30 PM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.lunch)}</p>
+          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.lunch || 'Rice, Dal, Veg Curry, Roti')}</p>
         </div>
 
         <!-- Dinner -->
@@ -111,7 +119,7 @@ const MessPage = {
             <span style="font-size:0.82rem;font-weight:800;color:var(--primary-red);text-transform:uppercase;">Dinner</span>
             <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">${todayMenu.dinner_timing || '7:30 PM - 9:30 PM'}</span>
           </div>
-          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.dinner)}</p>
+          <p style="font-size:0.9rem;color:var(--text-primary);line-height:1.5;">${Utils.escapeHTML(todayMenu.dinner || 'Steamed Rice, Dal, Chapati, Dessert')}</p>
         </div>
       </div>
 
@@ -133,36 +141,57 @@ const MessPage = {
     const user = API.getUser();
     const isAdmin = user && user.role === 'admin';
 
+    if (!Array.isArray(weeklyMenu) || weeklyMenu.length === 0) {
+      container.innerHTML = `<p style="padding:1rem;color:var(--text-muted);">No routine available.</p>`;
+      return;
+    }
+
     container.innerHTML = weeklyMenu.map(m => {
-      const isToday = m.day_of_week.toLowerCase() === todayDay.toLowerCase();
+      const dayName = m.day_of_week || m.day || 'Day';
+      const isToday = dayName.toLowerCase() === String(todayDay || '').toLowerCase();
 
       return `
-        <div class="card" style="padding:1.15rem;border:1px solid ${isToday ? 'var(--primary-red)' : 'var(--border-color)'};background:var(--bg-card);">
+        <div class="card" style="padding:1.15rem;border:1px solid ${isToday ? 'var(--primary-red)' : 'var(--border-color)'};background:var(--bg-card);box-shadow:${isToday ? '0 4px 14px rgba(220, 38, 38, 0.12)' : 'none'};">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border-color);">
             <div style="display:flex;align-items:center;gap:0.5rem;">
-              <h4 style="font-size:1.05rem;font-weight:800;color:var(--text-primary);">${m.day_of_week}</h4>
+              <h4 style="font-size:1.05rem;font-weight:800;color:var(--text-primary);">${dayName}</h4>
               ${isToday ? `<span class="badge badge-danger">Today</span>` : ''}
             </div>
             ${isAdmin ? `
-              <button class="btn btn-sm btn-secondary" onclick="MessPage.openEditModal('${m.day_of_week}')" title="Edit ${m.day_of_week}'s Menu">
+              <button class="btn btn-sm btn-secondary" onclick="MessPage.openEditModal('${dayName}')" title="Edit ${dayName}'s Menu">
                 <i data-lucide="edit-3" style="width:13px;height:13px;"></i>
+                <span>Edit</span>
               </button>
             ` : ''}
           </div>
 
           <div style="display:flex;flex-direction:column;gap:0.6rem;font-size:0.85rem;">
             <div>
-              <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Breakfast:</span>
-              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.breakfast)}</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Breakfast:</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);">${m.breakfast_timing || '7:30 AM - 9:30 AM'}</span>
+              </div>
+              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.breakfast || '')}</p>
             </div>
             <div>
-              <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Lunch:</span>
-              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.lunch)}</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Lunch:</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);">${m.lunch_timing || '12:30 PM - 2:30 PM'}</span>
+              </div>
+              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.lunch || '')}</p>
             </div>
             <div>
-              <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Dinner:</span>
-              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.dinner)}</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:700;color:var(--primary-red);font-size:0.78rem;text-transform:uppercase;">Dinner:</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);">${m.dinner_timing || '7:30 PM - 9:30 PM'}</span>
+              </div>
+              <p style="color:var(--text-secondary);margin-top:2px;">${Utils.escapeHTML(m.dinner || '')}</p>
             </div>
+            ${m.special_notes ? `
+              <div style="margin-top:0.35rem;padding-top:0.35rem;border-top:1px dashed var(--border-color);font-size:0.78rem;color:var(--primary-red);font-weight:600;">
+                ⭐ ${Utils.escapeHTML(m.special_notes)}
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
@@ -173,7 +202,8 @@ const MessPage = {
 
   openEditModal(dayOfWeek) {
     if (!this.currentData) return;
-    const item = this.currentData.weeklyMenu.find(m => m.day_of_week === dayOfWeek);
+    const weekly = this.currentData.weeklyMenu || [];
+    const item = weekly.find(m => (m.day_of_week || m.day) === dayOfWeek);
     if (!item) return;
 
     Modal.open({

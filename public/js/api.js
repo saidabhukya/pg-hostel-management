@@ -346,7 +346,41 @@ const API = {
 
     // 6. Mess, Complaints, Expenses, Announcements, Visitors, Leaves
     if (cleanEndpoint === '/mess/menu' || cleanEndpoint === '/mess') {
-      return { success: true, data: MockData.messMenu };
+      const schedule = MockData.messSchedule || {
+        todayDayName: 'Monday',
+        todayMenu: MockData.messMenu[0],
+        weeklyMenu: MockData.messMenu
+      };
+      return { success: true, data: schedule };
+    }
+
+    if (cleanEndpoint.startsWith('/mess/') && method === 'PUT') {
+      const dayOfWeek = decodeURIComponent(cleanEndpoint.replace('/mess/', ''));
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+      if (MockData.updateMessMenu) {
+        MockData.updateMessMenu(dayOfWeek, body);
+      }
+      return {
+        success: true,
+        message: `Mess menu for ${dayOfWeek} updated successfully!`
+      };
+    }
+
+    if (cleanEndpoint === '/mess/feedback' && method === 'POST') {
+      let body = {};
+      try {
+        body = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+      if (MockData.addMessFeedback) {
+        MockData.addMessFeedback(body);
+      }
+      return {
+        success: true,
+        message: 'Feedback submitted successfully to the Hostel Food & Mess Committee!'
+      };
     }
     if (cleanEndpoint === '/complaints') {
       return { success: true, data: MockData.complaints };

@@ -44,13 +44,13 @@
         curfew_time: '10:00 PM'
       },
       messMenu: [
-        { id: 1, day: 'Monday', breakfast: 'Idli, Sambar, Coconut Chutney, Tea/Coffee', lunch: 'Rice, Dal Tadka, Paneer Butter Masala, Roti, Salad', snacks: 'Samosa, Masala Chai', dinner: 'Jeera Rice, Mixed Veg Curry, Phulka, Gulab Jamun' },
-        { id: 2, day: 'Tuesday', breakfast: 'Aloo Paratha, Curd, Pickle, Tea/Coffee', lunch: 'Rice, Rajma Masala, Aloo Gobi, Roti, Curd', snacks: 'Veg Cutlet, Tea/Coffee', dinner: 'Veg Pulao, Dal Fry, Roti, Kheer' },
-        { id: 3, day: 'Wednesday', breakfast: 'Poha, Sev, Boiled Eggs / Banana, Tea/Coffee', lunch: 'Rice, Sambar, Bhindi Masala, Roti, Curd', snacks: 'Bhel Puri, Green Tea', dinner: 'Egg Curry / Paneer Do Pyaza, Steamed Rice, Chapati' },
-        { id: 4, day: 'Thursday', breakfast: 'Masala Dosa, Chutney, Sambar, Coffee', lunch: 'Rice, Chole Bhature / Roti, Boondi Raita', snacks: 'Biscuit / Cookies, Masala Chai', dinner: 'Veg Biryani, Mirchi Ka Salan, Raita, Ice Cream' },
-        { id: 5, day: 'Friday', breakfast: 'Upma, Vada, Chutney, Tea/Coffee', lunch: 'Rice, Dal Makhani, Mixed Vegetable, Roti, Curd', snacks: 'Pakora, Mint Chutney, Chai', dinner: 'Fried Rice, Veg Manchurian, Spring Rolls' },
-        { id: 6, day: 'Saturday', breakfast: 'Puri Bhaji, Halwa, Tea/Coffee', lunch: 'Lemon Rice, Dal Palak, Curd Rice, Papad', snacks: 'French Fries, Lemonade', dinner: 'Paneer Biryani, Veg Kurma, Parotta, Rasgulla' },
-        { id: 7, day: 'Sunday', breakfast: 'Chole Kulche / Bread Omelette, Fresh Juice', lunch: 'Special Sunday Feast: Paneer Tikka, Dum Aloo, Butter Naan', snacks: 'Cake Slice, Tea/Coffee', dinner: 'Khichdi, Kadhi, Papad, Achar, Fruit Custard' }
+        { id: 1, day: 'Monday', day_of_week: 'Monday', breakfast: 'Idli, Sambar, Coconut Chutney, Tea/Coffee', lunch: 'Rice, Dal Tadka, Paneer Butter Masala, Roti, Salad', snacks: 'Samosa, Masala Chai', dinner: 'Jeera Rice, Mixed Veg Curry, Phulka, Gulab Jamun', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Hot Sambar & Soft Steamed Idlis' },
+        { id: 2, day: 'Tuesday', day_of_week: 'Tuesday', breakfast: 'Aloo Paratha, Curd, Pickle, Tea/Coffee', lunch: 'Rice, Rajma Masala, Aloo Gobi, Roti, Curd', snacks: 'Veg Cutlet, Tea/Coffee', dinner: 'Veg Pulao, Dal Fry, Roti, Kheer', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Punjabi Style Rajma & Fresh Curd' },
+        { id: 3, day: 'Wednesday', day_of_week: 'Wednesday', breakfast: 'Poha, Sev, Boiled Eggs / Banana, Tea/Coffee', lunch: 'Rice, Sambar, Bhindi Masala, Roti, Curd', snacks: 'Bhel Puri, Green Tea', dinner: 'Egg Curry / Paneer Do Pyaza, Steamed Rice, Chapati', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Choice of Egg Curry or Paneer Do Pyaza' },
+        { id: 4, day: 'Thursday', day_of_week: 'Thursday', breakfast: 'Masala Dosa, Chutney, Sambar, Coffee', lunch: 'Rice, Chole Bhature / Roti, Boondi Raita', snacks: 'Biscuit / Cookies, Masala Chai', dinner: 'Veg Biryani, Mirchi Ka Salan, Raita, Ice Cream', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Crispy Dosa & Evening Biryani Feast' },
+        { id: 5, day: 'Friday', day_of_week: 'Friday', breakfast: 'Upma, Vada, Chutney, Tea/Coffee', lunch: 'Rice, Dal Makhani, Mixed Vegetable, Roti, Curd', snacks: 'Pakora, Mint Chutney, Chai', dinner: 'Fried Rice, Veg Manchurian, Spring Rolls', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Indo-Chinese Special Dinner Night' },
+        { id: 6, day: 'Saturday', day_of_week: 'Saturday', breakfast: 'Puri Bhaji, Halwa, Tea/Coffee', lunch: 'Lemon Rice, Dal Palak, Curd Rice, Papad', snacks: 'French Fries, Lemonade', dinner: 'Paneer Biryani, Veg Kurma, Parotta, Rasgulla', breakfast_timing: '7:30 AM - 9:30 AM', lunch_timing: '12:30 PM - 2:30 PM', dinner_timing: '7:30 PM - 9:30 PM', special_notes: 'Weekend Feast with Bengal Sweet Rasgulla' },
+        { id: 7, day: 'Sunday', day_of_week: 'Sunday', breakfast: 'Chole Kulche / Bread Omelette, Fresh Juice', lunch: 'Special Sunday Feast: Paneer Tikka, Dum Aloo, Butter Naan', snacks: 'Cake Slice, Tea/Coffee', dinner: 'Khichdi, Kadhi, Papad, Achar, Fruit Custard', breakfast_timing: '8:00 AM - 10:00 AM', lunch_timing: '1:00 PM - 3:00 PM', dinner_timing: '8:00 PM - 10:00 PM', special_notes: 'Sunday Grand Lunch with Paneer Tikka' }
       ]
     };
   }
@@ -65,6 +65,9 @@
       if (!Array.isArray(store.maintenanceBeds)) store.maintenanceBeds = [];
       if (!Array.isArray(store.feeCycles)) store.feeCycles = [];
       if (!Array.isArray(store.payments)) store.payments = [];
+      if (!Array.isArray(store.messMenu) || !store.messMenu[0]?.day_of_week) {
+        store.messMenu = getCleanInitialState().messMenu;
+      }
     } else {
       store = getCleanInitialState();
       // Migrate from v5 if available
@@ -73,6 +76,15 @@
         if (v5) {
           const parsed = JSON.parse(v5);
           if (Array.isArray(parsed.students)) store.students = parsed.students;
+          if (Array.isArray(parsed.feeCycles)) store.feeCycles = parsed.feeCycles;
+          if (Array.isArray(parsed.payments)) store.payments = parsed.payments;
+          if (Array.isArray(parsed.maintenanceBeds)) store.maintenanceBeds = parsed.maintenanceBeds;
+        }
+      } catch (e) {}
+    }
+  } catch (e) {
+    store = getCleanInitialState();
+  }
           if (Array.isArray(parsed.feeCycles)) store.feeCycles = parsed.feeCycles;
           if (Array.isArray(parsed.payments)) store.payments = parsed.payments;
           if (Array.isArray(parsed.maintenanceBeds)) store.maintenanceBeds = parsed.maintenanceBeds;
@@ -140,6 +152,24 @@
     get leaveRequests() { return store.leaveRequests; },
     get settings() { return store.settings; },
     get messMenu() { return store.messMenu; },
+
+    get messSchedule() {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const todayDayName = days[new Date().getDay()];
+      const weekly = (store.messMenu || []).map(m => ({
+        ...m,
+        day_of_week: m.day_of_week || m.day,
+        breakfast_timing: m.breakfast_timing || '7:30 AM - 9:30 AM',
+        lunch_timing: m.lunch_timing || '12:30 PM - 2:30 PM',
+        dinner_timing: m.dinner_timing || '7:30 PM - 9:30 PM'
+      }));
+      const todayMenu = weekly.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weekly[0];
+      return {
+        todayDayName,
+        todayMenu,
+        weeklyMenu: weekly
+      };
+    },
 
     /**
      * Dynamically build hostel structure (5 floors, 50 rooms, 5 beds each)
@@ -622,6 +652,33 @@
 
       saveStore();
       return newPayment;
+    },
+
+    updateMessMenu(dayOfWeek, data) {
+      const item = store.messMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === String(dayOfWeek).toLowerCase());
+      if (item) {
+        if (data.breakfast) item.breakfast = data.breakfast;
+        if (data.lunch) item.lunch = data.lunch;
+        if (data.dinner) item.dinner = data.dinner;
+        if (data.specialNotes !== undefined) item.special_notes = data.specialNotes;
+        saveStore();
+      }
+      return item;
+    },
+
+    addMessFeedback(data) {
+      const fb = {
+        id: (store.complaints.length ? Math.max(...store.complaints.map(c => c.id)) : 0) + 1,
+        title: data.title || 'Mess & Dining Feedback',
+        description: data.description || '',
+        category: 'Mess & Food',
+        priority: 'Medium',
+        status: 'In Progress',
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      };
+      store.complaints.unshift(fb);
+      saveStore();
+      return fb;
     },
 
     resetToClean() {
