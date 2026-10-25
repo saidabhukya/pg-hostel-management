@@ -403,7 +403,12 @@
       return store.payments;
     },
     get complaints() { return store.complaints; },
-    get expenses() { return store.expenses; },
+    get expenses() {
+      return (store.expenses || []).map(e => ({
+        ...e,
+        expenseDateDisplay: formatDisplayDate(e.date || e.expense_date)
+      }));
+    },
     get visitors() { return store.visitors; },
     get announcements() { return store.announcements; },
     get leaveRequests() { return store.leaveRequests; },
@@ -592,11 +597,35 @@
         total_income: incomeByMonth[m]
       }));
 
+      // Group expenses by month (e.g. "Oct 2026")
+      const expByMonth = {};
+      for (const e of store.expenses) {
+        const d = (e.date || e.expense_date) ? new Date(e.date || e.expense_date) : new Date();
+        const monthYear = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        expByMonth[monthYear] = (expByMonth[monthYear] || 0) + Number(e.amount || 0);
+      }
+      const monthlyExpenses = Object.keys(expByMonth).map(m => ({
+        month_year: m,
+        total_expense: expByMonth[m]
+      }));
+
+      // Group expenses by category
+      const categoryTotals = {};
+      for (const e of store.expenses) {
+        const cat = e.category || 'Other';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(e.amount || 0);
+      }
+      const categoryExpenses = Object.keys(categoryTotals).map(c => ({
+        category: c,
+        total: categoryTotals[c],
+        total_amount: categoryTotals[c]
+      }));
+
       return {
         floorOccupancy,
         monthlyIncome,
-        monthlyExpenses: [],
-        categoryExpenses: [],
+        monthlyExpenses,
+        categoryExpenses,
         recentPayments: store.payments.slice(-5).reverse(),
         recentComplaints: store.complaints.slice(-5).reverse()
       };
@@ -1080,6 +1109,32 @@
       store.complaints.unshift(fb);
       saveStore();
       return fb;
+    },
+
+    addExpense(data) {
+      const eId = store.expenses.length ? Math.max(...store.expenses.map(e => e.id)) + 1 : 1;
+      const today = new Date().toISOString().slice(0, 10);
+      const amount = Number(data.amount || 0);
+      const newExpense = {
+        id: eId,
+        category: data.category || 'Other',
+        amount: amount,
+        expense_date: data.expenseDate || data.date || today,
+        date: data.expenseDate || data.date || today,
+        expenseDateDisplay: formatDisplayDate(data.expenseDate || data.date || today),
+        description: data.description || '',
+        receipt_ref: data.receiptRef || data.receipt_ref || `VOUCH-${new Date().getFullYear()}-${String(eId).padStart(4, '0')}`,
+        created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      };
+      store.expenses.unshift(newExpense);
+      saveStore();
+      return newExpense;
+    },
+
+    deleteExpense(id) {
+      const eId = Number(id);
+      store.expenses = store.expenses.filter(e => e.id !== eId);
+      saveStore();
     },
 
     resetToClean() {

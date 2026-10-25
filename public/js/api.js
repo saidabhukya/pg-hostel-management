@@ -418,8 +418,51 @@ const API = {
     if (cleanEndpoint === '/complaints') {
       return { success: true, data: MockData.complaints };
     }
+    if (cleanEndpoint === '/expenses' && method === 'POST') {
+      let data = {};
+      try {
+        data = typeof options.body === 'string' ? JSON.parse(options.body) : (options.body || {});
+      } catch (e) {}
+      const newExp = MockData.addExpense ? MockData.addExpense(data) : data;
+      return {
+        success: true,
+        message: 'Hostel operating expense recorded successfully!',
+        data: newExp
+      };
+    }
+
+    if (cleanEndpoint.startsWith('/expenses/') && method === 'DELETE') {
+      const eId = cleanEndpoint.replace('/expenses/', '');
+      if (MockData.deleteExpense) MockData.deleteExpense(eId);
+      return {
+        success: true,
+        message: 'Expense record deleted successfully!'
+      };
+    }
+
     if (cleanEndpoint === '/expenses') {
-      return { success: true, data: MockData.expenses };
+      let list = [...(MockData.expenses || [])];
+      try {
+        const urlObj = new URL('http://dummy' + endpoint);
+        const category = urlObj.searchParams.get('category');
+        if (category) {
+          list = list.filter(e => e.category === category);
+        }
+      } catch (e) {}
+
+      const stats = MockData.stats || {};
+      const summary = {
+        totalIncome: stats.feesCollected || 0,
+        totalExpenses: stats.hostelExpenses || 0,
+        netIncome: stats.netIncome || 0
+      };
+
+      return {
+        success: true,
+        data: list,
+        summary: summary,
+        pagination: { total: list.length, page: 1, limit: 15, totalPages: 1 }
+      };
     }
     if (cleanEndpoint === '/announcements') {
       return { success: true, data: MockData.announcements };
@@ -465,6 +508,28 @@ const API = {
               p.payment_method || 'UPI',
               Utils.formatINR(p.amount),
               'Settled'
+            ])
+          }
+        };
+      }
+
+      if (type === 'expenses') {
+        const expenses = MockData.expenses || [];
+        return {
+          success: true,
+          data: {
+            title: 'Hostel Operating Expenses Ledger',
+            summary: {
+              'Total Outflow': Utils.formatINR(stats.hostelExpenses || 0),
+              'Expense Entries': expenses.length
+            },
+            columns: ['Voucher #', 'Date', 'Category', 'Description', 'Amount (INR)'],
+            rows: expenses.map(e => [
+              e.receipt_ref || '-',
+              Utils.formatDate(e.date || e.expense_date),
+              e.category || 'Other',
+              e.description || '-',
+              Utils.formatINR(e.amount)
             ])
           }
         };

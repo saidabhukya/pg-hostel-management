@@ -26,13 +26,16 @@ const ExpensesPage = {
       </div>
 
       <!-- Financial Balance Strip (Income, Expenses, Net) -->
+      ${(() => {
+        const stats = (typeof MockData !== 'undefined' && MockData.stats) ? MockData.stats : { feesCollected: 0, hostelExpenses: 0, netIncome: 0 };
+        return `
       <div class="kpi-grid" id="expenses-financial-strip">
         <div class="kpi-card" style="border-left:4px solid var(--status-success);">
           <div class="kpi-header">
             <span class="kpi-title">Total Fee Income</span>
             <span class="badge badge-success">Receipts</span>
           </div>
-          <div class="kpi-value" id="exp-total-income">₹11,90,000</div>
+          <div class="kpi-value" id="exp-total-income">${Utils.formatINR(stats.feesCollected || 0)}</div>
           <div class="kpi-footer">Total resident payments realized</div>
         </div>
 
@@ -41,19 +44,21 @@ const ExpensesPage = {
             <span class="kpi-title">Total Operating Expenses</span>
             <span class="badge badge-danger">Outflow</span>
           </div>
-          <div class="kpi-value" id="exp-total-expenses">₹3,20,000</div>
-          <div class="kpi-footer">Utilities, food & salaries</div>
+          <div class="kpi-value" id="exp-total-expenses">${Utils.formatINR(stats.hostelExpenses || 0)}</div>
+          <div class="kpi-footer">Utilities, food & maintenance</div>
         </div>
 
         <div class="kpi-card" style="border-left:4px solid #2563eb;">
           <div class="kpi-header">
             <span class="kpi-title">Net Operational Income</span>
-            <span class="badge badge-info">Net Profit</span>
+            <span class="badge badge-info">Net P&L</span>
           </div>
-          <div class="kpi-value" id="exp-net-income" style="color:var(--status-success);">₹8,70,000</div>
-          <div class="kpi-footer">Formula: Income - Expenses</div>
+          <div class="kpi-value" id="exp-net-income" style="color:${(stats.netIncome || 0) >= 0 ? 'var(--status-success)' : 'var(--status-danger)'};">${Utils.formatINR(stats.netIncome || 0)}</div>
+          <div class="kpi-footer">Formula: Collected Fees - Expenses</div>
         </div>
       </div>
+        `;
+      })()}
 
       <!-- Filters Toolbar -->
       <div class="card" style="margin-bottom:1.25rem;padding:1rem;">
@@ -178,15 +183,10 @@ const ExpensesPage = {
           <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);">${e.receipt_ref || '-'}</span>
         </td>
 
-        <td data-label="Receipt">
-          ${e.receipt_ref && e.receipt_ref.startsWith('/uploads') ? `
-            <a href="${e.receipt_ref}" target="_blank" class="btn btn-sm btn-secondary">
-              <i data-lucide="paperclip" style="width:14px;height:14px;"></i>
-              File
-            </a>
-          ` : `
-            <span style="font-size:0.75rem;color:var(--text-muted);">Recorded</span>
-          `}
+        <td data-label="Action">
+          <button class="btn btn-sm" style="background:var(--status-danger-bg);color:var(--status-danger);border:1px solid #fecaca;" onclick="ExpensesPage.deleteExpense(${e.id})" title="Delete Expense Voucher">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          </button>
         </td>
       </tr>
     `).join('');
@@ -294,10 +294,29 @@ const ExpensesPage = {
       if (res.success) {
         Toast.success(res.message);
         Modal.close();
-        ExpensesPage.loadExpenses();
+        this.loadExpenses();
+        if (window.AdminDashboard && App.currentRoute === 'dashboard') {
+          AdminDashboard.loadData();
+        }
       }
     } catch (err) {
       Toast.error(err.message);
+    }
+  },
+
+  async deleteExpense(id) {
+    if (!confirm('Are you sure you want to delete this expense record?')) return;
+    try {
+      const res = await API.delete(`/expenses/${id}`);
+      if (res.success) {
+        Toast.success(res.message || 'Expense deleted successfully!');
+        this.loadExpenses();
+        if (window.AdminDashboard && App.currentRoute === 'dashboard') {
+          AdminDashboard.loadData();
+        }
+      }
+    } catch (e) {
+      Toast.error('Failed to delete expense: ' + e.message);
     }
   },
 
