@@ -1557,6 +1557,8 @@
 
         store.notifications.unshift({
           id: notifId,
+          student_id: comp.student_id,
+          reg_number: comp.reg_number,
           title: `Ticket Status: ${comp.title}`,
           message: `Complaint #${cId} (Room ${comp.room_number || '-'}) status updated to "${statusDisplay}".${comp.admin_notes ? ' Warden Remarks: ' + comp.admin_notes : ''}`,
           type: normalizedStatus === 'Resolved' ? 'payment' : 'complaint',

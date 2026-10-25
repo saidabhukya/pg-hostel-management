@@ -173,12 +173,23 @@ const ComplaintsPage = {
         ${c.admin_notes ? `
           <div style="margin-top:0.85rem;padding:0.75rem 0.9rem;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid ${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};font-size:0.82rem;color:var(--text-secondary);">
             <div style="display:flex;align-items:center;gap:0.35rem;font-weight:700;font-size:0.8rem;color:${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};margin-bottom:0.25rem;">
-              <i data-lucide="${isResolved ? 'check-check' : 'message-square'}" style="width:14px;height:14px;"></i>
-              <span>${isResolved ? 'Warden Solved & Resolution Remarks:' : 'Warden Processing Update Remarks:'}</span>
+              <i data-lucide="${isResolved ? 'check-check' : 'wrench'}" style="width:14px;height:14px;"></i>
+              <span>${isResolved ? 'Warden Solved & Work Completed Remarks:' : 'Warden Processing Update Remarks:'}</span>
             </div>
             <p style="margin:0;line-height:1.45;color:var(--text-primary);">${Utils.escapeHTML(c.admin_notes)}</p>
           </div>
-        ` : ''}
+        ` : (isResolved || isInProgress ? `
+          <div style="margin-top:0.85rem;padding:0.6rem 0.8rem;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid ${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};font-size:0.8rem;color:var(--text-secondary);">
+            <span style="font-weight:700;color:${isResolved ? 'var(--status-success)' : 'var(--status-warning)'};">
+              ${isResolved ? '✓ Work Completed & Marked Solved by Admin.' : '⚙ Work In Progress: Technician assigned by Admin.'}
+            </span>
+          </div>
+        ` : `
+          <div style="margin-top:0.6rem;font-size:0.76rem;color:var(--text-muted);display:flex;align-items:center;gap:0.35rem;">
+            <i data-lucide="clock" style="width:13px;height:13px;"></i>
+            <span>Ticket logged by student. Awaiting admin review and technician dispatch.</span>
+          </div>
+        `)}
       </div>
       `;
     }).join('');
