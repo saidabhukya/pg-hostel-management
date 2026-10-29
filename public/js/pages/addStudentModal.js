@@ -51,8 +51,18 @@ const AddStudentModal = {
 
   async renderForm(preselected = null) {
     try {
-      const res = await API.get('/rooms/options/available');
-      this.allAvailableBeds = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+      let beds = [];
+      try {
+        const res = await API.get('/rooms/options/available');
+        beds = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      } catch (apiErr) {
+        console.warn('API /rooms/options/available fetch error:', apiErr);
+      }
+
+      if (beds.length === 0 && typeof MockData !== 'undefined' && Array.isArray(MockData.availableBeds)) {
+        beds = MockData.availableBeds;
+      }
+      this.allAvailableBeds = beds;
 
       if (this.allAvailableBeds.length === 0 && !preselected) {
         Toast.warning('No available beds in the hostel! All 250 beds are currently occupied or under maintenance.');
@@ -525,6 +535,18 @@ const AddStudentModal = {
       fd.append('joiningDate', joiningDate);
       fd.append('monthlyFee', monthlyFee);
       fd.append('bedId', bedId);
+
+      const bedObj = this.allAvailableBeds.find(b => String(b.bed_id) === String(bedId));
+      if (bedObj) {
+        fd.append('roomNumber', bedObj.room_number);
+        fd.append('floorNumber', bedObj.floor_number);
+        fd.append('bedLabel', bedObj.bed_label);
+      }
+
+      const previewEl = document.getElementById('as-photo-preview');
+      if (previewEl && previewEl.src && previewEl.src.startsWith('data:image')) {
+        fd.append('photo_url', previewEl.src);
+      }
 
       if (photoInput && photoInput.files && photoInput.files[0]) {
         fd.append('photo', photoInput.files[0]);

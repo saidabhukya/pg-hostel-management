@@ -1601,9 +1601,36 @@
       const isPaidNow = (data.paymentStatus === 'paid' || data.payment_status === 'paid');
       const feeStatus = isPaidNow ? 'paid' : 'pending';
 
-      const bedLabel = (data.bedLabel || data.bed_label || 'Bed-A').trim();
-      const roomNumber = String(data.roomNumber || data.room_number || '101').trim();
-      const floorNumber = Number(data.floorNumber || data.floor_number || parseInt(roomNumber.charAt(0), 10) || 1);
+      let bedLabel = (data.bedLabel || data.bed_label || '').trim();
+      let roomNumber = String(data.roomNumber || data.room_number || '').trim();
+      let floorNumber = Number(data.floorNumber || data.floor_number || 0);
+      const bedId = Number(data.bedId || data.bed_id || 0);
+
+      if ((!bedLabel || !roomNumber || !floorNumber) && bedId) {
+        const foundBed = this.availableBeds.find(b => Number(b.bed_id) === bedId);
+        if (foundBed) {
+          bedLabel = foundBed.bed_label;
+          roomNumber = String(foundBed.room_number);
+          floorNumber = Number(foundBed.floor_number);
+        } else {
+          const f = Math.min(5, Math.max(1, Math.floor((bedId - 1) / 50) + 1));
+          const rem = (bedId - 1) % 50;
+          const r = Math.floor(rem / 5) + 1;
+          const b = (rem % 5) + 1;
+          const letters = ['A', 'B', 'C', 'D', 'E'];
+          floorNumber = f;
+          roomNumber = `${f}${String(r).padStart(2, '0')}`;
+          bedLabel = `Bed-${letters[b - 1] || 'A'}`;
+        }
+      }
+      if (!bedLabel) bedLabel = 'Bed-A';
+      if (!roomNumber) roomNumber = '101';
+      if (!floorNumber) floorNumber = parseInt(roomNumber.charAt(0), 10) || 1;
+
+      let photoUrl = data.photo_url || data.photoUrl || './assets/images/default-student.png';
+      if (data.photo && typeof data.photo === 'string' && data.photo.startsWith('data:image')) {
+        photoUrl = data.photo;
+      }
 
       const newStudent = {
         id: studentId,
@@ -1618,8 +1645,11 @@
         room_number: roomNumber,
         floor_number: floorNumber,
         bed_label: bedLabel,
-        bed_id: Number(data.bedId || data.bed_id || 0),
+        bed_id: bedId || (floorNumber - 1) * 50 + 1,
         fee_status: feeStatus,
+        student_status: feeStatus,
+        latest_cycle_status: feeStatus,
+        photo_url: photoUrl,
         password: data.password || data.regNumber || data.reg_number,
         status: 'active'
       };
@@ -2301,37 +2331,47 @@
     },
 
     getMealAlertsStatus() {
-      sanitizeStore();
-      const now = new Date();
-      const todayStr = now.toISOString().slice(0, 10);
-      const schedule = MockData.messSchedule;
-      const todayMenu = schedule?.todayMenu || {};
+      try {
+        sanitizeStore();
+        const now = new Date();
+        const todayStr = now.toISOString().slice(0, 10);
+        const schedule = MockData.messSchedule;
+        const todayMenu = schedule?.todayMenu || {};
 
-      return MEAL_CONFIGS.map(cfg => {
-        const timingStr = todayMenu[cfg.timingProp] || '';
-        const range = parseTimingRange(timingStr, cfg.fallbackStartH, cfg.fallbackStartM, cfg.fallbackEndH, cfg.fallbackEndM);
-        let alertMinutes = range.startMinutes - 15;
-        if (alertMinutes < 0) alertMinutes += 24 * 60;
-        const alertH = Math.floor(alertMinutes / 60);
-        const alertM = alertMinutes % 60;
-        const alertAmpm = alertH >= 12 ? 'PM' : 'AM';
-        const displayH = alertH % 12 || 12;
-        const alertTimeDisplay = `${displayH}:${String(alertM).padStart(2, '0')} ${alertAmpm}`;
+        return MEAL_CONFIGS.map(cfg => {
+          const timingStr = todayMenu[cfg.timingProp] || '';
+          const range = parseTimingRange(timingStr, cfg.fallbackStartH, cfg.fallbackStartM, cfg.fallbackEndH, cfg.fallbackEndM);
+          let alertMinutes = range.startMinutes - 15;
+          if (alertMinutes < 0) alertMinutes += 24 * 60;
+          const alertH = Math.floor(alertMinutes / 60);
+          const alertM = alertMinutes % 60;
+          const alertAmpm = alertH >= 12 ? 'PM' : 'AM';
+          const displayH = alertH % 12 || 12;
+          const alertTimeDisplay = `${displayH}:${String(alertM).padStart(2, '0')} ${alertAmpm}`;
 
-        const alertRecord = (store.mealAlerts || []).find(a => a.date === todayStr && a.meal_type === cfg.key);
+          const alertRecord = (store.mealAlerts || []).find(a => a.date === todayStr && a.meal_type === cfg.key);
 
-        return {
-          key: cfg.key,
-          name: cfg.name,
-          icon: cfg.icon,
-          timing: timingStr || `${range.startH}:${String(range.startM).padStart(2, '0')} - ${range.endH}:${String(range.endM).padStart(2, '0')}`,
-          alertTimeDisplay: `${alertTimeDisplay} (15 mins before)`,
-          menu: todayMenu[cfg.menuProp] || 'Hostel Special Menu',
-          isSent: !!alertRecord,
-          sentAt: alertRecord ? (alertRecord.sent_at_display || formatDisplayDateTime(alertRecord.sent_at)) : null,
-          sentBy: alertRecord ? alertRecord.sent_by : null
-        };
-      });
+          return {
+            key: cfg.key,
+            name: cfg.name,
+            icon: cfg.icon,
+            timing: timingStr || `${range.startH}:${String(range.startM).padStart(2, '0')} - ${range.endH}:${String(range.endM).padStart(2, '0')}`,
+            alertTimeDisplay: `${alertTimeDisplay} (15 mins before)`,
+            menu: todayMenu[cfg.menuProp] || 'Hostel Special Menu',
+            isSent: !!alertRecord,
+            sentAt: alertRecord ? (alertRecord.sent_at_display || formatDisplayDateTime(alertRecord.sent_at)) : null,
+            sentBy: alertRecord ? alertRecord.sent_by : null
+          };
+        });
+      } catch (e) {
+        console.warn('getMealAlertsStatus calculation fallback:', e);
+        return [
+          { key: 'breakfast', name: 'Break Fast', icon: 'utensils', timing: '7:30 AM - 9:30 AM', alertTimeDisplay: '7:15 AM (15 mins before)', menu: 'Hot Idli, Sambar, Chutney & Tea/Coffee', isSent: false },
+          { key: 'lunch', name: 'Lunch', icon: 'soup', timing: '12:30 PM - 2:30 PM', alertTimeDisplay: '12:15 PM (15 mins before)', menu: 'Steamed Rice, Dal Tadka, Seasonal Curry, Curd', isSent: false },
+          { key: 'snacks', name: 'Evening Snacks', icon: 'coffee', timing: '4:30 PM - 6:00 PM', alertTimeDisplay: '4:15 PM (15 mins before)', menu: 'Hot Veg Samosa / Pakoda & Masala Tea', isSent: false },
+          { key: 'dinner', name: 'Dinner', icon: 'chef-hat', timing: '7:30 PM - 9:30 PM', alertTimeDisplay: '7:15 PM (15 mins before)', menu: 'Phulka Roti, Paneer Butter Masala, Rice & Gulab Jamun', isSent: false }
+        ];
+      }
     },
 
     triggerMealAlert(mealKey, customTitle, customMessage, sentBy) {

@@ -207,14 +207,27 @@ const MessPage = {
 
   async loadMenu() {
     try {
-      const res = await API.get('/mess');
-      if (res.success && res.data) {
-        this.currentData = res.data;
+      let menuData = null;
+      try {
+        const res = await API.get('/mess');
+        if (res && res.success && res.data) {
+          menuData = res.data;
+        }
+      } catch (err) {
+        console.warn('API /mess fetch:', err.message);
+      }
+
+      if (!menuData && typeof MockData !== 'undefined' && MockData.messSchedule) {
+        menuData = MockData.messSchedule;
+      }
+
+      if (menuData) {
+        this.currentData = menuData;
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const currentDay = days[new Date().getDay()];
-        const todayDayName = res.data.todayDayName || currentDay;
-        const weeklyMenu = Array.isArray(res.data.weeklyMenu) ? res.data.weeklyMenu : (Array.isArray(res.data) ? res.data : []);
-        const todayMenu = res.data.todayMenu || weeklyMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weeklyMenu[0];
+        const todayDayName = menuData.todayDayName || currentDay;
+        const weeklyMenu = Array.isArray(menuData.weeklyMenu) ? menuData.weeklyMenu : (Array.isArray(menuData) ? menuData : []);
+        const todayMenu = menuData.todayMenu || weeklyMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === todayDayName.toLowerCase()) || weeklyMenu[0];
 
         const card = document.getElementById('today-menu-card');
         if (card) card.innerHTML = this.getTodayHtml(todayDayName, todayMenu);
@@ -348,11 +361,16 @@ const MessPage = {
   },
 
   getMealAlertsHtml(isAdmin) {
-    const statuses = (typeof MockData !== 'undefined' && typeof MockData.getMealAlertsStatus === 'function')
-      ? MockData.getMealAlertsStatus()
-      : [];
+    try {
+      const statuses = (typeof MockData !== 'undefined' && typeof MockData.getMealAlertsStatus === 'function')
+        ? MockData.getMealAlertsStatus()
+        : [];
 
-    return `
+      if (!Array.isArray(statuses) || statuses.length === 0) {
+        return '';
+      }
+
+      return `
       <div class="card" style="margin-bottom:1.75rem;border:1px solid rgba(220, 38, 38, 0.25);background:var(--bg-card);box-shadow:0 4px 15px rgba(220, 38, 38, 0.05);">
         <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
           <div>
@@ -423,6 +441,10 @@ const MessPage = {
         </div>
       </div>
     `;
+    } catch (e) {
+      console.warn('getMealAlertsHtml render error:', e);
+      return '';
+    }
   },
 
   async sendMealAlert(mealKey) {

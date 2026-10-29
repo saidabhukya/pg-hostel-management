@@ -216,7 +216,7 @@ const API = {
         return { success: true, message: 'Student registered successfully!', data: newS };
       }
       let list = MockData.students || [];
-      const q = (params.get('search') || '').toLowerCase();
+      const q = (params.get('search') || '').toLowerCase().trim();
       if (q) {
         list = list.filter(s => 
           (s.name && s.name.toLowerCase().includes(q)) ||
@@ -227,15 +227,33 @@ const API = {
       }
       const room = params.get('room');
       if (room) list = list.filter(s => String(s.room_number) === String(room));
-      const status = params.get('status');
-      if (status) list = list.filter(s => String(s.fee_status) === String(status));
+      const floor = params.get('floor');
+      if (floor && floor !== 'all') {
+        list = list.filter(s => String(s.floor_number) === String(floor));
+      }
+      const feeStatus = params.get('feeStatus') || params.get('status');
+      if (feeStatus && feeStatus !== 'all') {
+        list = list.filter(s => {
+          const st = String(s.fee_status || s.latest_cycle_status || s.student_status || '').toLowerCase();
+          return st === String(feeStatus).toLowerCase();
+        });
+      }
 
       const page = parseInt(params.get('page'), 10) || 1;
       const limit = parseInt(params.get('limit'), 10) || 20;
       const totalRecords = list.length;
       const totalPages = Math.ceil(totalRecords / limit) || 1;
       const start = (page - 1) * limit;
-      const data = list.slice(start, start + limit);
+      const rawData = list.slice(start, start + limit);
+      const data = rawData.map(s => {
+        const fStatus = s.fee_status || s.latest_cycle_status || s.student_status || 'pending';
+        return {
+          ...s,
+          fee_status: fStatus,
+          latest_cycle_status: fStatus,
+          student_status: fStatus
+        };
+      });
 
       return {
         success: true,
@@ -312,7 +330,7 @@ const API = {
     if (path === '/rooms/structure') {
       return { success: true, data: MockData.structure };
     }
-    if (path === '/rooms/available-beds') {
+    if (path === '/rooms/available-beds' || path === '/rooms/options/available') {
       return { success: true, data: MockData.availableBeds };
     }
     if (path.startsWith('/rooms/beds/') && path.endsWith('/status') && method === 'PUT') {
