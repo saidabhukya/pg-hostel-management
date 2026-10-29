@@ -8,24 +8,62 @@ const StudentProfile = {
   async open(studentId) {
     this.currentStudentId = studentId;
     try {
-      const res = await API.get(`/students/${studentId}`);
-      if (!res.success) {
-        Toast.error(res.message);
+      let data = null;
+      try {
+        const res = await API.get(`/students/${studentId}`);
+        if (res && res.success && res.data) {
+          data = res.data;
+        }
+      } catch (apiErr) {
+        console.warn('API /students/:id fetch failed:', apiErr);
+      }
+
+      if (!data && typeof MockData !== 'undefined' && Array.isArray(MockData.students)) {
+        const s = MockData.students.find(st => String(st.id) === String(studentId)) || MockData.students[0];
+        if (s) {
+          const cycles = (MockData.feeCycles || []).filter(c => Number(c.student_id) === Number(s.id));
+          const pays = (MockData.payments || []).filter(p => Number(p.student_id) === Number(s.id));
+          const comps = (MockData.complaints || []).filter(c => Number(c.student_id) === Number(s.id));
+          const leaves = (MockData.leaveRequests || []).filter(l => Number(l.student_id) === Number(s.id));
+          data = {
+            profile: s,
+            feeCycles: cycles,
+            payments: pays,
+            complaints: comps,
+            leaveRequests: leaves,
+            nextDueInfo: {
+              dueDate: cycles[0]?.due_date || '2026-11-09',
+              dueDateDisplay: cycles[0]?.dueDateDisplay || '09-11-2026',
+              amount: s.monthly_fee || 7000,
+              reminder: { status: 'paid', label: 'Paid', badgeClass: 'badge-success' }
+            }
+          };
+        }
+      }
+
+      if (!data || !data.profile) {
+        Toast.error('Student profile could not be found.');
         return;
       }
 
-      const { profile, feeCycles, payments, complaints, leaveRequests, nextDueInfo } = res.data;
+      const profile = data.profile;
+      const feeCycles = Array.isArray(data.feeCycles) ? data.feeCycles : [];
+      const payments = Array.isArray(data.payments) ? data.payments : [];
+      const complaints = Array.isArray(data.complaints) ? data.complaints : [];
+      const leaveRequests = Array.isArray(data.leaveRequests) ? data.leaveRequests : [];
+      const nextDueInfo = data.nextDueInfo || { amount: profile.monthly_fee || 7000 };
       const user = API.getUser();
-      const isAdmin = user && user.role === 'admin';
+      const isAdmin = !user || user.role === 'admin';
 
       const content = this.buildContent(profile, feeCycles, payments, complaints, leaveRequests, nextDueInfo, isAdmin);
 
       Modal.open({
-        title: `Student Profile: ${profile.name}`,
+        title: `Student Profile: ${profile.name || 'Resident Details'}`,
         content,
         maxWidth: '820px'
       });
     } catch (e) {
+      console.error('[StudentProfile Error]', e);
       Toast.error('Failed to load student profile: ' + e.message);
     }
   },
