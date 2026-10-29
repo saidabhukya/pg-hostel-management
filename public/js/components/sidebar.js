@@ -10,6 +10,7 @@ const Sidebar = {
     if (isAdmin) {
       const adminNav = [
         { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+        { id: 'admin-profile', label: 'Admin Profile', icon: 'user-cog' },
         { id: 'students', label: 'Students', icon: 'users' },
         { id: 'hostel-structure', label: 'Floors & Rooms', icon: 'building-2' },
         { id: 'beds', label: 'Beds Management', icon: 'bed-double' },
@@ -79,7 +80,7 @@ const Sidebar = {
 
         <!-- Sidebar User Snippet -->
         <div class="sidebar-footer">
-          <div class="user-snippet">
+          <div class="user-snippet" style="cursor:pointer;" onclick="Sidebar.handleNavClick('${isAdmin ? 'admin-profile' : 'student-profile'}', event)" title="View ${isAdmin ? 'Admin' : 'Student'} Profile">
             <div class="user-avatar">
               ${user.name ? user.name.charAt(0) : 'U'}
             </div>

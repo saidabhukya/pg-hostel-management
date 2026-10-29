@@ -1129,6 +1129,28 @@
       saveStore();
       return true;
     },
+    updateAdminProfile(data) {
+      sanitizeStore();
+      if (!store.adminUser) {
+        store.adminUser = {
+          id: 1,
+          username: 'admin',
+          password: 'admin123',
+          email: 'admin@hostel.com',
+          role: 'admin',
+          name: 'Hostel Chief Warden',
+          phone: '+91 98111 22334',
+          avatar: './assets/images/default-avatar.png'
+        };
+      }
+      if (data.name) store.adminUser.name = data.name.trim();
+      if (data.email) store.adminUser.email = data.email.trim();
+      if (data.phone) store.adminUser.phone = data.phone.trim();
+      if (data.username) store.adminUser.username = data.username.trim();
+      if (data.avatar) store.adminUser.avatar = data.avatar;
+      saveStore();
+      return store.adminUser;
+    },
     get students() {
       if (!Array.isArray(store.students) || store.students.length === 0) {
         seedInitialData(store);

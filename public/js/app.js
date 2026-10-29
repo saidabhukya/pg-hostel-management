@@ -211,6 +211,8 @@ const App = {
           await LeaveRequestsPage.afterRender();
           break;
 
+        case 'admin-profile':
+        case 'profile':
         case 'settings':
           pageContainer.innerHTML = await SettingsPage.render();
           await SettingsPage.afterRender();

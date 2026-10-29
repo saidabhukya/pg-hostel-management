@@ -203,6 +203,18 @@ const API = {
       return { success: true, message: 'Password updated successfully!' };
     }
 
+    if ((path === '/auth/profile' || path === '/auth/update-profile' || path === '/admin/profile') && (method === 'POST' || method === 'PUT')) {
+      const updated = MockData.updateAdminProfile(payload);
+      const curUser = this.getUser() || {};
+      const mergedUser = { ...curUser, ...updated };
+      this.setUser(mergedUser);
+      return { success: true, message: 'Admin profile updated successfully!', user: mergedUser, data: mergedUser };
+    }
+
+    if (path === '/admin/profile' && method === 'GET') {
+      return { success: true, data: MockData.adminUser };
+    }
+
     // 2. Dashboard
     if (path === '/dashboard/stats') {
       return { success: true, data: MockData.stats };

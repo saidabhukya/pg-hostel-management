@@ -59,22 +59,27 @@ const Header = {
 
           <!-- User Profile & Logout -->
           <div style="display:flex;align-items:center;gap:0.6rem;padding-left:0.5rem;border-left:1px solid var(--border-color);position:relative;">
-            <button
-              class="user-avatar profile-avatar-btn"
-              style="width:34px;height:34px;font-size:0.8rem;border:none;cursor:pointer;overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;"
-              onclick="Header.toggleProfileCard(event)"
-              title="View Profile"
+            <div 
+              style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;" 
+              onclick="Header.toggleProfileCard(event)" 
+              title="Click to view profile & settings"
+              id="profile-avatar-trigger"
               aria-haspopup="true"
               aria-expanded="false"
-              id="profile-avatar-trigger"
             >
-              ${user.avatar && user.avatar !== '/assets/images/default-avatar.png' && user.avatar !== '/assets/images/default-student.png' ? `
-                <img src="${user.avatar}" alt="${Utils.escapeHTML(user.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user.name ? user.name.charAt(0).toUpperCase() : 'U'}';" />
-              ` : (user.name ? user.name.charAt(0).toUpperCase() : 'U')}
-            </button>
-            <div style="display:none;flex-direction:column;line-height:1.2;" class="d-md-flex">
-              <span style="font-size:0.82rem;font-weight:700;color:var(--text-primary);">${user.name || 'User'}</span>
-              <span style="font-size:0.68rem;color:var(--primary-red);font-weight:600;text-transform:uppercase;">${user.role}</span>
+              <button
+                class="user-avatar profile-avatar-btn"
+                style="width:34px;height:34px;font-size:0.8rem;border:none;cursor:pointer;overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;"
+                title="View Profile"
+              >
+                ${user.avatar && user.avatar !== '/assets/images/default-avatar.png' && user.avatar !== '/assets/images/default-student.png' ? `
+                  <img src="${user.avatar}" alt="${Utils.escapeHTML(user.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user.name ? user.name.charAt(0).toUpperCase() : 'U'}';" />
+                ` : (user.name ? user.name.charAt(0).toUpperCase() : 'U')}
+              </button>
+              <div style="display:none;flex-direction:column;line-height:1.2;" class="d-md-flex">
+                <span style="font-size:0.82rem;font-weight:700;color:var(--text-primary);">${user.name || 'User'}</span>
+                <span style="font-size:0.68rem;color:var(--primary-red);font-weight:600;text-transform:uppercase;">${user.role}</span>
+              </div>
             </div>
             <button class="header-btn" onclick="App.logout()" title="Logout" style="margin-left:0.25rem;">
               <i data-lucide="log-out"></i>
@@ -265,6 +270,11 @@ const Header = {
       <!-- Actions footer -->
       <div class="profile-card-footer">
         ${viewProfileAction}
+        ${isAdmin ? `
+          <button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:0.4rem;" onclick="App.navigate('admin-profile'); Header.closeProfileCard();">
+            <i data-lucide="user-cog" style="width:14px;height:14px;"></i> Edit Admin Profile & Hostel
+          </button>
+        ` : ''}
         <button class="btn btn-sm btn-secondary" style="width:100%;" onclick="App.navigate('settings'); Header.closeProfileCard();">
           <i data-lucide="settings" style="width:14px;height:14px;"></i> Account Settings
         </button>
