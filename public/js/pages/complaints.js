@@ -85,11 +85,32 @@ const ComplaintsPage = {
         status: this.currentStatus
       });
 
-      if (res.success) {
+      if (res && res.success) {
         this.renderComplaints(res.data);
+        return;
       }
     } catch (e) {
-      Toast.error('Failed to load complaints: ' + e.message);
+      console.warn('[Complaints] Online load failed, using local dataset');
+    }
+
+    if (typeof MockData !== 'undefined' && Array.isArray(MockData.complaints)) {
+      let list = MockData.complaints;
+      const user = API.getUser();
+      if (user && user.role === 'student') {
+        const student = API.getStudent();
+        if (student) {
+          list = list.filter(c => Number(c.student_id) === Number(student.id));
+        }
+      }
+      if (this.currentCategory) {
+        list = list.filter(c => c.category === this.currentCategory);
+      }
+      if (this.currentStatus) {
+        list = list.filter(c => c.status === this.currentStatus);
+      }
+      this.renderComplaints(list);
+    } else {
+      Toast.error('Failed to load complaints.');
     }
   },
 
@@ -281,14 +302,39 @@ const ComplaintsPage = {
         btn.innerHTML = '<span>Submitting...</span>';
       }
 
-      const res = await API.post('/complaints', formData);
-      if (res.success) {
-        Toast.success(res.message);
+      try {
+        const res = await API.post('/complaints', formData);
+        if (res && res.success) {
+          Toast.success(res.message);
+          Modal.close();
+          await ComplaintsPage.loadComplaints();
+          if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+            await window.NotificationCenter.fetchNotifications();
+          }
+          return;
+        }
+      } catch (netErr) {
+        console.warn('[Complaints] Online submit failed, storing locally');
+      }
+
+      if (typeof MockData !== 'undefined' && typeof MockData.addComplaint === 'function') {
+        const user = API.getUser();
+        const student = API.getStudent();
+        MockData.addComplaint({
+          student_id: (student && student.id) || (user && user.id) || 1,
+          category,
+          room_number: roomNumber || (student && student.room_number) || '205',
+          title,
+          description
+        });
+        Toast.success('Complaint ticket registered successfully!');
         Modal.close();
         await ComplaintsPage.loadComplaints();
         if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
           await window.NotificationCenter.fetchNotifications();
         }
+      } else {
+        Toast.error('Failed to submit complaint.');
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to submit complaint.');
@@ -342,16 +388,29 @@ const ComplaintsPage = {
 
     try {
       const res = await API.put(`/complaints/${id}/status`, { status, adminNotes });
-      if (res.success) {
+      if (res && res.success) {
         Toast.success(res.message);
         Modal.close();
         await ComplaintsPage.loadComplaints();
         if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
           await window.NotificationCenter.fetchNotifications();
         }
+        return;
       }
     } catch (err) {
-      Toast.error(err.message);
+      console.warn('[Complaints] Online status update failed, updating locally');
+    }
+
+    if (typeof MockData !== 'undefined' && typeof MockData.updateComplaintStatus === 'function') {
+      MockData.updateComplaintStatus(id, status, adminNotes);
+      Toast.success('Complaint status updated successfully!');
+      Modal.close();
+      await ComplaintsPage.loadComplaints();
+      if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+        await window.NotificationCenter.fetchNotifications();
+      }
+    } else {
+      Toast.error('Failed to update complaint status.');
     }
   },
 
@@ -359,15 +418,27 @@ const ComplaintsPage = {
     if (!confirm('Are you sure you want to delete this maintenance complaint record?')) return;
     try {
       const res = await API.delete(`/complaints/${id}`);
-      if (res.success) {
+      if (res && res.success) {
         Toast.success(res.message || 'Complaint deleted successfully.');
         await ComplaintsPage.loadComplaints();
         if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
           await window.NotificationCenter.fetchNotifications();
         }
+        return;
       }
     } catch (err) {
-      Toast.error(err.message || 'Failed to delete complaint.');
+      console.warn('[Complaints] Online delete failed, deleting locally');
+    }
+
+    if (typeof MockData !== 'undefined' && typeof MockData.deleteComplaint === 'function') {
+      MockData.deleteComplaint(id);
+      Toast.success('Complaint deleted successfully.');
+      await ComplaintsPage.loadComplaints();
+      if (window.NotificationCenter && typeof window.NotificationCenter.fetchNotifications === 'function') {
+        await window.NotificationCenter.fetchNotifications();
+      }
+    } else {
+      Toast.error('Failed to delete complaint.');
     }
   }
 };

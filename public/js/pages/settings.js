@@ -106,7 +106,7 @@ const SettingsPage = {
     if (user && user.role === 'admin') {
       try {
         const res = await API.get('/settings');
-        if (res.success && res.data) {
+        if (res && res.success && res.data) {
           const s = res.data;
           const nameEl = document.getElementById('set-hostel-name');
           const phoneEl = document.getElementById('set-hostel-phone');
@@ -118,8 +118,23 @@ const SettingsPage = {
           if (curfewEl && s.curfew_time) curfewEl.value = s.curfew_time;
           if (feeEl && s.default_monthly_fee) feeEl.value = s.default_monthly_fee;
           if (addrEl && s.hostel_address) addrEl.value = s.hostel_address;
+          return;
         }
       } catch (e) {}
+
+      if (typeof MockData !== 'undefined' && MockData.settings) {
+        const s = MockData.settings;
+        const nameEl = document.getElementById('set-hostel-name');
+        const phoneEl = document.getElementById('set-hostel-phone');
+        const curfewEl = document.getElementById('set-hostel-curfew');
+        const feeEl = document.getElementById('set-hostel-fee');
+        const addrEl = document.getElementById('set-hostel-addr');
+        if (nameEl && s.hostel_name) nameEl.value = s.hostel_name;
+        if (phoneEl && s.contact_phone) phoneEl.value = s.contact_phone;
+        if (curfewEl && s.curfew_time) curfewEl.value = s.curfew_time;
+        if (feeEl && s.default_monthly_fee) feeEl.value = s.default_monthly_fee;
+        if (addrEl && s.hostel_address) addrEl.value = s.hostel_address;
+      }
     }
   },
 

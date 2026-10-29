@@ -56,11 +56,31 @@ const LeaveRequestsPage = {
   async loadRequests() {
     try {
       const res = await API.get('/leave-requests');
-      if (res.success) {
+      if (res && res.success) {
         this.renderTable(res.data);
+        return;
       }
     } catch (e) {
-      Toast.error('Failed to load leave requests: ' + e.message);
+      console.warn('[LeaveRequests] Online load failed, using local dataset');
+    }
+
+    if (typeof MockData !== 'undefined' && Array.isArray(MockData.leaveRequests)) {
+      const user = API.getUser();
+      let list = MockData.leaveRequests;
+      if (user && user.role === 'student') {
+        const student = API.getStudent();
+        if (student) {
+          list = list.filter(l => Number(l.student_id) === Number(student.id));
+        }
+      }
+      const formatted = list.map(l => ({
+        ...l,
+        startDateDisplay: l.startDateDisplay || (typeof Utils !== 'undefined' ? Utils.formatDate(l.start_date) : l.start_date),
+        endDateDisplay: l.endDateDisplay || (typeof Utils !== 'undefined' ? Utils.formatDate(l.end_date) : l.end_date)
+      }));
+      this.renderTable(formatted);
+    } else {
+      Toast.error('Failed to load leave requests.');
     }
   },
 
@@ -202,13 +222,33 @@ const LeaveRequestsPage = {
         reason
       });
 
-      if (res.success) {
+      if (res && res.success) {
         Toast.success(res.message);
         Modal.close();
         this.loadRequests();
+        return;
       }
     } catch (err) {
-      Toast.error(err.message);
+      console.warn('[LeaveRequests] Online submit failed, storing locally');
+    }
+
+    if (typeof MockData !== 'undefined' && typeof MockData.addLeaveRequest === 'function') {
+      const student = API.getStudent() || {};
+      MockData.addLeaveRequest({
+        student_id: student.id || 1,
+        student_name: student.name || 'Ravi Kumar',
+        reg_number: student.reg_number || '2024ST001',
+        room_number: student.room_number || '205',
+        startDate,
+        endDate,
+        emergencyContact,
+        reason
+      });
+      Toast.success('Leave application submitted successfully!');
+      Modal.close();
+      this.loadRequests();
+    } else {
+      Toast.error('Failed to submit application.');
     }
   },
 
@@ -222,12 +262,21 @@ const LeaveRequestsPage = {
         remarks
       });
 
-      if (res.success) {
+      if (res && res.success) {
         Toast.success(res.message);
         this.loadRequests();
+        return;
       }
     } catch (e) {
-      Toast.error(e.message);
+      console.warn('[LeaveRequests] Online status update failed, updating locally');
+    }
+
+    if (typeof MockData !== 'undefined' && typeof MockData.updateLeaveRequestStatus === 'function') {
+      MockData.updateLeaveRequestStatus(id, newStatus, remarks);
+      Toast.success(`Leave request ${newStatus.toLowerCase()} successfully.`);
+      this.loadRequests();
+    } else {
+      Toast.error('Failed to update leave status.');
     }
   }
 };

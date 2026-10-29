@@ -6,7 +6,7 @@
  * When a student is removed/vacated, their bed automatically and immediately becomes Available.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_live_store_v10';
+  const STORAGE_KEY = 'sri_ram_pg_live_store_v11';
 
   // Purge any older demo stores
   try {
@@ -360,6 +360,398 @@
     };
   }
 
+  const bedLetters = ['A', 'B', 'C', 'D', 'E'];
+
+  const FIRST_NAMES = [
+    'Aarav', 'Aditi', 'Akash', 'Amit', 'Ananya', 'Anil', 'Ankit', 'Archana', 'Arjun', 'Bhavna',
+    'Chetan', 'Deepak', 'Divya', 'Gaurav', 'Harish', 'Ishaan', 'Kavita', 'Manish', 'Neha', 'Nikhil',
+    'Pooja', 'Pranav', 'Priya', 'Rahul', 'Rajesh', 'Rakesh', 'Riya', 'Rohan', 'Sachin', 'Sameer',
+    'Sandeep', 'Sanjay', 'Shalini', 'Shreya', 'Sneha', 'Suresh', 'Tarun', 'Varun', 'Vikas', 'Vishal'
+  ];
+
+  const LAST_NAMES = [
+    'Sharma', 'Verma', 'Gupta', 'Kumar', 'Singh', 'Patel', 'Reddy', 'Mishra', 'Joshi', 'Yadav',
+    'Nair', 'Bose', 'Das', 'Pandey', 'Chauhan', 'Mehta', 'Shah', 'Aggarwal', 'Tripathi', 'Iyer'
+  ];
+
+  const COLLEGES = [
+    'Vignan University, Vadlamudi',
+    'National Institute of Technology',
+    'Koneru Lakshmaiah University',
+    'Vellore Institute of Technology',
+    'Delhi Technological University'
+  ];
+
+  const COURSES = [
+    'B.Tech Computer Science',
+    'B.Tech Information Technology',
+    'B.Tech Electronics & Comm.',
+    'B.Tech Mechanical Engineering',
+    'BCA / MCA'
+  ];
+
+  function seedInitialData(targetStore) {
+    if (!targetStore) return;
+    targetStore.students = [];
+    targetStore.feeCycles = [];
+    targetStore.payments = [];
+    targetStore.expenses = [];
+    targetStore.leaveRequests = [];
+
+    // All 250 beds:
+    const allBedSlots = [];
+    for (let f = 1; f <= 5; f++) {
+      for (let r = 1; r <= 10; r++) {
+        const roomNum = `${f}${String(r).padStart(2, '0')}`;
+        for (let b = 0; b < 5; b++) {
+          allBedSlots.push({
+            floor_number: f,
+            room_number: roomNum,
+            bed_label: `Bed-${bedLetters[b]}`
+          });
+        }
+      }
+    }
+
+    // 1. Ravi Kumar (Student in Room 205, Bed-A)
+    targetStore.students.push({
+      id: 1,
+      reg_number: '2024ST001',
+      name: 'Ravi Kumar',
+      email: 'ravi.kumar@vignan.ac.in',
+      phone: '+91 98765 43210',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Computer Science',
+      year: '3rd Year',
+      gender: 'Male',
+      parent_name: 'Suresh Kumar',
+      parent_phone: '+91 98765 00001',
+      address: 'Plot 42, Green Avenue, Guntur',
+      photo_url: './assets/images/default-student.png',
+      joining_date: '2026-08-10',
+      monthly_fee: 7000,
+      fee_status: 'paid',
+      room_number: '205',
+      floor_number: 2,
+      bed_label: 'Bed-A',
+      password: 'student123'
+    });
+
+    targetStore.feeCycles.push({
+      id: 1,
+      student_id: 1,
+      student_name: 'Ravi Kumar',
+      reg_number: '2024ST001',
+      room_number: '205',
+      bed_label: 'Bed-A',
+      phone: '+91 98765 43210',
+      parent_phone: '+91 98765 00001',
+      cycle_number: 1,
+      start_date: '2026-08-10',
+      end_date: '2026-09-09',
+      due_date: '2026-09-09',
+      amount: 7000,
+      paid_amount: 7000,
+      status: 'paid'
+    });
+    targetStore.payments.push({
+      id: 1,
+      student_id: 1,
+      fee_cycle_id: 1,
+      receipt_number: 'REC-2026-0001',
+      amount: 7000,
+      payment_date: '2026-08-12',
+      cycle_start_date: '2026-08-10',
+      cycle_end_date: '2026-09-09',
+      student_name: 'Ravi Kumar',
+      reg_number: '2024ST001',
+      room_number: '205',
+      bed_label: 'Bed-A',
+      student_phone: '+91 98765 43210',
+      phone: '+91 98765 43210',
+      parent_phone: '+91 98765 00001',
+      parent_name: 'Suresh Kumar',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Computer Science',
+      payment_method: 'UPI',
+      transaction_id: 'UPI-9843217740',
+      status: 'PAID',
+      notes: 'Initial admission cycle payment'
+    });
+    targetStore.feeCycles.push({
+      id: 2,
+      student_id: 1,
+      student_name: 'Ravi Kumar',
+      reg_number: '2024ST001',
+      room_number: '205',
+      bed_label: 'Bed-A',
+      phone: '+91 98765 43210',
+      parent_phone: '+91 98765 00001',
+      cycle_number: 2,
+      start_date: '2026-09-10',
+      end_date: '2026-10-09',
+      due_date: '2026-10-09',
+      amount: 7000,
+      paid_amount: 0,
+      status: 'pending'
+    });
+
+    // 2. Amit Sharma (Room 205, Bed-B) - Paid
+    targetStore.students.push({
+      id: 2,
+      reg_number: '2024ST002',
+      name: 'Amit Sharma',
+      email: 'amit.sharma@vignan.ac.in',
+      phone: '+91 98765 43211',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Information Technology',
+      year: '2nd Year',
+      gender: 'Male',
+      parent_name: 'Ramesh Sharma',
+      parent_phone: '+91 98765 00002',
+      address: 'Door 12-4, Ring Road, Vijayawada',
+      photo_url: './assets/images/default-student.png',
+      joining_date: '2026-08-15',
+      monthly_fee: 7000,
+      fee_status: 'paid',
+      room_number: '205',
+      floor_number: 2,
+      bed_label: 'Bed-B',
+      password: 'student123'
+    });
+    targetStore.feeCycles.push({
+      id: 3,
+      student_id: 2,
+      student_name: 'Amit Sharma',
+      reg_number: '2024ST002',
+      room_number: '205',
+      bed_label: 'Bed-B',
+      phone: '+91 98765 43211',
+      parent_phone: '+91 98765 00002',
+      cycle_number: 1,
+      start_date: '2026-08-15',
+      end_date: '2026-09-14',
+      due_date: '2026-09-14',
+      amount: 7000,
+      paid_amount: 7000,
+      status: 'paid'
+    });
+    targetStore.payments.push({
+      id: 2,
+      student_id: 2,
+      fee_cycle_id: 3,
+      receipt_number: 'REC-2026-0002',
+      amount: 7000,
+      payment_date: '2026-08-17',
+      cycle_start_date: '2026-08-15',
+      cycle_end_date: '2026-09-14',
+      student_name: 'Amit Sharma',
+      reg_number: '2024ST002',
+      room_number: '205',
+      bed_label: 'Bed-B',
+      student_phone: '+91 98765 43211',
+      phone: '+91 98765 43211',
+      parent_phone: '+91 98765 00002',
+      parent_name: 'Ramesh Sharma',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Information Technology',
+      payment_method: 'Bank Transfer',
+      transaction_id: 'NEFT-441290',
+      status: 'PAID',
+      notes: 'Semester room fees'
+    });
+
+    // 3. Rahul Verma (Room 205, Bed-C) - Pending
+    targetStore.students.push({
+      id: 3,
+      reg_number: '2024ST003',
+      name: 'Rahul Verma',
+      email: 'rahul.verma@vignan.ac.in',
+      phone: '+91 98765 43212',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Mechanical Engineering',
+      year: '1st Year',
+      gender: 'Male',
+      parent_name: 'Vinod Verma',
+      parent_phone: '+91 98765 00003',
+      address: 'Sector 5, Main Bazar, Tenali',
+      photo_url: './assets/images/default-student.png',
+      joining_date: '2026-09-01',
+      monthly_fee: 7000,
+      fee_status: 'pending',
+      room_number: '205',
+      floor_number: 2,
+      bed_label: 'Bed-C',
+      password: 'student123'
+    });
+    targetStore.feeCycles.push({
+      id: 4,
+      student_id: 3,
+      student_name: 'Rahul Verma',
+      reg_number: '2024ST003',
+      room_number: '205',
+      bed_label: 'Bed-C',
+      phone: '+91 98765 43212',
+      parent_phone: '+91 98765 00003',
+      cycle_number: 1,
+      start_date: '2026-09-01',
+      end_date: '2026-09-30',
+      due_date: '2026-09-30',
+      amount: 7000,
+      paid_amount: 0,
+      status: 'pending'
+    });
+      due_date: '2026-09-30',
+      amount: 7000,
+      paid_amount: 0,
+      status: 'pending'
+    });
+
+    const remainingSlots = allBedSlots.filter(s => 
+      !(s.room_number === '205' && (s.bed_label === 'Bed-A' || s.bed_label === 'Bed-B' || s.bed_label === 'Bed-C'))
+    );
+
+    let receiptNum = 3;
+    let cycleCounter = 5;
+
+    for (let i = 0; i < 180; i++) {
+      const sId = i + 4;
+      const bed = remainingSlots[i];
+      const fn = FIRST_NAMES[i % FIRST_NAMES.length];
+      const ln = LAST_NAMES[(i * 3) % LAST_NAMES.length];
+      const name = `${fn} ${ln}`;
+      const regNo = `2024ST${String(i + 10).padStart(3, '0')}`;
+      const email = `${fn.toLowerCase()}.${ln.toLowerCase()}${i}@vignan.ac.in`;
+      const phone = `+91 98${String(10000000 + i * 47).slice(0, 8)}`;
+      const college = COLLEGES[i % COLLEGES.length];
+      const course = COURSES[i % COURSES.length];
+      const year = `${(i % 4) + 1}st Year`;
+      const gender = i % 3 === 0 ? 'Female' : 'Male';
+
+      const isPaid = i >= 12; // 12 pending + Rahul = 13 pending! 168 + Ravi + Amit = 170 paid!
+      const feeStatus = isPaid ? 'paid' : 'pending';
+
+      const day = (i % 25) + 1;
+      const month = (i % 2 === 0) ? '09' : '08';
+      const jDate = `2026-${month}-${String(day).padStart(2, '0')}`;
+
+      const dObj = new Date(jDate);
+      const nextMonth = new Date(dObj.getFullYear(), dObj.getMonth() + 1, dObj.getDate());
+      const endObj = new Date(nextMonth.getTime() - 86400000);
+      const eDate = endObj.toISOString().slice(0, 10);
+
+      targetStore.students.push({
+        id: sId,
+        reg_number: regNo,
+        name: name,
+        email: email,
+        phone: phone,
+        college: college,
+        course: course,
+        year: year,
+        gender: gender,
+        parent_name: `${ln} Parent`,
+        parent_phone: `+91 97${String(20000000 + i * 53).slice(0, 8)}`,
+        address: `Sample Address ${i + 1}, Vignan Campus Region`,
+        photo_url: './assets/images/default-student.png',
+        joining_date: jDate,
+        monthly_fee: 7000,
+        fee_status: feeStatus,
+        room_number: bed.room_number,
+        floor_number: bed.floor_number,
+        bed_label: bed.bed_label,
+        password: 'student123'
+      });
+
+      const cycleId = cycleCounter++;
+      targetStore.feeCycles.push({
+        id: cycleId,
+        student_id: sId,
+        student_name: name,
+        reg_number: regNo,
+        room_number: bed.room_number,
+        bed_label: bed.bed_label,
+        phone: phone,
+        parent_phone: `+91 97${String(20000000 + i * 53).slice(0, 8)}`,
+        cycle_number: 1,
+        start_date: jDate,
+        end_date: eDate,
+        due_date: eDate,
+        amount: 7000,
+        paid_amount: isPaid ? 7000 : 0,
+        status: feeStatus
+      });
+
+      if (isPaid) {
+        const payId = receiptNum++;
+        const payDay = Math.min(28, day + 2);
+        const payDate = `2026-10-${String(payDay).padStart(2, '0')}`;
+        targetStore.payments.push({
+          id: payId,
+          student_id: sId,
+          fee_cycle_id: cycleId,
+          receipt_number: `REC-2026-${String(payId).padStart(4, '0')}`,
+          amount: 7000,
+          payment_date: payDate,
+          cycle_start_date: jDate,
+          cycle_end_date: eDate,
+          student_name: name,
+          reg_number: regNo,
+          room_number: bed.room_number,
+          bed_label: bed.bed_label,
+          student_phone: phone,
+          phone: phone,
+          parent_phone: `+91 97${String(20000000 + i * 53).slice(0, 8)}`,
+          parent_name: `${ln} Parent`,
+          college: college,
+          course: course,
+          payment_method: (i % 3 === 0) ? 'UPI' : (i % 3 === 1) ? 'Cash' : 'Bank Transfer',
+          transaction_id: `TXN-${100000 + i}`,
+          status: 'PAID',
+          notes: 'Regular monthly room rental fee'
+        });
+      }
+    }
+
+    targetStore.expenses = [
+      { id: 1, category: 'Electricity', amount: 85000, date: '2026-10-05', expense_date: '2026-10-05', description: 'Commercial HT 3-phase electricity power bill for October', payment_method: 'Bank Transfer', receipt_ref: 'VOUCH-2026-0001' },
+      { id: 2, category: 'Mess & Food', amount: 120000, date: '2026-10-10', expense_date: '2026-10-10', description: 'Wholesale grains, vegetables, milk & provisions for student dining hall', payment_method: 'UPI', receipt_ref: 'VOUCH-2026-0002' },
+      { id: 3, category: 'Housekeeping', amount: 45000, date: '2026-10-12', expense_date: '2026-10-12', description: 'Floor sanitation, cleaning supplies, and housekeeping staff wages', payment_method: 'Cash', receipt_ref: 'VOUCH-2026-0003' },
+      { id: 4, category: 'Water Supply', amount: 28000, date: '2026-10-15', expense_date: '2026-10-15', description: 'RO drinking water filtration maintenance & municipal water supply', payment_method: 'Bank Transfer', receipt_ref: 'VOUCH-2026-0004' },
+      { id: 5, category: 'Internet & WiFi', amount: 18000, date: '2026-10-18', expense_date: '2026-10-18', description: '1 Gbps dedicated optical fiber leased line for hostel campus', payment_method: 'Bank Transfer', receipt_ref: 'VOUCH-2026-0005' },
+      { id: 6, category: 'Maintenance', amount: 24000, date: '2026-10-22', expense_date: '2026-10-22', description: 'DG backup generator diesel and electrical servicing', payment_method: 'UPI', receipt_ref: 'VOUCH-2026-0006' }
+    ];
+
+    targetStore.leaveRequests = [
+      {
+        id: 1,
+        student_id: 1,
+        student_name: 'Ravi Kumar',
+        reg_number: '2024ST001',
+        room_number: '205',
+        start_date: '2026-11-01',
+        end_date: '2026-11-04',
+        reason: 'Attending cousin sister wedding at native village',
+        parent_consent: true,
+        status: 'Approved',
+        applied_at: '2026-10-25'
+      },
+      {
+        id: 2,
+        student_id: 2,
+        student_name: 'Amit Sharma',
+        reg_number: '2024ST002',
+        room_number: '205',
+        start_date: '2026-11-05',
+        end_date: '2026-11-07',
+        reason: 'Diwali festive family gathering',
+        parent_consent: true,
+        status: 'Pending',
+        applied_at: '2026-10-27'
+      }
+    ];
+  }
+
   function saveStore() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
@@ -597,7 +989,7 @@
       store = getCleanInitialState();
       // Safely migrate user-added students and records from v9, v8, v7, v6, or v5
       try {
-        const prevKeys = ['sri_ram_pg_live_store_v9', 'sri_ram_pg_live_store_v8', 'sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
+        const prevKeys = ['sri_ram_pg_live_store_v10', 'sri_ram_pg_live_store_v9', 'sri_ram_pg_live_store_v8', 'sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
         for (const pk of prevKeys) {
           const val = localStorage.getItem(pk);
           if (val) {
@@ -618,15 +1010,17 @@
         }
       } catch (e) {}
     }
+    if (!Array.isArray(store.students) || store.students.length === 0) {
+      seedInitialData(store);
+    }
     sanitizeStore();
     saveStore();
   } catch (e) {
     store = getCleanInitialState();
+    seedInitialData(store);
     sanitizeStore();
     saveStore();
   }
-
-  const bedLetters = ['A', 'B', 'C', 'D', 'E'];
 
   // Helper date formatter DD-MM-YYYY
   function formatDisplayDate(dateStr) {
@@ -745,7 +1139,8 @@
     get feeCycles() {
       sanitizeStore();
       const today = new Date().toISOString().slice(0, 10);
-      return store.feeCycles.map(c => {
+      return (store.feeCycles || []).map(c => {
+        const s = (store.students || []).find(stud => Number(stud.id) === Number(c.student_id)) || {};
         const isPaid = c.status === 'paid' || (Number(c.paid_amount || 0) >= Number(c.amount || 0));
         let reminder;
         if (isPaid) {
@@ -760,6 +1155,12 @@
 
         return {
           ...c,
+          student_name: c.student_name || s.name || 'Resident Student',
+          reg_number: c.reg_number || s.reg_number || '2024ST001',
+          room_number: c.room_number || s.room_number || '101',
+          bed_label: c.bed_label || s.bed_label || 'Bed-A',
+          phone: c.phone || s.phone || '',
+          parent_phone: c.parent_phone || s.parent_phone || '',
           status: isPaid ? 'paid' : 'pending',
           startDateDisplay: formatDisplayDate(c.start_date),
           endDateDisplay: formatDisplayDate(c.end_date),
@@ -772,7 +1173,25 @@
 
     get payments() {
       sanitizeStore();
-      return store.payments;
+      return (store.payments || []).map(p => {
+        const s = (store.students || []).find(stud => Number(stud.id) === Number(p.student_id)) || {};
+        return {
+          ...p,
+          student_name: p.student_name || s.name || 'Resident Student',
+          reg_number: p.reg_number || s.reg_number || '2024ST001',
+          room_number: p.room_number || s.room_number || '101',
+          bed_label: p.bed_label || s.bed_label || 'Bed-A',
+          student_phone: p.student_phone || p.phone || s.phone || '',
+          phone: p.phone || s.phone || '',
+          parent_phone: p.parent_phone || s.parent_phone || '',
+          parent_name: p.parent_name || s.parent_name || 'Parent / Guardian',
+          college: p.college || s.college || 'Vignan University, Vadlamudi',
+          course: p.course || s.course || 'B.Tech',
+          paymentDateDisplay: formatDisplayDate(p.payment_date),
+          cycleStartDisplay: formatDisplayDate(p.cycle_start_date),
+          cycleEndDisplay: formatDisplayDate(p.cycle_end_date)
+        };
+      });
     },
     get complaints() {
       if (!Array.isArray(store.complaints) || store.complaints.length === 0) {
@@ -1139,10 +1558,12 @@
     },
 
     getPaymentDetails(pId) {
-      const p = store.payments.find(pay => Number(pay.id) === Number(pId) || Number(pay.paymentId) === Number(pId));
+      const p = (store.payments || []).find(pay => Number(pay.id) === Number(pId) || Number(pay.paymentId) === Number(pId));
       if (!p) {
-        return store.payments[0] || null;
+        return (store.payments && store.payments[0]) || null;
       }
+
+      const s = (store.students || []).find(stud => Number(stud.id) === Number(p.student_id)) || {};
 
       let nextDue = '2026-11-15';
       let nextDueDisp = '15-11-2026';
@@ -1157,6 +1578,16 @@
 
       return {
         ...p,
+        student_name: p.student_name || s.name || 'Resident Student',
+        reg_number: p.reg_number || s.reg_number || '2024ST001',
+        room_number: p.room_number || s.room_number || '101',
+        bed_label: p.bed_label || s.bed_label || 'Bed-A',
+        student_phone: p.student_phone || p.phone || s.phone || '',
+        phone: p.phone || s.phone || '',
+        parent_phone: p.parent_phone || s.parent_phone || '',
+        parent_name: p.parent_name || s.parent_name || 'Parent / Guardian',
+        college: p.college || s.college || 'Vignan University, Vadlamudi',
+        course: p.course || s.course || 'B.Tech',
         paymentDateDisplay: formatDisplayDate(p.payment_date),
         cycleStartDisplay: formatDisplayDate(p.cycle_start_date),
         cycleEndDisplay: formatDisplayDate(p.cycle_end_date),
@@ -1983,6 +2414,219 @@
       return triggered;
     },
 
+    generateReport(reportType) {
+      sanitizeStore();
+      const stats = this.stats;
+      let result = { title: '', columns: [], rows: [], summary: {} };
+
+      switch (reportType) {
+        case 'students': {
+          result.title = 'Comprehensive Student Directory Report';
+          result.columns = ['Reg No', 'Student Name', 'College', 'Course', 'Room', 'Bed', 'Phone', 'Joining Date', 'Status'];
+          result.rows = (store.students || []).map(s => [
+            s.reg_number,
+            s.name,
+            s.college || 'Vignan University, Vadlamudi',
+            s.course || 'B.Tech',
+            s.room_number || '-',
+            s.bed_label || '-',
+            s.phone || '-',
+            formatDisplayDate(s.joining_date),
+            (s.fee_status || 'paid').toUpperCase()
+          ]);
+          result.summary = {
+            'Total Students': store.students.length,
+            'Occupied Beds': store.students.length,
+            'Hostel Capacity': '250 Beds'
+          };
+          break;
+        }
+
+        case 'rooms': {
+          result.title = 'Room Capacity & Status Report';
+          result.columns = ['Floor', 'Room Number', 'Type', 'Capacity', 'Occupied Beds', 'Available Beds', 'Status'];
+          const struct = this.structure;
+          const rows = [];
+          for (const floor of struct) {
+            for (const room of floor.rooms) {
+              rows.push([
+                floor.name,
+                room.room_number,
+                'Standard 5-Bed',
+                5,
+                room.occupied_count,
+                5 - room.occupied_count,
+                room.occupied_count >= 5 ? 'FULL' : room.occupied_count > 0 ? 'PARTIAL' : 'VACANT'
+              ]);
+            }
+          }
+          result.rows = rows;
+          result.summary = {
+            'Total Rooms': 50,
+            'Total Beds': 250,
+            'Occupied Beds': stats.occupiedBeds,
+            'Available Beds': stats.availableBeds
+          };
+          break;
+        }
+
+        case 'occupancy': {
+          result.title = 'Hostel Bed Occupancy & Vacancy Report';
+          result.columns = ['Floor', 'Room Number', 'Bed Label', 'Status', 'Allocated Student', 'Reg Number', 'Phone'];
+          const rows = [];
+          for (const floor of this.structure) {
+            for (const room of floor.rooms) {
+              for (const bed of room.beds) {
+                rows.push([
+                  floor.name,
+                  room.room_number,
+                  bed.bed_label,
+                  bed.status.toUpperCase(),
+                  bed.student ? bed.student.name : '-',
+                  bed.student ? bed.student.reg_number : '-',
+                  bed.student ? bed.student.phone : '-'
+                ]);
+              }
+            }
+          }
+          result.rows = rows;
+          result.summary = {
+            'Total Beds': 250,
+            'Occupied Beds': stats.occupiedBeds,
+            'Available Beds': stats.availableBeds,
+            'Occupancy Rate': stats.occupancyRate + '%'
+          };
+          break;
+        }
+
+        case 'collections': {
+          result.title = 'Fee Collections & Payment Ledger';
+          result.columns = ['Receipt #', 'Date', 'Student Name', 'Reg No', 'Room', 'Amount', 'Payment Mode', 'Transaction ID'];
+          const pays = this.payments;
+          result.rows = pays.map(p => [
+            p.receipt_number,
+            p.paymentDateDisplay || formatDisplayDate(p.payment_date),
+            p.student_name || 'Resident Student',
+            p.reg_number || '-',
+            p.room_number ? `Rm ${p.room_number}` : '-',
+            typeof Utils !== 'undefined' ? Utils.formatINR(p.amount) : `₹${p.amount}`,
+            p.payment_method || 'UPI',
+            p.transaction_id || '-'
+          ]);
+          result.summary = {
+            'Total Collections': typeof Utils !== 'undefined' ? Utils.formatINR(stats.feesCollected) : `₹${stats.feesCollected}`,
+            'Total Receipts Issued': pays.length,
+            'Active Residents Paid': store.students.filter(s => s.fee_status === 'paid').length
+          };
+          break;
+        }
+
+        case 'pending-fees': {
+          result.title = 'Pending Dues & Defaulters Audit Report';
+          result.columns = ['Reg No', 'Student Name', 'Room', 'Bed', 'Phone', 'Due Date', 'Due Amount', 'Status'];
+          const pendingCycles = this.feeCycles.filter(c => c.status !== 'paid');
+          result.rows = pendingCycles.map(c => [
+            c.reg_number || '-',
+            c.student_name || 'Resident Student',
+            c.room_number ? `Rm ${c.room_number}` : '-',
+            c.bed_label || '-',
+            c.phone || '-',
+            c.dueDateDisplay || formatDisplayDate(c.due_date),
+            typeof Utils !== 'undefined' ? Utils.formatINR(Number(c.amount || 7000) - Number(c.paid_amount || 0)) : `₹${c.amount}`,
+            c.reminder ? c.reminder.label.toUpperCase() : 'PENDING'
+          ]);
+          result.summary = {
+            'Defaulters / Due Cycles': pendingCycles.length,
+            'Total Outstanding Dues': typeof Utils !== 'undefined' ? Utils.formatINR(stats.pendingFees) : `₹${stats.pendingFees}`
+          };
+          break;
+        }
+
+        case 'expenses': {
+          result.title = 'Campus Operational Expense Ledger';
+          result.columns = ['Voucher Ref', 'Date', 'Category', 'Description', 'Payment Method', 'Amount'];
+          result.rows = (store.expenses || []).map(e => [
+            e.receipt_ref || `VOUCH-${e.id}`,
+            formatDisplayDate(e.date || e.expense_date),
+            e.category || 'Maintenance',
+            e.description || '-',
+            e.payment_method || 'Bank Transfer',
+            typeof Utils !== 'undefined' ? Utils.formatINR(e.amount) : `₹${e.amount}`
+          ]);
+          result.summary = {
+            'Total Expenses': typeof Utils !== 'undefined' ? Utils.formatINR(stats.hostelExpenses) : `₹${stats.hostelExpenses}`,
+            'Total Expense Vouchers': (store.expenses || []).length
+          };
+          break;
+        }
+
+        case 'income': {
+          result.title = 'Financial Income & Expense P&L Statement';
+          result.columns = ['Financial Ledger Item', 'Total Inflow (₹)', 'Total Outflow (₹)', 'Net Balance (₹)'];
+          result.rows = [
+            ['Student Room Rents & Collections', typeof Utils !== 'undefined' ? Utils.formatINR(stats.feesCollected) : `₹${stats.feesCollected}`, '-', typeof Utils !== 'undefined' ? Utils.formatINR(stats.feesCollected) : `₹${stats.feesCollected}`],
+            ['Campus Operating Expenses', '-', typeof Utils !== 'undefined' ? Utils.formatINR(stats.hostelExpenses) : `₹${stats.hostelExpenses}`, `-${typeof Utils !== 'undefined' ? Utils.formatINR(stats.hostelExpenses) : `₹${stats.hostelExpenses}`}`],
+            ['Net Operational Surplus / P&L', typeof Utils !== 'undefined' ? Utils.formatINR(stats.feesCollected) : `₹${stats.feesCollected}`, typeof Utils !== 'undefined' ? Utils.formatINR(stats.hostelExpenses) : `₹${stats.hostelExpenses}`, typeof Utils !== 'undefined' ? Utils.formatINR(stats.netIncome) : `₹${stats.netIncome}`]
+          ];
+          result.summary = {
+            'Total Revenue': typeof Utils !== 'undefined' ? Utils.formatINR(stats.feesCollected) : `₹${stats.feesCollected}`,
+            'Total Expenses': typeof Utils !== 'undefined' ? Utils.formatINR(stats.hostelExpenses) : `₹${stats.hostelExpenses}`,
+            'Net Income': typeof Utils !== 'undefined' ? Utils.formatINR(stats.netIncome) : `₹${stats.netIncome}`
+          };
+          break;
+        }
+
+        case 'complaints': {
+          result.title = 'Resident Grievance & Maintenance Audit';
+          result.columns = ['Ticket ID', 'Date', 'Student Name', 'Room', 'Category', 'Subject', 'Status'];
+          result.rows = (this.complaints || []).map(c => [
+            `TKT-${c.id}`,
+            c.createdAtDisplay || (c.created_at ? formatDisplayDate(c.created_at.slice(0, 10)) : 'Today'),
+            c.student_name || 'Resident',
+            c.room_number ? `Rm ${c.room_number}` : '-',
+            c.category || 'Facility',
+            c.title || '-',
+            (c.status || 'Pending').toUpperCase()
+          ]);
+          result.summary = {
+            'Total Tickets': this.complaints.length,
+            'Resolved Tickets': this.complaints.filter(c => c.status === 'Resolved').length,
+            'Open / In Progress': this.complaints.filter(c => c.status !== 'Resolved').length
+          };
+          break;
+        }
+
+        case 'visitors': {
+          result.title = 'Campus Gate & Visitor Log Audit';
+          result.columns = ['Visitor Name', 'Phone', 'Student Visited', 'Relationship', 'Check In Time', 'Check Out Time', 'Status'];
+          result.rows = (this.visitors || []).map(v => [
+            v.name || '-',
+            v.phone || '-',
+            v.student_name || '-',
+            v.relationship || 'Guardian',
+            v.check_in || v.checkInDisplay || '-',
+            v.check_out || v.checkOutDisplay || '-',
+            v.status === 'in_hostel' ? 'INSIDE HOSTEL' : 'CHECKED OUT'
+          ]);
+          result.summary = {
+            'Total Visitor Entries': this.visitors.length,
+            'Currently On Premises': this.visitors.filter(v => v.status === 'in_hostel').length
+          };
+          break;
+        }
+
+        default: {
+          result.title = 'Hostel Data Report';
+          result.columns = ['Item', 'Details'];
+          result.rows = [['Report Type', reportType], ['Status', 'Generated Successfully']];
+          result.summary = { 'Status': 'OK' };
+          break;
+        }
+      }
+
+      return result;
+    },
+
     updateSettings(data) {
       if (!store.settings) store.settings = {};
       Object.assign(store.settings, data);
@@ -1996,6 +2640,12 @@
 
     resetToClean() {
       store = getCleanInitialState();
+      saveStore();
+    },
+
+    seedDemoData() {
+      seedInitialData(store);
+      sanitizeStore();
       saveStore();
     }
   };

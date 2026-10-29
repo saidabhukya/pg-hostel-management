@@ -126,7 +126,7 @@ const ExpensesPage = {
         limit: 15
       });
 
-      if (res.success) {
+      if (res && res.success) {
         this.renderTable(res.data, res.pagination);
         if (res.summary) {
           const incEl = document.getElementById('exp-total-income');
@@ -136,9 +136,27 @@ const ExpensesPage = {
           if (expEl) expEl.innerText = Utils.formatINR(res.summary.totalExpenses);
           if (netEl) netEl.innerText = Utils.formatINR(res.summary.netIncome);
         }
+        return;
       }
     } catch (e) {
-      Toast.error('Failed to load expenses: ' + e.message);
+      console.warn('[Expenses] Online load failed, using local dataset');
+    }
+
+    if (typeof MockData !== 'undefined' && Array.isArray(MockData.expenses)) {
+      let list = MockData.expenses;
+      if (this.currentCategory) {
+        list = list.filter(e => e.category === this.currentCategory);
+      }
+      this.renderTable(list, { page: 1, limit: 100, totalPages: 1, totalRecords: list.length });
+      const stats = MockData.stats;
+      const incEl = document.getElementById('exp-total-income');
+      const expEl = document.getElementById('exp-total-expenses');
+      const netEl = document.getElementById('exp-net-income');
+      if (incEl) incEl.innerText = Utils.formatINR(stats.feesCollected);
+      if (expEl) expEl.innerText = Utils.formatINR(stats.hostelExpenses);
+      if (netEl) netEl.innerText = Utils.formatINR(stats.netIncome);
+    } else {
+      Toast.error('Failed to load expenses.');
     }
   },
 
@@ -291,16 +309,35 @@ const ExpensesPage = {
         receiptRef
       });
 
-      if (res.success) {
+      if (res && res.success) {
         Toast.success(res.message);
         Modal.close();
         this.loadExpenses();
         if (window.AdminDashboard && App.currentRoute === 'dashboard') {
           AdminDashboard.loadData();
         }
+        return;
       }
     } catch (err) {
-      Toast.error(err.message);
+      console.warn('[Expenses] Online add failed, recording locally');
+    }
+
+    if (typeof MockData !== 'undefined' && typeof MockData.addExpense === 'function') {
+      MockData.addExpense({
+        category,
+        amount,
+        date: expenseDate,
+        description,
+        receiptRef
+      });
+      Toast.success('Expense recorded successfully!');
+      Modal.close();
+      this.loadExpenses();
+      if (window.AdminDashboard && App.currentRoute === 'dashboard') {
+        AdminDashboard.loadData();
+      }
+    } else {
+      Toast.error('Failed to record expense.');
     }
   },
 
@@ -308,15 +345,27 @@ const ExpensesPage = {
     if (!confirm('Are you sure you want to delete this expense record?')) return;
     try {
       const res = await API.delete(`/expenses/${id}`);
-      if (res.success) {
+      if (res && res.success) {
         Toast.success(res.message || 'Expense deleted successfully!');
         this.loadExpenses();
         if (window.AdminDashboard && App.currentRoute === 'dashboard') {
           AdminDashboard.loadData();
         }
+        return;
       }
     } catch (e) {
-      Toast.error('Failed to delete expense: ' + e.message);
+      console.warn('[Expenses] Online delete failed, deleting locally');
+    }
+
+    if (typeof MockData !== 'undefined' && typeof MockData.deleteExpense === 'function') {
+      MockData.deleteExpense(id);
+      Toast.success('Expense deleted successfully!');
+      this.loadExpenses();
+      if (window.AdminDashboard && App.currentRoute === 'dashboard') {
+        AdminDashboard.loadData();
+      }
+    } else {
+      Toast.error('Failed to delete expense.');
     }
   },
 

@@ -13,6 +13,8 @@
   <script src="./vendor/lucide.min.js"></script>
   <script src="./vendor/jspdf.umd.min.js"></script>
   <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="./js/utils.js?v=vignan_seed_v2"></script>
+  <script src="./js/mockData.js?v=vignan_seed_v2"></script>
 
   <style>
     :root {
@@ -396,35 +398,51 @@
         }
 
         // Fallback for GitHub Pages static host
+        if (!receiptData && typeof MockData !== 'undefined' && typeof MockData.getPaymentDetails === 'function') {
+          const matched = MockData.getPaymentDetails(id);
+          if (matched) {
+            receiptData = {
+              ...matched,
+              hostel_name: (MockData.settings && MockData.settings.hostel_name) || 'SRI RAM PG',
+              hostel_address: (MockData.settings && MockData.settings.hostel_address) || 'OPP. VIGNAN UNIVERSITY',
+              hostel_phone: (MockData.settings && MockData.settings.contact_phone) || '+91 98111 22334'
+            };
+          }
+        }
+
         if (!receiptData) {
           try {
-            const rawStore = localStorage.getItem('pg_hostel_store_vignancampus_2026');
-            if (rawStore) {
-              const store = JSON.parse(rawStore);
-              const payments = store.payments || [];
-              const matchedPayment = payments.find(p => String(p.id) === String(id) || String(p.receipt_number).toLowerCase() === String(id).toLowerCase());
-              if (matchedPayment) {
-                const students = store.students || [];
-                const student = students.find(s => Number(s.id) === Number(matchedPayment.student_id)) || {};
-                receiptData = {
-                  ...matchedPayment,
-                  student_name: matchedPayment.student_name || student.name || 'Resident Student',
-                  reg_number: matchedPayment.reg_number || student.reg_number || 'REG',
-                  student_phone: matchedPayment.student_phone || student.phone || '',
-                  college: student.college || 'Vignan University',
-                  course: student.course || 'Resident',
-                  year: student.year || '1st Year',
-                  room_number: matchedPayment.room_number || student.room_number || '-',
-                  floor_number: student.floor_number || 1,
-                  bed_label: student.bed_label || 'Bed',
-                  hostel_name: store.settings?.hostel_name || 'SRI RAM PG',
-                  hostel_address: store.settings?.hostel_address || 'OPP. VIGNAN UNIVERSITY',
-                  hostel_phone: store.settings?.contact_phone || '+91 98111 22334',
-                  paymentDateDisplay: matchedPayment.payment_date || new Date().toISOString().slice(0, 10),
-                  cycleStartDisplay: matchedPayment.cycle_start_date || '-',
-                  cycleEndDisplay: matchedPayment.cycle_end_date || '-',
-                  nextDueDateDisplay: matchedPayment.cycle_end_date || '-'
-                };
+            const rawKeys = ['sri_ram_pg_live_store_v11', 'sri_ram_pg_live_store_v10', 'pg_hostel_store_vignancampus_2026'];
+            for (const rk of rawKeys) {
+              const rawStore = localStorage.getItem(rk);
+              if (rawStore) {
+                const store = JSON.parse(rawStore);
+                const payments = store.payments || [];
+                const matchedPayment = payments.find(p => String(p.id) === String(id) || String(p.receipt_number).toLowerCase() === String(id).toLowerCase());
+                if (matchedPayment) {
+                  const students = store.students || [];
+                  const student = students.find(s => Number(s.id) === Number(matchedPayment.student_id)) || {};
+                  receiptData = {
+                    ...matchedPayment,
+                    student_name: matchedPayment.student_name || student.name || 'Resident Student',
+                    reg_number: matchedPayment.reg_number || student.reg_number || 'REG',
+                    student_phone: matchedPayment.student_phone || student.phone || '',
+                    college: student.college || 'Vignan University',
+                    course: student.course || 'Resident',
+                    year: student.year || '1st Year',
+                    room_number: matchedPayment.room_number || student.room_number || '-',
+                    floor_number: student.floor_number || 1,
+                    bed_label: student.bed_label || 'Bed',
+                    hostel_name: store.settings?.hostel_name || 'SRI RAM PG',
+                    hostel_address: store.settings?.hostel_address || 'OPP. VIGNAN UNIVERSITY',
+                    hostel_phone: store.settings?.contact_phone || '+91 98111 22334',
+                    paymentDateDisplay: matchedPayment.payment_date || new Date().toISOString().slice(0, 10),
+                    cycleStartDisplay: matchedPayment.cycle_start_date || '-',
+                    cycleEndDisplay: matchedPayment.cycle_end_date || '-',
+                    nextDueDateDisplay: matchedPayment.cycle_end_date || '-'
+                  };
+                  break;
+                }
               }
             }
           } catch (storageErr) {
