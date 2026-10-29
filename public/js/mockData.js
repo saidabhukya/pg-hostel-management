@@ -601,11 +601,6 @@
       paid_amount: 0,
       status: 'pending'
     });
-      due_date: '2026-09-30',
-      amount: 7000,
-      paid_amount: 0,
-      status: 'pending'
-    });
 
     const remainingSlots = allBedSlots.filter(s => 
       !(s.room_number === '205' && (s.bed_label === 'Bed-A' || s.bed_label === 'Bed-B' || s.bed_label === 'Bed-C'))

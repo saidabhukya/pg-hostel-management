@@ -96,10 +96,12 @@ const API = {
   get isStaticHost() {
     if (typeof window === 'undefined' || !window.location) return false;
     const customApi = localStorage.getItem('pg_hostel_api_url');
-    if (customApi && customApi.trim()) return false;
-    if (window.__HOSTEL_CONFIG__ && window.__HOSTEL_CONFIG__.API_BASE_URL) return false;
+    if (customApi && customApi.trim() && customApi.startsWith('http')) return false;
     const host = window.location.hostname || '';
-    return host.endsWith('github.io') || host.endsWith('gitlab.io') || window.location.protocol === 'file:';
+    if (host.endsWith('github.io') || host.endsWith('gitlab.io') || window.location.protocol === 'file:') {
+      return true;
+    }
+    return false;
   },
 
   async mockRouter(rawEndpoint, method = 'GET', body = null) {
