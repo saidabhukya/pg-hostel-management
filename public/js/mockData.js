@@ -1129,7 +1129,14 @@
       saveStore();
       return true;
     },
-    get students() { return store.students; },
+    get students() {
+      if (!Array.isArray(store.students) || store.students.length === 0) {
+        seedInitialData(store);
+        sanitizeStore();
+        saveStore();
+      }
+      return store.students;
+    },
 
     get feeCycles() {
       sanitizeStore();

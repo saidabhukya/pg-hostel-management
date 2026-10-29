@@ -71,6 +71,34 @@ const Utils = {
   },
 
   /**
+   * Debounce helper for high-frequency input events
+   */
+  debounce(func, wait = 300) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func.apply(this, args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  },
+
+  /**
+   * Trigger immediate browser download of raw CSV content
+   */
+  downloadCSV(csvContent, filename) {
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename || 'export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
+  /**
    * Export table rows to CSV download
    */
   exportToCSV(filename, columns, rows) {

@@ -129,9 +129,28 @@ const StudentsPage = {
       let pagination = res?.pagination || null;
 
       // Robust fallback to MockData if API didn't return students
-      if (students.length === 0 && (!this.currentFilters.search && !this.currentFilters.floor && !this.currentFilters.feeStatus)) {
+      if (students.length === 0) {
         if (typeof MockData !== 'undefined' && Array.isArray(MockData.students)) {
-          const list = MockData.students;
+          let list = MockData.students;
+          if (this.currentFilters.search) {
+            const q = this.currentFilters.search.toLowerCase();
+            list = list.filter(s => 
+              (s.name && s.name.toLowerCase().includes(q)) || 
+              (s.reg_number && s.reg_number.toLowerCase().includes(q)) || 
+              (s.room_number && String(s.room_number).includes(q)) ||
+              (s.phone && String(s.phone).includes(q))
+            );
+          }
+          if (this.currentFilters.floor) {
+            list = list.filter(s => String(s.floor_number) === String(this.currentFilters.floor));
+          }
+          if (this.currentFilters.feeStatus) {
+            list = list.filter(s => {
+              const st = (s.fee_status || s.latest_cycle_status || s.student_status || '').toLowerCase();
+              return st === this.currentFilters.feeStatus.toLowerCase();
+            });
+          }
+
           const page = this.currentFilters.page || 1;
           const limit = this.currentFilters.limit || 20;
           students = list.slice((page - 1) * limit, page * limit).map(s => {
@@ -382,11 +401,19 @@ const StudentsPage = {
     }
   },
 
-  handleSearch: Utils.debounce(function(val) {
-    StudentsPage.currentFilters.search = val.trim();
-    StudentsPage.currentFilters.page = 1;
-    StudentsPage.loadStudents();
-  }, 300),
+  handleSearch(val) {
+    if (!this._debouncedSearch) {
+      const fn = (v) => {
+        StudentsPage.currentFilters.search = (v || '').trim();
+        StudentsPage.currentFilters.page = 1;
+        StudentsPage.loadStudents();
+      };
+      this._debouncedSearch = (typeof Utils !== 'undefined' && typeof Utils.debounce === 'function')
+        ? Utils.debounce(fn, 300)
+        : fn;
+    }
+    this._debouncedSearch(val);
+  },
 
   handleFloorFilter(val) {
     this.currentFilters.floor = val;
