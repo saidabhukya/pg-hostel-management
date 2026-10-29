@@ -221,7 +221,7 @@ const PaymentsPage = {
               <i data-lucide="printer" style="width:14px;height:14px;"></i>
               <span>Receipt</span>
             </button>
-            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.35rem 0.6rem;font-weight:600;display:inline-flex;align-items:center;gap:0.25rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student')" title="Send PDF Receipt to Student on WhatsApp (+91 ${p.student_phone || ''})">
+            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.35rem 0.6rem;font-weight:600;display:inline-flex;align-items:center;gap:0.25rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student', event)" title="Send PDF Receipt to Student on WhatsApp (+91 ${p.student_phone || ''})">
               <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
               <span>WhatsApp</span>
             </button>
@@ -464,7 +464,11 @@ const PaymentsPage = {
     }
   },
 
-  async openReceiptByCycle(cycleId, sendWhatsAppDirectly = false) {
+  async openReceiptByCycle(cycleId, sendWhatsAppDirectly = false, event = null) {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+      if (event.preventDefault) event.preventDefault();
+    }
     try {
       const res = await API.get('/payments', { limit: 100 });
       const payments = res.data || [];
@@ -478,7 +482,7 @@ const PaymentsPage = {
       if (match) {
         const pId = match.paymentId || match.id;
         if (sendWhatsAppDirectly) {
-          ReceiptModal.sendWhatsApp(pId, 'student');
+          ReceiptModal.sendWhatsApp(pId, 'student', event);
         } else {
           ReceiptModal.open(pId);
         }

@@ -47,12 +47,12 @@ const ReceiptModal = {
             </div>
           </div>
           <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem;border:none;box-shadow:0 2px 5px rgba(37,211,102,0.3);padding:0.5rem 0.9rem;border-radius:6px;cursor:pointer;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student')">
+            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem;border:none;box-shadow:0 2px 5px rgba(37,211,102,0.3);padding:0.5rem 0.9rem;border-radius:6px;cursor:pointer;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student', event)">
               <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
               <span>Send PDF to Student WhatsApp</span>
             </button>
             ${(p.parent_phone || p.parentPhone) ? `
-              <button class="btn btn-sm btn-secondary" style="font-size:0.8rem;padding:0.45rem 0.75rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'parent')" title="Send PDF receipt to Parent (+91 ${p.parent_phone || p.parentPhone})">
+              <button class="btn btn-sm btn-secondary" style="font-size:0.8rem;padding:0.45rem 0.75rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'parent', event)" title="Send PDF receipt to Parent (+91 ${p.parent_phone || p.parentPhone})">
                 <i data-lucide="users" style="width:14px;height:14px;"></i>
                 <span>WhatsApp Parent</span>
               </button>
@@ -162,13 +162,13 @@ const ReceiptModal = {
         <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;">
           <button class="btn btn-secondary" onclick="Modal.close()">Close</button>
           
-          <button class="btn" style="background:#25d366;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem;border:none;box-shadow:0 2px 4px rgba(37,211,102,0.25);" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student')" title="Send PDF receipt to Student on WhatsApp (+91 ${p.student_phone || ''})">
+          <button class="btn" style="background:#25d366;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem;border:none;box-shadow:0 2px 4px rgba(37,211,102,0.25);" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student', event)" title="Send PDF receipt to Student on WhatsApp (+91 ${p.student_phone || ''})">
             <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
             <span>Send Student WhatsApp</span>
           </button>
 
           ${p.parent_phone ? `
-            <button class="btn btn-secondary" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'parent')" title="Send PDF receipt to Parent (+91 ${p.parent_phone})">
+            <button class="btn btn-secondary" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'parent', event)" title="Send PDF receipt to Parent (+91 ${p.parent_phone})">
               <i data-lucide="users" style="width:16px;height:16px;"></i>
               <span>WhatsApp Parent</span>
             </button>
@@ -408,7 +408,27 @@ Opp. Vignan University, Vadlamudi
 ━━━━━━━━━━━━━━━━━━━━━━━━━`;
   },
 
-  async sendWhatsApp(paymentIdOrData, target = 'student') {
+  _isWhatsAppProcessing: false,
+
+  async sendWhatsApp(paymentIdOrData, target = 'student', event = null) {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+      if (event.preventDefault) event.preventDefault();
+    }
+
+    // Debounce / Concurrency guard: strictly prevent double clicks and duplicate downloads
+    if (this._isWhatsAppProcessing) {
+      console.warn('[ReceiptModal] WhatsApp share already processing, skipping duplicate call.');
+      return;
+    }
+    this._isWhatsAppProcessing = true;
+
+    // Visual button feedback
+    const btn = (event && event.currentTarget) || (event && event.target && typeof event.target.closest === 'function' ? event.target.closest('button') : null);
+    if (btn) {
+      btn.disabled = true;
+    }
+
     try {
       let p = null;
       if (typeof paymentIdOrData === 'object' && paymentIdOrData !== null) {
@@ -441,20 +461,21 @@ Opp. Vignan University, Vadlamudi
       const message = this.getWhatsAppMessage(p, target);
       const filename = `Receipt_${p.receipt_number || 'HOSTEL'}_${p.reg_number || 'FEE'}.pdf`;
 
-      // 1. Build PDF Document & save file to disk immediately
+      // 1. Prepare PDF Document
       let pdfFile = null;
+      let doc = null;
       try {
-        const doc = this.buildPDFDoc(p);
+        doc = this.buildPDFDoc(p);
         if (doc) {
           const blob = doc.output('blob');
           pdfFile = new File([blob], filename, { type: 'application/pdf' });
-          doc.save(filename); // Automatically downloads the actual PDF file
         }
       } catch (err) {
         console.warn('PDF file creation warning:', err);
       }
 
-      // 2. Try native Web Share API (which directly attaches files to WhatsApp on mobile/supported desktop)
+      // 2. Try native Web Share API FIRST (shares file directly into WhatsApp without duplicate browser download)
+      let sharedSuccessfully = false;
       if (pdfFile && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
         try {
           await navigator.share({
@@ -462,6 +483,7 @@ Opp. Vignan University, Vadlamudi
             text: message,
             files: [pdfFile]
           });
+          sharedSuccessfully = true;
           Toast.success(`Official PDF receipt shared to WhatsApp!`);
           return;
         } catch (shareErr) {
@@ -471,7 +493,16 @@ Opp. Vignan University, Vadlamudi
         }
       }
 
-      // 3. Fallback to WhatsApp URL (wa.me) with pre-filled student number & message
+      // 3. If Web Share was not used or not supported, download the PDF exactly ONCE to the device
+      if (!sharedSuccessfully && doc) {
+        try {
+          doc.save(filename); // Single clean download so admin can send/attach in WhatsApp
+        } catch (saveErr) {
+          console.warn('PDF save error:', saveErr);
+        }
+      }
+
+      // 4. Open WhatsApp URL (wa.me) with pre-filled student number & message
       const waUrl = cleanPhone 
         ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
@@ -481,6 +512,11 @@ Opp. Vignan University, Vadlamudi
       Toast.success(`Receipt PDF downloaded! Opening WhatsApp to send to ${recipientName} (${cleanPhone ? '+91 ' + cleanPhone.slice(-10) : 'student'})...`);
     } catch (e) {
       Toast.error('Failed to prepare WhatsApp message: ' + e.message);
+    } finally {
+      setTimeout(() => {
+        ReceiptModal._isWhatsAppProcessing = false;
+        if (btn) btn.disabled = false;
+      }, 1500);
     }
   }
 };

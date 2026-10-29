@@ -287,7 +287,7 @@ const FeesPage = {
                   <i data-lucide="receipt" style="width:14px;height:14px;"></i>
                   <span>Receipt</span>
                 </button>
-                <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.35rem 0.6rem;font-weight:600;display:inline-flex;align-items:center;gap:0.25rem;" onclick="PaymentsPage.openReceiptByCycle(${c.id}, true)" title="Send PDF Receipt to Student on WhatsApp">
+                <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.35rem 0.6rem;font-weight:600;display:inline-flex;align-items:center;gap:0.25rem;" onclick="PaymentsPage.openReceiptByCycle(${c.id}, true, event)" title="Send PDF Receipt to Student on WhatsApp">
                   <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
                   <span>WhatsApp</span>
                 </button>
