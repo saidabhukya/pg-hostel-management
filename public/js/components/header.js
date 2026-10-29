@@ -270,13 +270,8 @@ const Header = {
       <!-- Actions footer -->
       <div class="profile-card-footer">
         ${viewProfileAction}
-        ${isAdmin ? `
-          <button class="btn btn-sm btn-primary" style="width:100%;margin-bottom:0.4rem;" onclick="App.navigate('admin-profile'); Header.closeProfileCard();">
-            <i data-lucide="user-cog" style="width:14px;height:14px;"></i> Edit Admin Profile & Hostel
-          </button>
-        ` : ''}
         <button class="btn btn-sm btn-secondary" style="width:100%;" onclick="App.navigate('settings'); Header.closeProfileCard();">
-          <i data-lucide="settings" style="width:14px;height:14px;"></i> Account Settings
+          <i data-lucide="settings" style="width:14px;height:14px;"></i> Hostel & Account Settings
         </button>
         <button class="btn btn-sm" style="width:100%;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="App.logout();">
           <i data-lucide="log-out" style="width:14px;height:14px;"></i> Sign Out
