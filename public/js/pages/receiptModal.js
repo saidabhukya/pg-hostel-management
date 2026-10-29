@@ -12,12 +12,21 @@ const ReceiptModal = {
       if (typeof paymentId === 'object' && paymentId !== null) {
         p = paymentId;
       } else {
-        const res = await API.get(`/payments/${paymentId}`);
-        if (!res.success) {
-          Toast.error(res.message);
+        try {
+          const res = await API.get(`/payments/${paymentId}`);
+          if (res && res.success) {
+            p = res.data;
+          }
+        } catch (apiErr) {
+          console.warn('[ReceiptModal] Online receipt fetch failed, using local dataset');
+        }
+        if (!p && typeof MockData !== 'undefined' && typeof MockData.getPaymentDetails === 'function') {
+          p = MockData.getPaymentDetails(paymentId);
+        }
+        if (!p) {
+          Toast.error('Receipt record not found.');
           return;
         }
-        p = res.data;
       }
 
       this.currentReceipt = p;

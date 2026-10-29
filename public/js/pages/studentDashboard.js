@@ -360,7 +360,94 @@ const StudentDashboard = {
 
       Utils.renderIcons();
     } catch (e) {
-      console.error(e);
+      console.warn('[StudentDashboard] Online load failed, loading local dataset:', e.message);
+
+      // 1. Fee cycles fallback
+      const cycles = (typeof MockData !== 'undefined' && MockData.feeCycles)
+        ? MockData.feeCycles.filter(c => Number(c.student_id) === Number(student.id))
+        : [];
+      const payContainer = document.getElementById('stu-payments-container');
+      if (payContainer) {
+        if (cycles.length === 0) {
+          payContainer.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No payment cycles on record.</p>';
+        } else {
+          payContainer.innerHTML = `
+            <div class="table-container" style="border:none;">
+              <table class="data-table" style="font-size:0.82rem;">
+                <thead>
+                  <tr>
+                    <th>Cycle</th>
+                    <th>Period</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Receipt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${cycles.map(c => `
+                    <tr>
+                      <td style="font-weight:700;">Cycle ${c.cycle_number || 1}</td>
+                      <td>${c.startDateDisplay || c.start_date || '-'} to ${c.endDateDisplay || c.end_date || '-'}</td>
+                      <td style="font-weight:700;">${Utils.formatINR(c.amount)}</td>
+                      <td><span class="badge ${c.reminder ? c.reminder.badgeClass : 'badge-success'}">${c.reminder ? c.reminder.label : 'Paid'}</span></td>
+                      <td>
+                        ${c.payment_id || c.status === 'paid' ? `
+                          <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openReceiptByCycle(${c.id})">
+                            <i data-lucide="download" style="width:12px;height:12px;"></i> PDF
+                          </button>
+                        ` : `<span style="color:var(--text-muted);font-size:0.75rem;">Unpaid</span>`}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+      }
+
+      // 2. Mess fallback
+      const messContainer = document.getElementById('stu-mess-container');
+      if (messContainer && typeof MockData !== 'undefined' && MockData.messSchedule) {
+        const tm = MockData.messSchedule;
+        messContainer.innerHTML = `
+          <div style="font-size:0.85rem;display:flex;flex-direction:column;gap:0.75rem;">
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);">
+              <strong style="color:var(--primary-red);font-size:0.75rem;text-transform:uppercase;">Breakfast:</strong>
+              <p style="margin-top:2px;">${Utils.escapeHTML(tm.breakfast)}</p>
+            </div>
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);">
+              <strong style="color:var(--primary-red);font-size:0.75rem;text-transform:uppercase;">Lunch:</strong>
+              <p style="margin-top:2px;">${Utils.escapeHTML(tm.lunch)}</p>
+            </div>
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);">
+              <strong style="color:var(--primary-red);font-size:0.75rem;text-transform:uppercase;">Evening Snacks:</strong>
+              <p style="margin-top:2px;">${Utils.escapeHTML(tm.snacks || 'Tea & Snacks')}</p>
+            </div>
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);">
+              <strong style="color:var(--primary-red);font-size:0.75rem;text-transform:uppercase;">Dinner:</strong>
+              <p style="margin-top:2px;">${Utils.escapeHTML(tm.dinner)}</p>
+            </div>
+          </div>
+        `;
+      }
+
+      // 3. Announcements fallback
+      const annContainer = document.getElementById('stu-announcements-container');
+      if (annContainer && typeof MockData !== 'undefined' && MockData.announcements) {
+        const anns = MockData.announcements.slice(0, 3);
+        if (anns.length > 0) {
+          annContainer.innerHTML = anns.map(a => `
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:0.6rem;border-left:3px solid var(--primary-red);">
+              <div style="font-weight:700;font-size:0.9rem;color:var(--text-primary);">${Utils.escapeHTML(a.title || 'Hostel Bulletin')}</div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin:0.25rem 0;">${Utils.escapeHTML((a.content || '').substring(0, 120))}...</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);">${a.publishedDateDisplay || 'Today'}</div>
+            </div>
+          `).join('');
+        }
+      }
+
+      Utils.renderIcons();
     }
   }
 };

@@ -383,24 +383,66 @@
 
       async loadReceipt(id) {
         const mount = document.getElementById('receipt-mount');
+        let receiptData = null;
+
         try {
           const res = await fetch(`/api/payments/public-receipt/${encodeURIComponent(id)}`);
           const json = await res.json();
-
-          if (!res.ok || !json.success) {
-            throw new Error(json.message || 'Receipt could not be verified or was not found.');
+          if (res.ok && json.success && json.data) {
+            receiptData = json.data;
           }
+        } catch (apiErr) {
+          console.warn('[Public Receipt] Online API lookup failed, checking local store:', apiErr.message);
+        }
 
-          this.receipt = json.data;
+        // Fallback for GitHub Pages static host
+        if (!receiptData) {
+          try {
+            const rawStore = localStorage.getItem('pg_hostel_store_vignancampus_2026');
+            if (rawStore) {
+              const store = JSON.parse(rawStore);
+              const payments = store.payments || [];
+              const matchedPayment = payments.find(p => String(p.id) === String(id) || String(p.receipt_number).toLowerCase() === String(id).toLowerCase());
+              if (matchedPayment) {
+                const students = store.students || [];
+                const student = students.find(s => Number(s.id) === Number(matchedPayment.student_id)) || {};
+                receiptData = {
+                  ...matchedPayment,
+                  student_name: matchedPayment.student_name || student.name || 'Resident Student',
+                  reg_number: matchedPayment.reg_number || student.reg_number || 'REG',
+                  student_phone: matchedPayment.student_phone || student.phone || '',
+                  college: student.college || 'Vignan University',
+                  course: student.course || 'Resident',
+                  year: student.year || '1st Year',
+                  room_number: matchedPayment.room_number || student.room_number || '-',
+                  floor_number: student.floor_number || 1,
+                  bed_label: student.bed_label || 'Bed',
+                  hostel_name: store.settings?.hostel_name || 'SRI RAM PG',
+                  hostel_address: store.settings?.hostel_address || 'OPP. VIGNAN UNIVERSITY',
+                  hostel_phone: store.settings?.contact_phone || '+91 98111 22334',
+                  paymentDateDisplay: matchedPayment.payment_date || new Date().toISOString().slice(0, 10),
+                  cycleStartDisplay: matchedPayment.cycle_start_date || '-',
+                  cycleEndDisplay: matchedPayment.cycle_end_date || '-',
+                  nextDueDateDisplay: matchedPayment.cycle_end_date || '-'
+                };
+              }
+            }
+          } catch (storageErr) {
+            console.warn('[Public Receipt] Local storage check failed:', storageErr);
+          }
+        }
+
+        if (receiptData) {
+          this.receipt = receiptData;
           this.renderReceipt(this.receipt);
           document.getElementById('top-action-bar').style.display = 'flex';
           if (window.lucide) window.lucide.createIcons();
-        } catch (err) {
+        } else {
           mount.innerHTML = `
             <div class="error-state">
               <i data-lucide="alert-circle" style="width:48px;height:48px;color:var(--primary-red);margin-bottom:1rem;"></i>
               <h2 style="font-size:1.3rem;font-weight:800;color:#991b1b;margin-bottom:0.5rem;">Receipt Not Found</h2>
-              <p style="color:var(--text-muted);margin-bottom:1.5rem;">${err.message}</p>
+              <p style="color:var(--text-muted);margin-bottom:1.5rem;">The requested receipt reference (${encodeURIComponent(id)}) could not be located.</p>
               <a href="./index.html" class="btn btn-secondary">Go to Home Portal</a>
             </div>
           `;

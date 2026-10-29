@@ -51,13 +51,24 @@ const HostelStructurePage = {
   },
 
   async loadStructure() {
+    let data = null;
     try {
       const res = await API.get('/rooms/structure');
-      if (res.success) {
-        this.renderFloors(res.data);
+      if (res && res.success) {
+        data = res.data;
       }
     } catch (e) {
-      Toast.error('Failed to load hostel floors: ' + e.message);
+      console.warn('[HostelStructure] Online load failed, using local dataset');
+    }
+
+    if (!data && typeof MockData !== 'undefined') {
+      data = MockData.structure;
+    }
+
+    if (data) {
+      this.renderFloors(data);
+    } else {
+      Toast.error('Failed to load hostel floors.');
     }
   },
 

@@ -123,11 +123,30 @@ const PaymentsPage = {
         method: this.currentMethod
       });
 
-      if (res.success) {
+      if (res && res.success) {
         this.renderTable(res.data, res.pagination);
+        return;
       }
     } catch (e) {
-      Toast.error('Failed to load payments: ' + e.message);
+      console.warn('[PaymentsPage] Online load failed, using local dataset');
+    }
+
+    if (typeof MockData !== 'undefined' && Array.isArray(MockData.payments)) {
+      let list = MockData.payments;
+      if (this.currentSearch) {
+        const q = this.currentSearch.toLowerCase();
+        list = list.filter(p => 
+          (p.receipt_number && p.receipt_number.toLowerCase().includes(q)) ||
+          (p.student_name && p.student_name.toLowerCase().includes(q)) ||
+          (p.transaction_id && p.transaction_id.toLowerCase().includes(q))
+        );
+      }
+      if (this.currentMethod) {
+        list = list.filter(p => p.payment_method === this.currentMethod);
+      }
+      this.renderTable(list, { page: 1, limit: 100, totalPages: 1, totalRecords: list.length });
+    } else {
+      Toast.error('Unable to retrieve payment records.');
     }
   },
 

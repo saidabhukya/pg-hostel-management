@@ -264,7 +264,94 @@ const StudentsPage = {
 
       Utils.renderIcons();
     } catch (err) {
-      console.error('[Load Students Error]', err);
+      console.warn('[Load Students Online Attempt Failed, using local dataset]:', err.message);
+      if (typeof MockData !== 'undefined' && Array.isArray(MockData.students)) {
+        let list = MockData.students;
+        if (this.currentFilters.search) {
+          const q = this.currentFilters.search.toLowerCase();
+          list = list.filter(s => 
+            (s.name && s.name.toLowerCase().includes(q)) || 
+            (s.reg_number && s.reg_number.toLowerCase().includes(q)) || 
+            (s.room_number && String(s.room_number).includes(q))
+          );
+        }
+        if (this.currentFilters.floor) {
+          list = list.filter(s => String(s.floor_number) === String(this.currentFilters.floor));
+        }
+        if (this.currentFilters.feeStatus) {
+          list = list.filter(s => s.fee_status === this.currentFilters.feeStatus);
+        }
+
+        if (list.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align:center;padding:3rem 1rem;">
+                <i data-lucide="users" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+                <p style="font-weight:700;color:var(--text-primary);font-size:1rem;">No Students Found</p>
+                <button class="btn btn-primary btn-sm" onclick="AddStudentModal.open()" style="margin-top:1rem;">
+                  <i data-lucide="user-plus" style="width:14px;height:14px;"></i> Add Student
+                </button>
+              </td>
+            </tr>
+          `;
+          if (paginationEl) paginationEl.style.display = 'none';
+        } else {
+          tbody.innerHTML = list.map(s => {
+            const isPaid = s.fee_status === 'paid';
+            const user = API.getUser();
+            const isAdmin = !user || user.role === 'admin';
+            return `
+              <tr>
+                <td data-label="Student">
+                  <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <div class="user-avatar" style="width:38px;height:38px;font-size:0.95rem;overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;background:#fff;border:1.5px solid var(--border-color);flex-shrink:0;">
+                      ${s.photo_url && s.photo_url !== '/assets/images/default-student.png' ? `
+                        <img src="${s.photo_url}" alt="${Utils.escapeHTML(s.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${(s.name || 'S').charAt(0)}';" />
+                      ` : (s.name || 'S').charAt(0)}
+                    </div>
+                    <div>
+                      <div style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(s.name)}</div>
+                      <div style="font-size:0.75rem;color:var(--text-muted);">${s.phone || '-'}</div>
+                    </div>
+                  </div>
+                </td>
+                <td data-label="Roll / Reg No">
+                  <span style="font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(s.reg_number)}</span>
+                </td>
+                <td data-label="Room & Bed">
+                  <span class="badge badge-info">Rm ${s.room_number || '-'} • ${s.bed_label || 'Bed'}</span>
+                </td>
+                <td data-label="Joining Date">
+                  <div style="font-weight:600;">${Utils.formatDate(s.joining_date)}</div>
+                </td>
+                <td data-label="Monthly Fee" style="font-weight:700;">
+                  ${Utils.formatINR(s.monthly_fee)}
+                </td>
+                <td data-label="Fee Status">
+                  <span class="badge ${isPaid ? 'badge-success' : 'badge-warning'}">
+                    ${isPaid ? 'Paid' : 'Pending'}
+                  </span>
+                </td>
+                <td data-label="Actions">
+                  <div style="display:flex;gap:0.35rem;">
+                    <button class="btn btn-sm btn-secondary" onclick="StudentProfile.open(${s.id})" title="View Profile">
+                      <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                    </button>
+                    ${isAdmin ? `
+                      <button class="btn btn-sm btn-secondary" onclick="StudentsPage.openEditModal(${s.id})" title="Edit Details">
+                        <i data-lucide="edit" style="width:14px;height:14px;"></i>
+                      </button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+          if (paginationEl) paginationEl.style.display = 'none';
+        }
+        Utils.renderIcons();
+        return;
+      }
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--status-danger);">${err.message || 'Unable to load students.'}</td></tr>`;
     }
   },

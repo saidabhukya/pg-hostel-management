@@ -41,7 +41,20 @@ const App = {
             return;
           }
         } catch (err) {
-          console.warn('Session verification failed:', err);
+          console.warn('Session online verification failed:', err.message);
+          const cachedUser = typeof API !== 'undefined' ? API.getUser() : null;
+          if (cachedUser) {
+            this.user = cachedUser;
+            this.renderAuthenticatedShell();
+            const initialRoute = window.location.hash ? window.location.hash.substring(1) : (this.user.role === 'admin' ? 'dashboard' : 'student-dashboard');
+            this.navigate(initialRoute);
+            if (typeof NotificationCenter !== 'undefined') {
+              NotificationCenter.init();
+            }
+            const fab = document.getElementById('ai-assistant-btn');
+            if (fab) fab.style.display = 'flex';
+            return;
+          }
           if (typeof API !== 'undefined') API.setToken(null);
         }
       }
