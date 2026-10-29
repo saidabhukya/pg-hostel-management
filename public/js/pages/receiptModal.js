@@ -377,30 +377,34 @@ const ReceiptModal = {
   },
 
   getWhatsAppMessage(p, target = 'student') {
-    const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
-    const publicUrl = `${origin}/receipt.html?id=${p.id}&receipt=${encodeURIComponent(p.receipt_number)}`;
+    let baseUrl = window.location.href.split('#')[0].split('?')[0];
+    if (baseUrl.endsWith('/index.html')) {
+      baseUrl = baseUrl.replace(/\/index\.html$/, '');
+    } else {
+      baseUrl = baseUrl.replace(/\/$/, '');
+    }
+    const publicUrl = `${baseUrl}/receipt.html?id=${p.id}&receipt=${encodeURIComponent(p.receipt_number || '')}`;
     const amountStr = '₹' + Number(p.amount || 0).toLocaleString('en-IN');
+    const recipientGreeting = target === 'parent' ? (p.parent_name || 'Parent / Guardian') : p.student_name;
 
     return `🧾 *SRI RAM PG - OFFICIAL FEE PAYMENT RECEIPT*
 ━━━━━━━━━━━━━━━━━━━━━━━━━
-Dear *${p.student_name}*,
+Dear *${recipientGreeting}*,
 
-Your monthly hostel room fee payment has been successfully received & recorded.
+The monthly hostel room fee payment for *${p.student_name}* has been successfully received & verified.
 
 📋 *Payment Summary:*
-• *Receipt No:* ${p.receipt_number}
-• *Amount Paid:* ${amountStr} (${p.payment_method})
-• *Payment Date:* ${p.paymentDateDisplay || p.payment_date}
-• *Student Reg No:* ${p.reg_number}
+• *Receipt No:* ${p.receipt_number || 'REC-OFFICIAL'}
+• *Amount Paid:* ${amountStr} (${p.payment_method || 'UPI / Cash'})
+• *Payment Date:* ${p.paymentDateDisplay || p.payment_date || Utils.getTodayISO()}
+• *Student Reg No:* ${p.reg_number || '-'}
 • *Room Allocation:* Room ${p.room_number || '-'} • Bed ${p.bed_label || '-'} (Floor ${p.floor_number || '-'})
-• *Billing Cycle:* ${p.cycleStartDisplay || p.cycle_start_date} to ${p.cycleEndDisplay || p.cycle_end_date}
+• *Billing Cycle:* ${p.cycleStartDisplay || p.cycle_start_date || '-'} to ${p.cycleEndDisplay || p.cycle_end_date || '-'}
 • *Next Due Date:* ${p.nextDueDateDisplay || '15-11-2026'}
-• *Status:* ✅ PAID / SETTLED
+• *Status:* ✅ PAID & VERIFIED
 
-📄 *Download & View Official PDF Receipt:*
+📄 *View & Download Official PDF Receipt:*
 ${publicUrl}
-
-The stamped official PDF receipt file has also been generated. Please keep this for your records.
 
 Thank you,
 *SRI RAM PG Management*
@@ -444,11 +448,23 @@ Opp. Vignan University, Vadlamudi
         p = res.data;
       }
 
+      // If student phone is missing on receipt, look it up from student record
+      if ((!p.student_phone && !p.phone) && p.student_id) {
+        const students = (typeof MockData !== 'undefined' && MockData.students) || [];
+        const found = students.find(s => Number(s.id) === Number(p.student_id));
+        if (found) {
+          p.student_phone = found.phone;
+          p.phone = found.phone;
+          if (found.parent_phone) p.parent_phone = found.parent_phone;
+          if (found.parent_name) p.parent_name = found.parent_name;
+        }
+      }
+
       const rawPhone = target === 'parent' 
         ? (p.parent_phone || p.parentPhone || '') 
         : (p.student_phone || p.studentPhone || p.phone || '');
       let cleanPhone = this.formatPhoneForWhatsApp(rawPhone);
-      const recipientName = target === 'parent' ? (p.parent_name || 'Parent') : p.student_name;
+      const recipientName = target === 'parent' ? (p.parent_name || 'Parent') : (p.student_name || 'Student');
 
       // If phone number is not found on record, prompt admin to enter it
       if (!cleanPhone) {
@@ -461,55 +477,24 @@ Opp. Vignan University, Vadlamudi
       const message = this.getWhatsAppMessage(p, target);
       const filename = `Receipt_${p.receipt_number || 'HOSTEL'}_${p.reg_number || 'FEE'}.pdf`;
 
-      // 1. Prepare PDF Document
-      let pdfFile = null;
-      let doc = null;
+      // 1. Download official stamped PDF receipt once to device for local copy / attaching
       try {
-        doc = this.buildPDFDoc(p);
+        const doc = this.buildPDFDoc(p);
         if (doc) {
-          const blob = doc.output('blob');
-          pdfFile = new File([blob], filename, { type: 'application/pdf' });
+          doc.save(filename);
         }
       } catch (err) {
         console.warn('PDF file creation warning:', err);
       }
 
-      // 2. Try native Web Share API FIRST (shares file directly into WhatsApp without duplicate browser download)
-      let sharedSuccessfully = false;
-      if (pdfFile && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        try {
-          await navigator.share({
-            title: `Fee Receipt ${p.receipt_number}`,
-            text: message,
-            files: [pdfFile]
-          });
-          sharedSuccessfully = true;
-          Toast.success(`Official PDF receipt shared to WhatsApp!`);
-          return;
-        } catch (shareErr) {
-          if (shareErr.name !== 'AbortError') {
-            console.log('Web Share API aborted or falling back to WhatsApp link');
-          }
-        }
-      }
-
-      // 3. If Web Share was not used or not supported, download the PDF exactly ONCE to the device
-      if (!sharedSuccessfully && doc) {
-        try {
-          doc.save(filename); // Single clean download so admin can send/attach in WhatsApp
-        } catch (saveErr) {
-          console.warn('PDF save error:', saveErr);
-        }
-      }
-
-      // 4. Open WhatsApp URL (wa.me) with pre-filled student number & message
+      // 2. Open WhatsApp directly targeting the student's phone number!
       const waUrl = cleanPhone 
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+        ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
 
       window.open(waUrl, '_blank');
 
-      Toast.success(`Receipt PDF downloaded! Opening WhatsApp to send to ${recipientName} (${cleanPhone ? '+91 ' + cleanPhone.slice(-10) : 'student'})...`);
+      Toast.success(`Receipt PDF downloaded! Opening WhatsApp to send receipt to ${recipientName} (+91 ${cleanPhone ? cleanPhone.slice(-10) : 'student'})...`);
     } catch (e) {
       Toast.error('Failed to prepare WhatsApp message: ' + e.message);
     } finally {
@@ -518,6 +503,7 @@ Opp. Vignan University, Vadlamudi
         if (btn) btn.disabled = false;
       }, 1500);
     }
+  }
   }
 };
 
