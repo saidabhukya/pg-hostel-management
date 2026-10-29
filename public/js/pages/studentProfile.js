@@ -39,14 +39,54 @@ const StudentProfile = {
         <div>
           <!-- Profile Header Banner -->
           <div style="display:flex;gap:1.25rem;align-items:center;background:var(--bg-secondary);padding:1.25rem;border-radius:var(--radius-lg);margin-bottom:1.25rem;border:1px solid var(--border-color);flex-wrap:wrap;">
-            <div class="user-avatar" style="width:64px;height:64px;font-size:1.5rem;border:3px solid var(--primary-red-border);">
-              ${profile.name.charAt(0)}
+            <div style="position:relative;flex-shrink:0;">
+              ${profile.photo_url && profile.photo_url !== '/assets/images/default-student.png' ? `
+                <img 
+                  id="sp-profile-photo-img"
+                  src="${profile.photo_url}" 
+                  alt="${Utils.escapeHTML(profile.name)}" 
+                  style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-red-border);display:block;box-shadow:0 3px 8px rgba(0,0,0,0.1);background:#fff;"
+                  onerror="this.onerror=null; this.src='./assets/images/default-student.png';"
+                />
+              ` : `
+                <div id="sp-profile-photo-img" class="user-avatar" style="width:72px;height:72px;font-size:1.6rem;font-weight:700;border:3px solid var(--primary-red-border);background:var(--primary-red);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.1);">
+                  ${profile.name ? profile.name.charAt(0).toUpperCase() : 'S'}
+                </div>
+              `}
+              ${isAdmin ? `
+                <button 
+                  type="button" 
+                  title="Upload / Change Student Photo (Optional)" 
+                  style="position:absolute;bottom:-2px;right:-2px;background:var(--primary-red);color:#fff;border:2px solid var(--bg-card);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.25);"
+                  onclick="StudentProfile.triggerPhotoUpload(${profile.id})"
+                >
+                  <i data-lucide="camera" style="width:14px;height:14px;"></i>
+                </button>
+                <input 
+                  type="file" 
+                  id="sp-photo-file-input-${profile.id}" 
+                  accept="image/jpeg,image/jpg,image/png,image/webp" 
+                  style="display:none;" 
+                  onchange="StudentProfile.handlePhotoSelected(this, ${profile.id})"
+                />
+              ` : ''}
             </div>
             <div style="flex:1;min-width:200px;">
               <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
                 <h2 style="font-size:1.35rem;font-weight:800;color:var(--text-primary);">${Utils.escapeHTML(profile.name)}</h2>
                 <span class="badge badge-info">${profile.reg_number}</span>
                 <span class="badge ${profile.status === 'active' ? 'badge-success' : 'badge-danger'}">${profile.status}</span>
+                ${isAdmin ? `
+                  <button class="btn btn-sm btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.6rem;display:inline-flex;align-items:center;gap:0.3rem;" onclick="StudentProfile.triggerPhotoUpload(${profile.id})" title="Upload or change student photo (optional)">
+                    <i data-lucide="upload" style="width:12px;height:12px;color:var(--primary-red);"></i>
+                    <span>${profile.photo_url && profile.photo_url !== '/assets/images/default-student.png' ? 'Change Photo' : 'Upload Photo'}</span>
+                  </button>
+                  ${profile.photo_url && profile.photo_url !== '/assets/images/default-student.png' ? `
+                    <button class="btn btn-sm btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.5rem;color:var(--text-muted);" onclick="StudentProfile.removePhoto(${profile.id})" title="Remove photo and reset to default avatar">
+                      <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+                    </button>
+                  ` : ''}
+                ` : ''}
               </div>
               <div style="font-size:0.84rem;color:var(--text-muted);margin-top:0.25rem;">
                 ${Utils.escapeHTML(profile.college)} • ${Utils.escapeHTML(profile.course)} (${profile.year})
@@ -98,15 +138,26 @@ const StudentProfile = {
                 <div style="display:flex;flex-direction:column;gap:0.5rem;">
                   <div><span style="color:var(--text-muted);">Parent / Guardian:</span> <strong>${Utils.escapeHTML(profile.parent_name)}</strong></div>
                   <div><span style="color:var(--text-muted);">Parent Phone:</span> <strong>${profile.parent_phone}</strong></div>
+                  ${profile.mother_name ? `<div><span style="color:var(--text-muted);">Mother Name:</span> <strong>${Utils.escapeHTML(profile.mother_name)}</strong></div>` : ''}
+                  ${profile.mother_phone ? `<div><span style="color:var(--text-muted);">Mother Phone:</span> <strong>${profile.mother_phone}</strong></div>` : ''}
                   <div><span style="color:var(--text-muted);">Student Phone:</span> <strong>${profile.phone}</strong></div>
                   <div><span style="color:var(--text-muted);">College Email:</span> <strong>${profile.email}</strong></div>
+                  <div><span style="color:var(--text-muted);">Portal Username:</span> <code>${profile.username || profile.reg_number}</code></div>
                   <div><span style="color:var(--text-muted);">Permanent Address:</span> <span>${Utils.escapeHTML(profile.address)}</span></div>
                 </div>
               </div>
             </div>
 
             ${isAdmin ? `
-              <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.25rem;">
+              <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="Modal.close(); StudentsPage.openEditModal(${profile.id});">
+                  <i data-lucide="edit-3" style="width:14px;height:14px;color:var(--primary-red);"></i>
+                  Edit Details
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="StudentsPage.openResetPasswordModal(${profile.id}, '${Utils.escapeHTML(profile.name)}', '${Utils.escapeHTML(profile.reg_number)}')">
+                  <i data-lucide="key" style="width:14px;height:14px;"></i>
+                  Reset Password
+                </button>
                 <button class="btn btn-secondary btn-sm" onclick="RoomDetailModal.promptTransfer(${profile.id}, '${Utils.escapeHTML(profile.name)}', ${profile.bed_id})">
                   <i data-lucide="arrow-right-left" style="width:14px;height:14px;"></i>
                   Transfer Bed
@@ -329,6 +380,75 @@ const StudentProfile = {
       if (window.HostelStructurePage) HostelStructurePage.loadStructure();
     } catch (e) {
       Toast.error(e.message);
+    }
+  },
+
+  triggerPhotoUpload(studentId) {
+    const input = document.getElementById(`sp-photo-file-input-${studentId}`);
+    if (input) input.click();
+  },
+
+  async handlePhotoSelected(input, studentId) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (file.size > 5 * 1024 * 1024) {
+      Toast.error('File size exceeds 5 MB limit. Please select a smaller image.');
+      input.value = '';
+      return;
+    }
+
+    try {
+      Toast.info('Uploading student photo...');
+      const fd = new FormData();
+      fd.append('photo', file);
+
+      const res = await API.post(`/students/${studentId}/photo`, fd);
+      if (res.success) {
+        Toast.success(res.message || 'Student photo updated successfully!');
+
+        // Update photo in current modal view immediately
+        const photoEl = document.getElementById('sp-profile-photo-img');
+        if (photoEl) {
+          if (photoEl.tagName === 'IMG') {
+            photoEl.src = res.photoUrl + '?t=' + Date.now();
+          } else {
+            photoEl.outerHTML = `<img id="sp-profile-photo-img" src="${res.photoUrl}?t=${Date.now()}" alt="Student Photo" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-red-border);display:block;box-shadow:0 3px 8px rgba(0,0,0,0.1);background:#fff;" onerror="this.onerror=null; this.src='./assets/images/default-student.png';" />`;
+          }
+        }
+
+        // Refresh students page table if open
+        if (window.StudentsPage && App.currentRoute === 'students') {
+          StudentsPage.loadStudents();
+        }
+
+        Utils.renderIcons();
+      } else {
+        Toast.error(res.message || 'Failed to upload photo.');
+      }
+    } catch (err) {
+      Toast.error('Upload failed: ' + err.message);
+    } finally {
+      input.value = '';
+    }
+  },
+
+  async removePhoto(studentId) {
+    if (!confirm('Remove student photo and reset to default avatar?')) return;
+    try {
+      const res = await API.delete(`/students/${studentId}/photo`);
+      if (res.success) {
+        Toast.success('Photo reset to default avatar.');
+        const photoEl = document.getElementById('sp-profile-photo-img');
+        if (photoEl) {
+          photoEl.src = './assets/images/default-student.png';
+        }
+        if (window.StudentsPage && App.currentRoute === 'students') {
+          StudentsPage.loadStudents();
+        }
+      }
+    } catch (e) {
+      Toast.error('Failed to reset photo: ' + e.message);
     }
   }
 };

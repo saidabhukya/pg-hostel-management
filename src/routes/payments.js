@@ -176,6 +176,174 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/payments/public-receipt/:id
+ * Retrieve verified public receipt details (no auth required for WhatsApp links)
+ */
+router.get('/public-receipt/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const payment = await db.getOne(
+      `SELECT 
+        p.*,
+        s.name AS student_name,
+        s.reg_number,
+        s.phone AS student_phone,
+        s.college,
+        s.course,
+        s.year,
+        s.parent_name,
+        s.parent_phone,
+        r.room_number,
+        f.floor_number,
+        b.bed_label,
+        u.name AS recorded_by_name
+       FROM payments p
+       JOIN students s ON s.id = p.student_id
+       LEFT JOIN allocations a ON a.student_id = s.id AND a.status = 'active'
+       LEFT JOIN beds b ON b.id = a.bed_id
+       LEFT JOIN rooms r ON r.id = b.room_id
+       LEFT JOIN floors f ON f.id = r.floor_id
+       LEFT JOIN users u ON u.id = p.created_by
+       WHERE p.id = ? OR p.receipt_number = ?`,
+      [id, id]
+    );
+
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Receipt record not found.' });
+    }
+
+    // Determine next due date
+    const student = await db.getOne('SELECT joining_date, monthly_fee FROM students WHERE id = ?', [payment.student_id]);
+    const latestCycle = await db.getOne(
+      'SELECT cycle_number FROM fee_cycles WHERE student_id = ? ORDER BY cycle_number DESC LIMIT 1',
+      [payment.student_id]
+    );
+
+    let nextDueDate = '';
+    let nextDueDateDisplay = '';
+    if (student) {
+      const nextCycleObj = calculateCycle(student.joining_date, (latestCycle?.cycle_number || 1) + 1);
+      nextDueDate = nextCycleObj.dueDate;
+      nextDueDateDisplay = nextCycleObj.dueDateDisplay;
+    }
+
+    const receiptData = {
+      ...payment,
+      paymentDateDisplay: formatDateDisplay(payment.payment_date),
+      cycleStartDisplay: formatDateDisplay(payment.cycle_start_date),
+      cycleEndDisplay: formatDateDisplay(payment.cycle_end_date),
+      nextDueDate,
+      nextDueDateDisplay
+    };
+
+    return res.json({
+      success: true,
+      data: receiptData
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve public receipt.',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * POST /api/payments/:id/send-whatsapp
+ * Formats WhatsApp receipt message and returns direct wa.me link + download link
+ */
+router.post('/:id/send-whatsapp', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { target = 'student' } = req.body;
+
+    const payment = await db.getOne(
+      `SELECT 
+        p.*,
+        s.name AS student_name,
+        s.reg_number,
+        s.phone AS student_phone,
+        s.parent_name,
+        s.parent_phone,
+        r.room_number,
+        f.floor_number,
+        b.bed_label
+       FROM payments p
+       JOIN students s ON s.id = p.student_id
+       LEFT JOIN allocations a ON a.student_id = s.id AND a.status = 'active'
+       LEFT JOIN beds b ON b.id = a.bed_id
+       LEFT JOIN rooms r ON r.id = b.room_id
+       LEFT JOIN floors f ON f.id = r.floor_id
+       WHERE p.id = ?`,
+      [id]
+    );
+
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found.' });
+    }
+
+    const rawPhone = target === 'parent' ? (payment.parent_phone || '') : (payment.student_phone || '');
+    let cleanPhone = String(rawPhone).replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+    const host = req.get('host') || 'localhost:5000';
+    const protocol = req.protocol || 'http';
+    const receiptUrl = `${protocol}://${host}/receipt.html?id=${payment.id}`;
+
+    const message = 
+`🧾 *SRI RAM PG - OFFICIAL FEE PAYMENT RECEIPT*
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Dear *${payment.student_name}*,
+
+Your monthly hostel fee payment has been successfully recorded and verified.
+
+📋 *Payment Details:*
+• *Receipt Number:* ${payment.receipt_number}
+• *Amount Paid:* ₹${Number(payment.amount).toLocaleString('en-IN')} (${payment.payment_method})
+• *Payment Date:* ${formatDateDisplay(payment.payment_date)}
+• *Student Reg No:* ${payment.reg_number}
+• *Room Allocation:* Room ${payment.room_number || '-'} • Bed ${payment.bed_label || '-'} (Floor ${payment.floor_number || '-'})
+• *Billing Cycle:* ${formatDateDisplay(payment.cycle_start_date)} to ${formatDateDisplay(payment.cycle_end_date)}
+• *Status:* ✅ PAID / SETTLED
+
+📄 *Official PDF Receipt Download Link:*
+${receiptUrl}
+
+The stamped official PDF receipt file has been generated. Please keep this for your records.
+
+Thank you,
+*SRI RAM PG Management*
+Opp. Vignan University, Vadlamudi
+━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+    const whatsappUrl = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+    return res.json({
+      success: true,
+      message: `WhatsApp message prepared for ${target === 'parent' ? 'parent' : 'student'}.`,
+      data: {
+        phone: cleanPhone,
+        target,
+        studentName: payment.student_name,
+        whatsappUrl,
+        receiptUrl,
+        message
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to prepare WhatsApp message.',
+      error: err.message
+    });
+  }
+});
+
+/**
  * POST /api/payments
  * Record a payment for a student and update/create fee cycle
  */
@@ -315,6 +483,15 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       data: {
         paymentId: paymentRes.insertId,
         receiptNumber,
+        studentId,
+        studentName: student.name,
+        studentPhone: student.phone,
+        parentPhone: student.parent_phone,
+        amount: payAmount,
+        paymentDate,
+        paymentMethod,
+        cycleStartDate,
+        cycleEndDate,
         nextDueDate: upcomingCycle.dueDate,
         nextDueDateDisplay: upcomingCycle.dueDateDisplay
       }

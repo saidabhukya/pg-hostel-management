@@ -1,5 +1,5 @@
 -- ==========================================================
--- SRI RAM PG - DATABASE SCHEMA (MySQL 8.0+)
+-- SRI RAM PG - DATABASE SCHEMA (MySQL 8.0+ / Cloud MySQL)
 -- ==========================================================
 
 CREATE DATABASE IF NOT EXISTS `pg_hostel_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS `students` (
   `gender` ENUM('Male', 'Female', 'Other') DEFAULT 'Male',
   `parent_name` VARCHAR(150) NOT NULL,
   `parent_phone` VARCHAR(25) NOT NULL,
+  `mother_name` VARCHAR(150) NULL,
+  `mother_phone` VARCHAR(25) NULL,
   `address` TEXT NOT NULL,
   `photo_url` VARCHAR(255) DEFAULT '/assets/images/default-student.png',
   `id_proof_url` VARCHAR(255) NULL,
@@ -128,7 +130,21 @@ CREATE TABLE IF NOT EXISTS `payments` (
   FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 9. COMPLAINTS TABLE
+-- 9. ATTENDANCE TABLE
+CREATE TABLE IF NOT EXISTS `attendance` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `student_id` INT NOT NULL,
+  `date` DATE NOT NULL,
+  `status` ENUM('present', 'absent', 'on_leave', 'late') NOT NULL DEFAULT 'present',
+  `remarks` VARCHAR(255) NULL,
+  `marked_by` INT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_student_date` (`student_id`, `date`),
+  FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`marked_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. COMPLAINTS TABLE
 CREATE TABLE IF NOT EXISTS `complaints` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `student_id` INT NOT NULL,
@@ -144,7 +160,7 @@ CREATE TABLE IF NOT EXISTS `complaints` (
   FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 10. VISITORS TABLE
+-- 11. VISITORS TABLE
 CREATE TABLE IF NOT EXISTS `visitors` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `student_id` INT NOT NULL,
@@ -159,7 +175,7 @@ CREATE TABLE IF NOT EXISTS `visitors` (
   FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 11. MESS MENU TABLE
+-- 12. MESS MENU TABLE
 CREATE TABLE IF NOT EXISTS `mess_menu` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `day_of_week` ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL UNIQUE,
@@ -173,7 +189,7 @@ CREATE TABLE IF NOT EXISTS `mess_menu` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 12. EXPENSES TABLE
+-- 13. EXPENSES TABLE
 CREATE TABLE IF NOT EXISTS `expenses` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `category` ENUM('Electricity', 'Water', 'Internet', 'Food', 'Cleaning', 'Maintenance', 'Salary', 'Repairs', 'Other') NOT NULL,
@@ -184,7 +200,7 @@ CREATE TABLE IF NOT EXISTS `expenses` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 13. ANNOUNCEMENTS TABLE
+-- 14. ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS `announcements` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(200) NOT NULL,
@@ -198,7 +214,7 @@ CREATE TABLE IF NOT EXISTS `announcements` (
   FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 14. NOTIFICATIONS TABLE
+-- 15. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NULL,
@@ -211,7 +227,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 15. LEAVE REQUESTS TABLE
+-- 16. LEAVE REQUESTS TABLE
 CREATE TABLE IF NOT EXISTS `leave_requests` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `student_id` INT NOT NULL,
@@ -226,7 +242,7 @@ CREATE TABLE IF NOT EXISTS `leave_requests` (
   FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 16. SETTINGS TABLE
+-- 17. SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS `settings` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `key_name` VARCHAR(100) NOT NULL UNIQUE,

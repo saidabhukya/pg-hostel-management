@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Official Fee Receipt — SRI RAM PG</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/images/college-logo.svg">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <script src="./vendor/lucide.min.js"></script>
+  <script src="./vendor/jspdf.umd.min.js"></script>
+  <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --primary-red: #dc2626;
+      --primary-dark: #b91c1c;
+      --bg-page: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --whatsapp-green: #25d366;
+      --whatsapp-dark: #128c7e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-main);
+      padding: 1.5rem 1rem 3rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .brand-link img {
+      height: 36px;
+      width: auto;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--primary-red);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-whatsapp {
+      background: var(--whatsapp-green);
+      color: #ffffff;
+    }
+    .btn-whatsapp:hover {
+      background: var(--whatsapp-dark);
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: #f1f5f9;
+    }
+
+    /* Receipt Sheet Card */
+    .receipt-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2.25rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .watermark-paid {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-25deg);
+      font-size: 5.5rem;
+      font-weight: 900;
+      color: rgba(220, 38, 38, 0.04);
+      pointer-events: none;
+      user-select: none;
+      border: 5px dashed rgba(220, 38, 38, 0.07);
+      padding: 1rem 2.5rem;
+      border-radius: 16px;
+      letter-spacing: 4px;
+    }
+
+    .receipt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid var(--primary-red);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .college-crest-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .receipt-meta {
+      text-align: right;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-radius: 4px;
+      background: #fef2f2;
+      color: var(--primary-red);
+      margin-bottom: 4px;
+    }
+
+    .receipt-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .resident-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      background: #f8fafc;
+      padding: 1.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+      font-size: 0.86rem;
+    }
+
+    .grid-label {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .grid-val-main {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .receipt-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+    }
+
+    .receipt-table th {
+      background: #f1f5f9;
+      padding: 0.75rem 1rem;
+      color: #475569;
+      font-weight: 700;
+      text-align: left;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .receipt-table td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .total-row {
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    .notice-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1rem;
+      background: #fef2f2;
+      border: 1px dashed #fca5a5;
+      border-radius: 8px;
+      margin-bottom: 1.75rem;
+      font-size: 0.84rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .footer-signatures {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .sig-line {
+      border-bottom: 1px solid var(--text-main);
+      width: 160px;
+      margin-bottom: 0.25rem;
+    }
+
+    .loading-state, .error-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--primary-red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .top-bar, .receipt-whatsapp-banner, .btn-group-bottom {
+        display: none !important;
+      }
+      .receipt-card {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="top-bar">
+      <a href="./index.html" class="brand-link">
+        <img src="./assets/images/college-logo.svg" alt="SRI RAM PG Logo">
+        <span>SRI RAM PG</span>
+      </a>
+      <div class="action-group" id="top-action-bar" style="display:none;">
+        <button class="btn btn-whatsapp" onclick="PublicReceipt.sendWhatsApp()">
+          <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
+          <span>Share WhatsApp</span>
+        </button>
+        <button class="btn btn-secondary" onclick="window.print()">
+          <i data-lucide="printer" style="width:16px;height:16px;"></i>
+          <span>Print</span>
+        </button>
+        <button class="btn btn-primary" onclick="PublicReceipt.downloadPDF()">
+          <i data-lucide="download" style="width:16px;height:16px;"></i>
+          <span>Download PDF</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Dynamic Container -->
+    <div id="receipt-mount">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p style="font-weight:600;color:var(--text-muted);">Verifying & loading official receipt...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PublicReceipt = {
+      receipt: null,
+
+      init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const receiptId = urlParams.get('id') || urlParams.get('receipt') || urlParams.get('receiptNumber');
+
+        if (!receiptId) {
+          this.renderLookupForm();
+          return;
+        }
+
+        this.loadReceipt(receiptId);
+      },
+
+      renderLookupForm() {
+        const mount = document.getElementById('receipt-mount');
+        mount.innerHTML = `
+          <div class="receipt-card" style="text-align:center;padding:3rem 1.5rem;">
+            <i data-lucide="file-search" style="width:48px;height:48px;color:var(--primary-red);margin-bottom:1rem;"></i>
+            <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:0.5rem;">Find Official Fee Receipt</h2>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">Enter your Receipt Number (e.g. REC-2026-0001) or Payment ID</p>
+            <form onsubmit="PublicReceipt.handleLookup(event)" style="max-width:360px;margin:0 auto;display:flex;gap:0.5rem;">
+              <input type="text" id="lookup-input" placeholder="e.g. REC-2026-0001" required style="flex:1;padding:0.6rem 0.8rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;" />
+              <button type="submit" class="btn btn-primary">Find</button>
+            </form>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+      },
+
+      handleLookup(e) {
+        e.preventDefault();
+        const val = document.getElementById('lookup-input').value.trim();
+        if (val) {
+          window.location.search = `?id=${encodeURIComponent(val)}`;
+        }
+      },
+
+      async loadReceipt(id) {
+        const mount = document.getElementById('receipt-mount');
+        try {
+          const res = await fetch(`/api/payments/public-receipt/${encodeURIComponent(id)}`);
+          const json = await res.json();
+
+          if (!res.ok || !json.success) {
+            throw new Error(json.message || 'Receipt could not be verified or was not found.');
+          }
+
+          this.receipt = json.data;
+          this.renderReceipt(this.receipt);
+          document.getElementById('top-action-bar').style.display = 'flex';
+          if (window.lucide) window.lucide.createIcons();
+        } catch (err) {
+          mount.innerHTML = `
+            <div class="error-state">
+              <i data-lucide="alert-circle" style="width:48px;height:48px;color:var(--primary-red);margin-bottom:1rem;"></i>
+              <h2 style="font-size:1.3rem;font-weight:800;color:#991b1b;margin-bottom:0.5rem;">Receipt Not Found</h2>
+              <p style="color:var(--text-muted);margin-bottom:1.5rem;">${err.message}</p>
+              <a href="./index.html" class="btn btn-secondary">Go to Home Portal</a>
+            </div>
+          `;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      },
+
+      renderReceipt(p) {
+        const mount = document.getElementById('receipt-mount');
+        const formattedAmount = '₹' + Number(p.amount || 0).toLocaleString('en-IN');
+
+        mount.innerHTML = `
+          <!-- WhatsApp Student Notification Banner -->
+          <div class="receipt-whatsapp-banner" style="background:#ecfdf5;border:1px solid #10b981;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <div style="background:#10b981;color:#ffffff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i data-lucide="check" style="width:20px;height:20px;"></i>
+              </div>
+              <div>
+                <strong style="color:#065f46;font-size:0.95rem;">Payment Confirmed & Verified!</strong>
+                <div style="color:#047857;font-size:0.82rem;">Official receipt for ${this.escapeHTML(p.student_name)} (${p.reg_number})</div>
+              </div>
+            </div>
+            <button class="btn btn-whatsapp" onclick="PublicReceipt.sendWhatsApp()">
+              <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
+              <span>Send PDF to WhatsApp (+91 ${p.student_phone || ''})</span>
+            </button>
+          </div>
+
+          <div class="receipt-card" id="printable-receipt">
+            <div class="watermark-paid">PAID</div>
+
+            <!-- Header -->
+            <div class="receipt-header">
+              <div class="college-crest-group">
+                <img src="./assets/images/college-logo.svg" alt="College Crest" style="height:55px;width:auto;object-fit:contain;" />
+                <div>
+                  <h3 style="font-size:1.2rem;font-weight:800;color:var(--text-main);margin:0;">SRI RAM PG</h3>
+                  <p style="font-size:0.78rem;color:var(--text-muted);margin:2px 0 0;">Student Housing & Residency</p>
+                  <p style="font-size:0.72rem;color:#94a3b8;margin:0;">OPP. VIGNAN UNIVERSITY, VADLAMUDI</p>
+                </div>
+              </div>
+              <div class="receipt-meta">
+                <span class="badge-pill">OFFICIAL RECEIPT</span>
+                <div class="receipt-number">${p.receipt_number}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px;">Paid: <strong>${p.paymentDateDisplay || p.payment_date}</strong></div>
+              </div>
+            </div>
+
+            <!-- Resident & Room Details Grid -->
+            <div class="resident-grid">
+              <div>
+                <div class="grid-label">Resident Student</div>
+                <div class="grid-val-main">${this.escapeHTML(p.student_name)}</div>
+                <div style="color:#475569;margin-top:3px;">Reg No: <strong>${p.reg_number}</strong></div>
+                <div style="color:var(--text-muted);font-size:0.82rem;">${this.escapeHTML(p.course || '')} (${p.year || ''})</div>
+                <div style="color:var(--text-muted);font-size:0.82rem;">WhatsApp: <strong>+91 ${p.student_phone || '-'}</strong></div>
+              </div>
+              <div style="text-align:right;">
+                <div class="grid-label">Allocated Room & Bed</div>
+                <div class="grid-val-main" style="color:var(--primary-red);">Room ${p.room_number || '-'} • ${p.bed_label || '-'}</div>
+                <div style="color:#475569;margin-top:3px;">Floor: Floor ${p.floor_number || '-'}</div>
+                <div style="color:var(--text-muted);font-size:0.82rem;">Parent: ${this.escapeHTML(p.parent_name || '')}</div>
+                <div style="color:var(--text-muted);font-size:0.82rem;">Parent Ph: ${p.parent_phone || '-'}</div>
+              </div>
+            </div>
+
+            <!-- Breakdown Table -->
+            <table class="receipt-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Billing Cycle Period</th>
+                  <th style="text-align:right;">Amount (INR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <strong style="color:var(--text-main);">Monthly Hostel Room Charges</strong>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Includes accommodation, electricity, Wi-Fi & mess amenities</div>
+                  </td>
+                  <td style="color:#475569;">
+                    ${p.cycleStartDisplay || p.cycle_start_date} → ${p.cycleEndDisplay || p.cycle_end_date}
+                  </td>
+                  <td style="text-align:right;font-weight:700;color:var(--text-main);">
+                    ${formattedAmount}
+                  </td>
+                </tr>
+                <tr class="total-row">
+                  <td colspan="2" style="text-align:right;color:var(--text-main);">TOTAL AMOUNT RECEIVED:</td>
+                  <td style="text-align:right;color:var(--primary-red);font-size:1.1rem;">
+                    ${formattedAmount}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- Mode & Next Due Notice -->
+            <div class="notice-box">
+              <div>
+                <span style="color:#991b1b;font-weight:700;">Payment Mode:</span> ${p.payment_method}
+                ${p.transaction_id ? ` • <span style="font-family:'JetBrains Mono', monospace;color:#991b1b;">Txn ID: ${p.transaction_id}</span>` : ''}
+              </div>
+              <div style="color:#991b1b;font-weight:700;">
+                Next Billing Due: <strong>${p.nextDueDateDisplay || '15-11-2026'}</strong>
+              </div>
+            </div>
+
+            <!-- Signatures -->
+            <div class="footer-signatures">
+              <div>
+                <p>1. Computer-generated official digital receipt; verified by Accounts Desk.</p>
+                <p>2. Keep this receipt safely for semester-end residency clearance.</p>
+                <p style="margin-top:4px;">Received by: <strong>${p.recorded_by_name || 'Accounts Desk'}</strong></p>
+              </div>
+              <div style="text-align:center;">
+                <div class="sig-line"></div>
+                <strong style="color:var(--text-main);">Chief Hostel Warden</strong><br/>
+                Authorized Signature & Seal
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div class="btn-group-bottom" style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;">
+            <a href="./index.html" class="btn btn-secondary">Go to Hostel Portal</a>
+            <button class="btn btn-whatsapp" onclick="PublicReceipt.sendWhatsApp('student')">
+              <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
+              <span>Send PDF to Student WhatsApp</span>
+            </button>
+            ${p.parent_phone ? `
+              <button class="btn btn-secondary" onclick="PublicReceipt.sendWhatsApp('parent')">
+                <i data-lucide="users" style="width:16px;height:16px;"></i>
+                <span>WhatsApp Parent</span>
+              </button>
+            ` : ''}
+            <button class="btn btn-primary" onclick="PublicReceipt.downloadPDF()">
+              <i data-lucide="download" style="width:16px;height:16px;"></i>
+              <span>Download Official PDF Receipt</span>
+            </button>
+          </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+      },
+
+      buildPDFDoc() {
+        if (!this.receipt) return null;
+        const p = this.receipt;
+
+        const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!jsPDFClass) return null;
+
+        const doc = new jsPDFClass({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        // Header Banner
+        doc.setFillColor(220, 38, 38);
+        doc.rect(0, 0, 210, 18, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SRI RAM PG', 105, 12, { align: 'center' });
+
+        // Subheader & Receipt #
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(18);
+        doc.text('OFFICIAL FEE PAYMENT RECEIPT', 14, 32);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Receipt Number: ${p.receipt_number || 'REC-OFFICIAL'}`, 14, 38);
+        doc.text(`Payment Date: ${p.paymentDateDisplay || p.payment_date || ''}`, 14, 43);
+        doc.text(`Status: ${p.status || 'PAID'}`, 14, 48);
+
+        // Student & Room Box
+        doc.setDrawColor(226, 232, 240);
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(14, 54, 182, 34, 3, 3, 'FD');
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Student: ${p.student_name || 'Resident Student'}`, 18, 62);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Registration No: ${p.reg_number || '-'}`, 18, 68);
+        doc.text(`College: ${p.college || 'VIGNAN UNIVERSITY'}`, 18, 74);
+        doc.text(`Course: ${p.course || 'B.Tech'} (${p.year || '1st Year'})`, 18, 80);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Room: Room ${p.room_number || '-'} • ${p.bed_label || '-'}`, 110, 62);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Floor: Floor ${p.floor_number || '-'}`, 110, 68);
+        doc.text(`Parent: ${p.parent_name || 'Parent / Guardian'}`, 110, 74);
+        doc.text(`Parent Phone: ${p.parent_phone || '-'}`, 110, 80);
+
+        let finalY = 135;
+
+        if (typeof doc.autoTable === 'function') {
+          doc.autoTable({
+            startY: 94,
+            head: [['Item Description', 'Billing Cycle Period', 'Amount (INR)']],
+            body: [
+              [
+                'Monthly Hostel Room & Residency Charges\n(Lodging, Electricity, High-Speed Wi-Fi & Mess Amenities)',
+                `${p.cycleStartDisplay || p.cycle_start_date || ''} to ${p.cycleEndDisplay || p.cycle_end_date || ''}\n(Joining-Date Anchored)`,
+                `₹${Number(p.amount || 7000).toLocaleString('en-IN')}`
+              ],
+              [
+                'TOTAL AMOUNT PAID',
+                `Settled via ${p.payment_method || 'UPI / Cash'}`,
+                `₹${Number(p.amount || 7000).toLocaleString('en-IN')}`
+              ]
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 10, cellPadding: 5 },
+            columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
+          });
+          finalY = doc.lastAutoTable.finalY + 10;
+        } else {
+          doc.setFillColor(220, 38, 38);
+          doc.rect(14, 94, 182, 8, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Item Description', 18, 99);
+          doc.text('Billing Cycle Period', 90, 99);
+          doc.text('Amount (INR)', 192, 99, { align: 'right' });
+
+          doc.setTextColor(15, 23, 42);
+          doc.setFont('helvetica', 'normal');
+          doc.text('Monthly Hostel Room Charges', 18, 108);
+          doc.text(`${p.cycleStartDisplay || '-'} to ${p.cycleEndDisplay || '-'}`, 90, 108);
+          doc.text(`₹${Number(p.amount || 7000).toLocaleString('en-IN')}`, 192, 108, { align: 'right' });
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('TOTAL AMOUNT PAID', 18, 118);
+          doc.text(`Settled via ${p.payment_method || 'UPI / Cash'}`, 90, 118);
+          doc.setTextColor(220, 38, 38);
+          doc.text(`₹${Number(p.amount || 7000).toLocaleString('en-IN')}`, 192, 118, { align: 'right' });
+          finalY = 135;
+        }
+
+        // Notice
+        doc.setDrawColor(254, 202, 202);
+        doc.setFillColor(254, 242, 242);
+        doc.roundedRect(14, finalY, 182, 14, 2, 2, 'FD');
+        doc.setTextColor(185, 28, 28);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(`Notice: Next Billing Cycle Due on ${p.nextDueDateDisplay || '15-11-2026'}. Monthly fee: ₹${Number(p.amount || 7000).toLocaleString('en-IN')}.`, 20, finalY + 9);
+
+        // Signatures
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('Authorized Hostel Accounts Seal', 140, finalY + 45);
+        doc.line(135, finalY + 42, 185, finalY + 42);
+
+        doc.text('Hostel Chief Warden', 20, finalY + 45);
+        doc.line(18, finalY + 42, 60, finalY + 42);
+
+        return doc;
+      },
+
+      downloadPDF() {
+        const doc = this.buildPDFDoc();
+        if (!doc) {
+          window.print();
+          return;
+        }
+        const p = this.receipt;
+        const filename = `Receipt_${p.receipt_number || 'HOSTEL'}_${p.reg_number || 'FEE'}.pdf`;
+        doc.save(filename);
+      },
+
+      async sendWhatsApp(target = 'student') {
+        if (!this.receipt) return;
+        const p = this.receipt;
+
+        const rawPhone = target === 'parent' ? (p.parent_phone || '') : (p.student_phone || '');
+        const cleanPhone = this.formatPhoneForWhatsApp(rawPhone);
+
+        const currentUrl = window.location.href;
+        const amountDisplay = '₹' + Number(p.amount || 0).toLocaleString('en-IN');
+
+        const message = 
+`🧾 *SRI RAM PG - OFFICIAL FEE PAYMENT RECEIPT*
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Dear *${p.student_name}*,
+
+Your monthly hostel fee payment has been successfully recorded and verified.
+
+📋 *Payment Details:*
+• *Receipt Number:* ${p.receipt_number}
+• *Amount Paid:* ${amountDisplay} (${p.payment_method})
+• *Payment Date:* ${p.paymentDateDisplay || p.payment_date}
+• *Student Reg No:* ${p.reg_number}
+• *Room Allocation:* Room ${p.room_number || '-'} • Bed ${p.bed_label || '-'} (Floor ${p.floor_number || '-'})
+• *Billing Cycle:* ${p.cycleStartDisplay || p.cycle_start_date} to ${p.cycleEndDisplay || p.cycle_end_date}
+• *Next Due Date:* ${p.nextDueDateDisplay || '15-11-2026'}
+• *Status:* ✅ PAID / SETTLED
+
+📄 *Official PDF Receipt Download Link:*
+${currentUrl}
+
+The stamped official PDF receipt file has been generated. Please keep this for your records.
+
+Thank you,
+*SRI RAM PG Management*
+Opp. Vignan University, Vadlamudi
+━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+        // 1. Generate PDF blob and download file
+        const doc = this.buildPDFDoc();
+        let pdfFile = null;
+        const filename = `Receipt_${p.receipt_number || 'HOSTEL'}_${p.reg_number || 'FEE'}.pdf`;
+
+        if (doc) {
+          try {
+            const blob = doc.output('blob');
+            pdfFile = new File([blob], filename, { type: 'application/pdf' });
+            doc.save(filename);
+          } catch (e) {
+            console.warn('PDF blob generation error:', e);
+          }
+        }
+
+        // 2. Try native Web Share API if device supports sharing files
+        if (pdfFile && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+          try {
+            await navigator.share({
+              title: `Official Receipt ${p.receipt_number}`,
+              text: message,
+              files: [pdfFile]
+            });
+            return;
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.log('Falling back to WhatsApp direct link');
+            }
+          }
+        }
+
+        // 3. Open WhatsApp link with prefilled student phone and message
+        const waUrl = cleanPhone 
+          ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+          : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+        window.open(waUrl, '_blank');
+      },
+
+      formatPhoneForWhatsApp(phone) {
+        if (!phone) return '';
+        let digits = String(phone).replace(/\D/g, '');
+        if (digits.length === 10) {
+          digits = '91' + digits; // Standard Indian mobile prefix
+        }
+        return digits;
+      },
+
+      escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => PublicReceipt.init());
+  </script>
+</body>
+</html>

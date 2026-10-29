@@ -157,29 +157,63 @@ const FeesPage = {
         search: this.currentSearch
       });
 
-      if (res.success) {
+      if (res && res.success) {
         this.renderTable(res.data, res.pagination);
+        return;
       }
     } catch (e) {
-      Toast.error('Failed to load fee cycles: ' + e.message);
+      console.warn('[FeesPage] API cycles load failed, falling back to local dataset:', e.message);
+    }
+
+    // Graceful fallback to MockData if API failed or offline
+    if (typeof MockData !== 'undefined' && MockData.feeCycles) {
+      let list = MockData.feeCycles;
+      if (this.currentFilter !== 'all') {
+        list = list.filter(c => c.status === this.currentFilter);
+      }
+      if (this.currentSearch) {
+        const q = this.currentSearch.toLowerCase();
+        list = list.filter(c => 
+          (c.student_name && c.student_name.toLowerCase().includes(q)) || 
+          (c.reg_number && c.reg_number.toLowerCase().includes(q)) || 
+          (c.room_number && String(c.room_number).includes(q))
+        );
+      }
+      this.renderTable(list, { page: 1, limit: 100, totalPages: 1, totalRecords: list.length });
+    } else {
+      Toast.error('Unable to retrieve fee billing cycles.');
     }
   },
 
   async loadReminderStats() {
+    let summary = null;
     try {
       const res = await API.get('/fees/reminders');
-      if (res.success && res.data.summary) {
-        const s = res.data.summary;
-        const paidEl = document.getElementById('count-paid-cycles');
-        const dueSoonEl = document.getElementById('count-due-soon-cycles');
-        const overdueEl = document.getElementById('count-overdue-cycles');
-        const pendingFooter = document.getElementById('pending-amount-footer');
-        if (paidEl) paidEl.innerText = s.paidCount ?? 0;
-        if (dueSoonEl) dueSoonEl.innerText = s.dueSoonCount ?? 0;
-        if (overdueEl) overdueEl.innerText = `₹${Number(s.pendingTotal || 0).toLocaleString('en-IN')}`;
-        if (pendingFooter) pendingFooter.innerText = `${s.dueSoonCount || 0} student(s) pending`;
+      if (res && res.success && res.data && res.data.summary) {
+        summary = res.data.summary;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[FeesPage] API reminders load failed, falling back to local dataset:', e.message);
+    }
+
+    if (!summary) {
+      const mock = this.getMockReminders();
+      summary = mock.summary;
+    }
+
+    if (summary) {
+      const paidEl = document.getElementById('count-paid-cycles');
+      const dueSoonEl = document.getElementById('count-due-soon-cycles');
+      const overdueEl = document.getElementById('count-overdue-cycles');
+      const pendingFooter = document.getElementById('pending-amount-footer');
+      if (paidEl) paidEl.innerText = summary.paidCount ?? 0;
+      if (dueSoonEl) dueSoonEl.innerText = (summary.dueSoonCount || 0) + (summary.overdueCount || 0) + (summary.dueTodayCount || 0);
+      if (overdueEl) overdueEl.innerText = Utils.formatINR(summary.pendingTotal || 0);
+      if (pendingFooter) {
+        const totalPending = summary.totalActionRequired || (summary.dueSoonCount || 0) + (summary.overdueCount || 0);
+        pendingFooter.innerText = `${totalPending} cycle(s) awaiting payment`;
+      }
+    }
   },
 
   renderTable(cycles, pagination) {
@@ -219,7 +253,7 @@ const FeesPage = {
             </td>
 
             <td data-label="Room & Bed">
-              <span class="badge badge-info">${c.room_number ? `Rm ${c.room_number} • ${c.bed_label}` : 'Unallocated'}</span>
+              <span class="badge badge-info">${c.room_number ? `Rm ${c.room_number} • ${c.bed_label || ''}` : 'Unallocated'}</span>
             </td>
           ` : ''}
 
@@ -248,10 +282,16 @@ const FeesPage = {
 
           <td data-label="Action">
             ${isPaid ? `
-              <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openReceiptByCycle(${c.id})" title="View / Download Receipt">
-                <i data-lucide="receipt" style="width:14px;height:14px;"></i>
-                <span>Receipt</span>
-              </button>
+              <div style="display:flex;gap:0.35rem;align-items:center;">
+                <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openReceiptByCycle(${c.id})" title="View / Download Receipt">
+                  <i data-lucide="receipt" style="width:14px;height:14px;"></i>
+                  <span>Receipt</span>
+                </button>
+                <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.35rem 0.6rem;font-weight:600;display:inline-flex;align-items:center;gap:0.25rem;" onclick="PaymentsPage.openReceiptByCycle(${c.id}, true)" title="Send PDF Receipt to Student on WhatsApp">
+                  <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
+                  <span>WhatsApp</span>
+                </button>
+              </div>
             ` : (isAdmin ? `
               <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${c.student_id}, '${Utils.escapeHTML(c.student_name)}', ${c.amount}, '${c.start_date}', '${c.end_date}', ${c.id})">
                 <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
@@ -294,61 +334,296 @@ const FeesPage = {
     this.loadCycles();
   },
 
+  // Cache for open modal items to prevent inline quote escaping issues in onclick
+  remindersCache: {},
+
+  getMockReminders() {
+    if (typeof MockData === 'undefined') {
+      return { overdue: [], dueToday: [], dueSoon: [], upcoming: [], summary: { paidCount: 0, pendingTotal: 0 } };
+    }
+    const cycles = (MockData.feeCycles || []).filter(c => c.status !== 'paid');
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = [];
+    const dueToday = [];
+    const dueSoon = [];
+    const upcoming = [];
+    let pendingTotal = 0;
+
+    cycles.forEach(c => {
+      const amount = Number(c.amount || 7000);
+      const paid = Number(c.paid_amount || 0);
+      pendingTotal += Math.max(0, amount - paid);
+
+      const dStr = c.due_date || today;
+      let diffDays = 0;
+      try {
+        const d1 = new Date(today);
+        const d2 = new Date(dStr);
+        diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+      } catch (e) {}
+
+      const item = {
+        id: c.id,
+        student_id: c.student_id,
+        student_name: c.student_name || 'Resident Student',
+        reg_number: c.reg_number || 'REG',
+        student_phone: c.phone || c.student_phone || '',
+        room_number: c.room_number || '-',
+        bed_label: c.bed_label || '',
+        amount: amount,
+        paid_amount: paid,
+        start_date: c.start_date,
+        end_date: c.end_date,
+        due_date: c.due_date,
+        startDateDisplay: c.startDateDisplay || c.start_date || '-',
+        endDateDisplay: c.endDateDisplay || c.end_date || '-',
+        dueDateDisplay: c.dueDateDisplay || c.due_date || '-',
+        daysDifference: diffDays
+      };
+
+      if (diffDays < 0) {
+        overdue.push(item);
+      } else if (diffDays === 0) {
+        dueToday.push(item);
+      } else if (diffDays <= 7) {
+        dueSoon.push(item);
+      } else {
+        upcoming.push(item);
+      }
+    });
+
+    const paidCount = (MockData.feeCycles || []).filter(c => c.status === 'paid').length;
+    return {
+      summary: {
+        paidCount,
+        pendingTotal,
+        overdueCount: overdue.length,
+        dueTodayCount: dueToday.length,
+        dueSoonCount: dueSoon.length,
+        upcomingCount: upcoming.length,
+        totalActionRequired: overdue.length + dueToday.length + dueSoon.length,
+        totalPendingCount: cycles.length
+      },
+      overdue,
+      dueToday,
+      dueSoon,
+      upcoming
+    };
+  },
+
   async loadRemindersModal() {
+    // 1. Instantly open modal with responsive loading state so button always opens without delay
+    Modal.open({
+      title: 'Fee Reminders Notification Center',
+      content: `
+        <div id="reminders-modal-body" style="text-align:center;padding:2.5rem 1rem;">
+          <div class="spinner" style="margin:0 auto 1rem;width:36px;height:36px;border-width:3px;"></div>
+          <p style="font-weight:700;color:var(--text-primary);margin-bottom:0.25rem;">Checking Fee Reminders...</p>
+          <p style="font-size:0.8rem;color:var(--text-muted);margin:0;">Scanning admission anchor dates, active billing periods, and due deadlines</p>
+        </div>
+      `,
+      maxWidth: '720px'
+    });
+    Utils.renderIcons();
+
+    let data = null;
     try {
       const res = await API.get('/fees/reminders');
-      if (!res.success) return;
+      if (res && res.success && res.data) {
+        data = res.data;
+      }
+    } catch (e) {
+      console.warn('[Fee Reminders] API call failed, falling back to local data:', e.message);
+    }
 
-      const { summary, overdue, dueToday, dueSoon } = res.data;
+    if (!data) {
+      data = this.getMockReminders();
+    }
 
-      const renderSection = (title, list, badgeClass) => `
-        <div style="margin-bottom:1.5rem;">
-          <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">
-            <span>${title}</span>
-            <span class="badge ${badgeClass}">${list.length} Students</span>
-          </div>
-          ${list.length === 0 ? `
-            <div style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem;">No students in this reminder category.</div>
-          ` : `
-            <div style="display:flex;flex-direction:column;gap:0.5rem;">
-              ${list.map(s => `
-                <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);padding:0.6rem 0.85rem;border-radius:var(--radius-md);font-size:0.85rem;">
-                  <div>
-                    <strong>${Utils.escapeHTML(s.student_name)}</strong> (${s.reg_number}) • Room ${s.room_number || '-'}
-                    <div style="font-size:0.75rem;color:var(--text-muted);">
-                      Due Date: ${s.dueDateDisplay} • Cycle: ${s.startDateDisplay} to ${s.endDateDisplay}
-                    </div>
-                  </div>
-                  <button class="btn btn-sm btn-primary" onclick="Modal.close(); PaymentsPage.openRecordPaymentModal(${s.student_id}, '${Utils.escapeHTML(s.student_name)}', ${s.amount}, '${s.start_date}', '${s.end_date}', ${s.id})">
-                    Pay Now
-                  </button>
-                </div>
-              `).join('')}
+    const overdue = data.overdue || [];
+    const dueToday = data.dueToday || [];
+    const dueSoon = data.dueSoon || [];
+    const upcoming = data.upcoming || [];
+
+    // Cache items indexed by unique key for safe button event handlers
+    this.remindersCache = {};
+    [...overdue, ...dueToday, ...dueSoon, ...upcoming].forEach(item => {
+      const key = `${item.student_id || 0}_${item.id || 0}`;
+      this.remindersCache[key] = item;
+    });
+
+    const bodyEl = document.getElementById('reminders-modal-body');
+    if (!bodyEl) return;
+
+    const totalDues = overdue.length + dueToday.length + dueSoon.length + upcoming.length;
+
+    const renderCard = (s) => {
+      const key = `${s.student_id || 0}_${s.id || 0}`;
+      const phone = s.student_phone || s.phone || '';
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);padding:0.75rem 1rem;border-radius:var(--radius-md);border:1px solid var(--border-color);gap:0.75rem;flex-wrap:wrap;">
+          <div style="min-width:200px;flex:1;">
+            <div style="font-weight:700;color:var(--text-primary);font-size:0.92rem;">
+              ${Utils.escapeHTML(s.student_name)}
+              <span style="font-weight:500;font-size:0.8rem;color:var(--text-muted);margin-left:0.35rem;">(${Utils.escapeHTML(s.reg_number || '')})</span>
             </div>
-          `}
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.25rem;">
+              <span class="badge badge-info" style="font-size:0.72rem;padding:0.15rem 0.45rem;">Rm ${s.room_number || '-'} ${s.bed_label ? '• ' + s.bed_label : ''}</span>
+              <span style="margin-left:0.4rem;"><strong>Due:</strong> ${s.dueDateDisplay || '-'}</span>
+              <span style="margin-left:0.4rem;color:var(--text-muted);">(${s.startDateDisplay || '-'} to ${s.endDateDisplay || '-'})</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div style="text-align:right;margin-right:0.3rem;">
+              <div style="font-weight:800;color:var(--text-primary);font-size:0.95rem;">${Utils.formatINR(s.amount)}</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);">Monthly Fee</div>
+            </div>
+            ${phone ? `
+              <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.4rem 0.7rem;font-weight:600;display:inline-flex;align-items:center;gap:0.35rem;" onclick="FeesPage.triggerWhatsAppFromCache('${key}')" title="Send WhatsApp Fee Reminder">
+                <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
+                <span>WhatsApp</span>
+              </button>
+            ` : ''}
+            <button class="btn btn-sm btn-primary" onclick="FeesPage.triggerPayFromCache('${key}')" title="Record Fee Payment">
+              <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
+              <span>Pay Now</span>
+            </button>
+          </div>
         </div>
       `;
+    };
 
-      Modal.open({
-        title: 'Fee Reminders Notification Center',
-        content: `
-          <div style="font-size:0.9rem;color:var(--text-secondary);">
-            <p style="margin-bottom:1.25rem;">
-              Automated reminders calculated based on student admission anchor dates:
-            </p>
-            ${renderSection('🔴 Overdue Cycles', overdue, 'badge-danger')}
-            ${renderSection('🔴 Due Today', dueToday, 'badge-danger')}
-            ${renderSection('🟡 Due Soon (Within 7 Days)', dueSoon, 'badge-warning')}
-            <div style="text-align:right;margin-top:1.5rem;">
-              <button class="btn btn-secondary" onclick="Modal.close()">Close Center</button>
-            </div>
+    const renderSection = (title, list, badgeClass, iconName) => `
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:0.88rem;font-weight:700;color:var(--text-primary);margin-bottom:0.75rem;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:0.45rem;">
+            <i data-lucide="${iconName}" style="width:16px;height:16px;"></i>
+            <span>${title}</span>
           </div>
-        `,
-        maxWidth: '680px'
-      });
-    } catch (e) {
-      Toast.error('Failed to open reminders center: ' + e.message);
+          <span class="badge ${badgeClass}">${list.length} Student${list.length === 1 ? '' : 's'}</span>
+        </div>
+        ${list.length === 0 ? `
+          <div style="font-size:0.82rem;color:var(--text-muted);padding:0.75rem 1rem;background:var(--bg-secondary);border-radius:var(--radius-md);border:1px dashed var(--border-color);">
+            No students currently in this category.
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:0.6rem;">
+            ${list.map(renderCard).join('')}
+          </div>
+        `}
+      </div>
+    `;
+
+    bodyEl.innerHTML = `
+      <div style="font-size:0.9rem;color:var(--text-secondary);">
+        <!-- Summary Cards Strip -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:0.6rem;margin-bottom:1.25rem;">
+          <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:var(--radius-md);border-left:3px solid var(--status-danger);">
+            <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Overdue</div>
+            <div style="font-size:1.15rem;font-weight:800;color:var(--status-danger);">${overdue.length}</div>
+          </div>
+          <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:var(--radius-md);border-left:3px solid var(--status-danger);">
+            <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Due Today</div>
+            <div style="font-size:1.15rem;font-weight:800;color:var(--status-danger);">${dueToday.length}</div>
+          </div>
+          <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:var(--radius-md);border-left:3px solid var(--status-warning);">
+            <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Due Within 7 Days</div>
+            <div style="font-size:1.15rem;font-weight:800;color:var(--status-warning);">${dueSoon.length}</div>
+          </div>
+          <div style="background:var(--bg-secondary);padding:0.6rem 0.8rem;border-radius:var(--radius-md);border-left:3px solid var(--status-info);">
+            <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Upcoming Cycles</div>
+            <div style="font-size:1.15rem;font-weight:800;color:var(--status-info);">${upcoming.length}</div>
+          </div>
+        </div>
+
+        ${totalDues === 0 ? `
+          <div style="text-align:center;padding:2.5rem 1rem;background:var(--bg-secondary);border-radius:var(--radius-lg);margin-bottom:1.5rem;">
+            <i data-lucide="check-circle-2" style="width:48px;height:48px;color:var(--status-success);margin-bottom:0.75rem;"></i>
+            <h3 style="margin-bottom:0.35rem;color:var(--text-primary);">All Student Dues Cleared!</h3>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin:0;">There are no pending or overdue fee reminders at this time. All active residents have settled their joining-date billing cycles.</p>
+          </div>
+        ` : `
+          <p style="margin-bottom:1.25rem;font-size:0.85rem;color:var(--text-muted);">
+            Billing cycles calculated automatically from each resident's individual joining date:
+          </p>
+          ${renderSection('🔴 Overdue Cycles', overdue, 'badge-danger', 'alert-triangle')}
+          ${renderSection('🔴 Due Today', dueToday, 'badge-danger', 'alert-circle')}
+          ${renderSection('🟡 Due Soon (Within 7 Days)', dueSoon, 'badge-warning', 'clock')}
+          ${upcoming.length > 0 ? renderSection('🔵 Upcoming Cycles', upcoming, 'badge-info', 'calendar') : ''}
+        `}
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border-color);">
+          <button class="btn btn-sm btn-secondary" onclick="FeesPage.loadRemindersModal()" title="Re-check fee dues">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+            <span>Refresh Dues</span>
+          </button>
+          <button class="btn btn-secondary" onclick="Modal.close()">Close Center</button>
+        </div>
+      </div>
+    `;
+
+    Utils.renderIcons();
+  },
+
+  triggerWhatsAppFromCache(key) {
+    const item = this.remindersCache[key];
+    if (!item) return;
+    this.sendDueWhatsApp(
+      item.student_phone || item.phone,
+      item.student_name,
+      item.amount,
+      item.dueDateDisplay,
+      item.startDateDisplay,
+      item.endDateDisplay,
+      item.room_number
+    );
+  },
+
+  triggerPayFromCache(key) {
+    const item = this.remindersCache[key];
+    if (!item) return;
+    Modal.close();
+    PaymentsPage.openRecordPaymentModal(
+      item.student_id,
+      item.student_name,
+      item.amount,
+      item.start_date,
+      item.end_date,
+      item.id
+    );
+  },
+
+  sendDueWhatsApp(phone, studentName, amount, dueDate, startDate, endDate, roomNumber) {
+    if (!phone) {
+      Toast.warning('No phone number recorded for this student.');
+      return;
     }
+    let digits = String(phone).replace(/\D/g, '');
+    if (digits.length === 10) digits = '91' + digits;
+
+    const message = 
+`🔔 *SRI RAM PG - HOSTEL FEE PAYMENT REMINDER*
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Dear *${studentName}*,
+
+This is a gentle reminder regarding your monthly hostel room fee payment.
+
+📋 *Due Notice:*
+• *Amount Due:* ₹${Number(amount || 7000).toLocaleString('en-IN')}
+• *Due Date:* ${dueDate}
+• *Room:* Room ${roomNumber || '-'}
+• *Billing Cycle:* ${startDate} to ${endDate}
+
+Please clear your dues on or before the due date to ensure uninterrupted residency and amenities.
+Upon payment, your official stamped PDF receipt will be instantly issued to your WhatsApp.
+
+Thank you,
+*SRI RAM PG Management*
+Opp. Vignan University, Vadlamudi
+━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    Toast.success(`Opening WhatsApp reminder for ${studentName} (+91 ${digits.slice(-10)})...`);
   }
 };
 

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: sri-ram-pg-portal
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HOSTEL_NAME
+        value: "SRI RAM PG"
+      - key: DEFAULT_MONTHLY_FEE
+        value: "7000"
+      - key: TOTAL_FLOORS
+        value: "5"
+      - key: ROOMS_PER_FLOOR
+        value: "10"
+      - key: BEDS_PER_ROOM
+        value: "5"

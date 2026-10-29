@@ -210,11 +210,13 @@ router.get('/student/:studentId', authenticateToken, async (req, res) => {
 
 /**
  * GET /api/fees/reminders
- * Returns all students with fees due within 7 days, due today, or overdue
+ * Returns students with fees overdue, due today, due soon (within 7 days), or upcoming
+ * Supports both admin (all resident students) and student (personal dues)
  */
-router.get('/reminders', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/reminders', authenticateToken, async (req, res) => {
   try {
-    const pendingCycles = await db.query(`
+    const isStudent = req.user && req.user.role === 'student';
+    let querySql = `
       SELECT 
         fc.*,
         s.id AS student_id,
@@ -230,17 +232,44 @@ router.get('/reminders', authenticateToken, requireAdmin, async (req, res) => {
       LEFT JOIN beds b ON b.id = a.bed_id
       LEFT JOIN rooms r ON r.id = b.room_id
       WHERE fc.status != 'paid'
-      ORDER BY fc.due_date ASC
-    `);
+    `;
+    const queryParams = [];
+
+    if (isStudent) {
+      if (!req.student) {
+        return res.json({
+          success: true,
+          data: {
+            summary: { paidCount: 0, pendingTotal: 0, overdueCount: 0, dueTodayCount: 0, dueSoonCount: 0, upcomingCount: 0, totalActionRequired: 0, totalPendingCount: 0 },
+            overdue: [],
+            dueToday: [],
+            dueSoon: [],
+            upcoming: []
+          }
+        });
+      }
+      querySql += ` AND fc.student_id = ? `;
+      queryParams.push(req.student.id);
+    }
+
+    querySql += ` ORDER BY fc.due_date ASC `;
+
+    const rawPendingCycles = await db.query(querySql, queryParams);
+    const pendingCycles = Array.isArray(rawPendingCycles) ? rawPendingCycles : [];
 
     const overdueList = [];
     const dueTodayList = [];
     const dueSoonList = [];
+    const upcomingList = [];
+    let pendingTotal = 0;
 
     for (const c of pendingCycles) {
+      pendingTotal += Math.max(0, Number(c.amount || 0) - Number(c.paid_amount || 0));
       const reminder = evaluateDueStatus(c.due_date, false);
       const item = {
         ...c,
+        amount: Number(c.amount || 7000),
+        paid_amount: Number(c.paid_amount || 0),
         startDateDisplay: formatDateDisplay(c.start_date),
         endDateDisplay: formatDateDisplay(c.end_date),
         dueDateDisplay: formatDateDisplay(c.due_date),
@@ -253,27 +282,43 @@ router.get('/reminders', authenticateToken, requireAdmin, async (req, res) => {
         dueTodayList.push(item);
       } else if (reminder.status === 'due_soon') {
         dueSoonList.push(item);
+      } else {
+        upcomingList.push(item);
       }
     }
+
+    // Get paid cycles count
+    const paidSql = isStudent && req.student
+      ? "SELECT COUNT(*) as count FROM fee_cycles WHERE status = 'paid' AND student_id = ?"
+      : "SELECT COUNT(*) as count FROM fee_cycles WHERE status = 'paid'";
+    const paidParams = isStudent && req.student ? [req.student.id] : [];
+    const paidRes = await db.getOne(paidSql, paidParams);
+    const paidCount = Number(paidRes?.count || 0);
 
     return res.json({
       success: true,
       data: {
         summary: {
+          paidCount,
+          pendingTotal,
           overdueCount: overdueList.length,
           dueTodayCount: dueTodayList.length,
           dueSoonCount: dueSoonList.length,
-          totalActionRequired: overdueList.length + dueTodayList.length + dueSoonList.length
+          upcomingCount: upcomingList.length,
+          totalActionRequired: overdueList.length + dueTodayList.length + dueSoonList.length,
+          totalPendingCount: pendingCycles.length
         },
         overdue: overdueList,
         dueToday: dueTodayList,
-        dueSoon: dueSoonList
+        dueSoon: dueSoonList,
+        upcoming: upcomingList
       }
     });
   } catch (err) {
+    console.error('[Fee Reminders API Error]:', err);
     return res.status(500).json({
       success: false,
-      message: 'Failed to retrieve fee reminders.',
+      message: 'Failed to retrieve fee reminders: ' + (err.message || 'Server error'),
       error: err.message
     });
   }

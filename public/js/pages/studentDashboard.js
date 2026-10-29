@@ -4,6 +4,14 @@
  */
 const StudentDashboard = {
   async render() {
+    try {
+      const meRes = await API.get('/auth/me');
+      if (meRes && meRes.success) {
+        if (meRes.student) API.setStudent(meRes.student);
+        if (meRes.user) API.setUser(meRes.user);
+      }
+    } catch (e) {}
+
     const user = API.getUser();
     const student = API.getStudent();
 
@@ -12,8 +20,10 @@ const StudentDashboard = {
       <div class="card" style="margin-bottom:1.75rem;border-left:4px solid var(--primary-red);background:linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);padding:1.5rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
           <div style="display:flex;align-items:center;gap:1.25rem;">
-            <div class="user-avatar" style="width:60px;height:60px;font-size:1.5rem;border:2px solid var(--primary-red);">
-              ${user ? user.name.charAt(0) : 'S'}
+            <div class="user-avatar" style="width:64px;height:64px;font-size:1.5rem;border:3px solid var(--primary-red);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.1);background:#fff;">
+              ${(student && student.photo_url && student.photo_url !== '/assets/images/default-student.png') || (user && user.avatar && user.avatar !== '/assets/images/default-avatar.png' && user.avatar !== '/assets/images/default-student.png') ? `
+                <img src="${(student && student.photo_url) || (user && user.avatar)}" alt="${Utils.escapeHTML((student && student.name) || user.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user ? user.name.charAt(0) : 'S'}';" />
+              ` : (user ? user.name.charAt(0) : 'S')}
             </div>
             <div>
               <span class="badge badge-info" style="margin-bottom:0.25rem;">Student Resident Portal</span>

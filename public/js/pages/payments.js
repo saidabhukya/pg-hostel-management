@@ -197,10 +197,16 @@ const PaymentsPage = {
         </td>
 
         <td data-label="Action">
-          <button class="btn btn-sm btn-secondary" onclick="ReceiptModal.open(${p.id})" title="View, Print or Download PDF Receipt">
-            <i data-lucide="printer" style="width:14px;height:14px;"></i>
-            <span>Receipt</span>
-          </button>
+          <div style="display:flex;gap:0.35rem;align-items:center;">
+            <button class="btn btn-sm btn-secondary" onclick="ReceiptModal.open(${p.id})" title="View, Print or Download PDF Receipt">
+              <i data-lucide="printer" style="width:14px;height:14px;"></i>
+              <span>Receipt</span>
+            </button>
+            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.35rem 0.6rem;font-weight:600;display:inline-flex;align-items:center;gap:0.25rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student')" title="Send PDF Receipt to Student on WhatsApp (+91 ${p.student_phone || ''})">
+              <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
+              <span>WhatsApp</span>
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
@@ -316,6 +322,17 @@ const PaymentsPage = {
               <label class="form-label">Payment Remarks</label>
               <input type="text" id="rec-notes" class="form-control" placeholder="e.g. Cleared monthly room charge" value="Monthly hostel residency charge" />
             </div>
+
+            <!-- WhatsApp PDF Receipt Notice -->
+            <div class="form-group col-span-2" style="margin-top:0.25rem;padding:0.75rem 1rem;background:#ecfdf5;border:1px solid #10b981;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;">
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <i data-lucide="message-circle" style="width:18px;height:18px;color:#10b981;flex-shrink:0;"></i>
+                <span style="font-size:0.83rem;color:#065f46;font-weight:600;">
+                  Official PDF receipt will be instantly generated to send to student's WhatsApp number.
+                </span>
+              </div>
+              <span class="badge" style="background:#10b981;color:#fff;font-size:0.72rem;font-weight:700;">WhatsApp PDF</span>
+            </div>
           </div>
 
           <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border-color);">
@@ -411,10 +428,10 @@ const PaymentsPage = {
           AdminDashboard.loadData();
         }
 
-        // Auto-open newly generated receipt!
+        // Auto-open newly generated receipt with instant WhatsApp prompt!
         const pId = res.data && (res.data.paymentId || res.data.id);
         if (pId) {
-          setTimeout(() => ReceiptModal.open(pId), 300);
+          setTimeout(() => ReceiptModal.open(pId, { justPaid: true }), 300);
         }
       }
     } catch (err) {
@@ -428,7 +445,7 @@ const PaymentsPage = {
     }
   },
 
-  async openReceiptByCycle(cycleId) {
+  async openReceiptByCycle(cycleId, sendWhatsAppDirectly = false) {
     try {
       const res = await API.get('/payments', { limit: 100 });
       const payments = res.data || [];
@@ -440,7 +457,12 @@ const PaymentsPage = {
         match = payments[0];
       }
       if (match) {
-        ReceiptModal.open(match.paymentId || match.id);
+        const pId = match.paymentId || match.id;
+        if (sendWhatsAppDirectly) {
+          ReceiptModal.sendWhatsApp(pId, 'student');
+        } else {
+          ReceiptModal.open(pId);
+        }
       } else {
         Toast.warning('No receipt record found for this cycle.');
       }

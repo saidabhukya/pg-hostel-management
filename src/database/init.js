@@ -1,12 +1,13 @@
 const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 async function createTables() {
   await db.initDatabase();
   const client = db.getActiveClient();
 
-  console.log(`[InitDB] Creating tables using client: ${client}...`);
+  console.log(`[InitDB] Initializing database tables using client: ${client}...`);
 
   if (client === 'mysql') {
     const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
@@ -19,10 +20,19 @@ async function createTables() {
       try {
         await db.query(sql);
       } catch (err) {
-        console.error(`[InitDB] Error executing statement:`, err.message);
+        // Table or index may already exist
       }
     }
-    console.log(`[InitDB] MySQL tables initialized successfully.`);
+
+    // Ensure newly added columns exist if tables already existed
+    try {
+      await db.query("ALTER TABLE `students` ADD COLUMN `mother_name` VARCHAR(150) NULL");
+    } catch (e) {}
+    try {
+      await db.query("ALTER TABLE `students` ADD COLUMN `mother_phone` VARCHAR(25) NULL");
+    } catch (e) {}
+
+    console.log(`[InitDB] MySQL tables verified successfully.`);
   } else {
     // SQLite Tables Creation
     const sqliteTables = `
@@ -82,6 +92,8 @@ async function createTables() {
         gender TEXT DEFAULT 'Male',
         parent_name TEXT NOT NULL,
         parent_phone TEXT NOT NULL,
+        mother_name TEXT,
+        mother_phone TEXT,
         address TEXT NOT NULL,
         photo_url TEXT DEFAULT '/assets/images/default-student.png',
         id_proof_url TEXT,
@@ -139,6 +151,19 @@ async function createTables() {
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY (fee_cycle_id) REFERENCES fee_cycles(id) ON DELETE SET NULL,
         FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'present',
+        remarks TEXT,
+        marked_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (student_id, date),
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE SET NULL
       );
 
       CREATE TABLE IF NOT EXISTS complaints (
@@ -243,6 +268,156 @@ async function createTables() {
 
     db.execScript(sqliteTables);
     console.log(`[InitDB] SQLite tables initialized successfully.`);
+  }
+
+  // Ensure essential baseline data exists (Admin, Floors 1-5, Rooms 1-50, Beds 1-250, Mess Menu)
+  await ensureEssentialData();
+}
+
+/**
+ * Ensures baseline infrastructure records exist in the database.
+ * Does NOT overwrite existing records or delete student accounts.
+ */
+async function ensureEssentialData() {
+  try {
+    // 1. Check & Seed Default Admin
+    const adminUser = await db.getOne("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    if (!adminUser) {
+      const adminPasswordHash = await bcrypt.hash('admin123', 10);
+      await db.query(
+        `INSERT INTO users (username, email, password_hash, role, name, phone, avatar)
+         VALUES (?, ?, ?, 'admin', ?, ?, ?)`,
+        ['admin', 'admin@srirampg.in', adminPasswordHash, 'Hostel Chief Warden', '+91 98111 22334', '/assets/images/default-avatar.png']
+      );
+      console.log('[InitDB] Created default admin user: admin / admin123');
+    }
+
+    // 2. Check & Seed Floors (5 Floors: 1 to 5)
+    const floorCount = await db.getOne('SELECT COUNT(*) as count FROM floors');
+    if (Number(floorCount?.count || 0) === 0) {
+      console.log('[InitDB] Seeding 5 floors, 50 rooms, and 250 beds...');
+      const floorIds = {};
+
+      for (let f = 1; f <= 5; f++) {
+        const floorRes = await db.query(
+          `INSERT INTO floors (floor_number, name, description) VALUES (?, ?, ?)`,
+          [f, `Floor ${f}`, `${f}th Floor - Residential Wing`]
+        );
+        floorIds[f] = floorRes.insertId;
+      }
+
+      // 50 Rooms (10 per floor, e.g. 101 to 110, 201 to 210...)
+      for (let f = 1; f <= 5; f++) {
+        const fId = floorIds[f];
+        for (let r = 1; r <= 10; r++) {
+          const roomNum = `${f}${String(r).padStart(2, '0')}`;
+          const roomRes = await db.query(
+            `INSERT INTO rooms (floor_id, room_number, capacity, type, status) VALUES (?, ?, 5, 'Standard 5-Bed', 'active')`,
+            [fId, roomNum]
+          );
+          const roomId = roomRes.insertId;
+
+          // 5 Beds per room => 250 Beds
+          const bedLabels = ['Bed-A (Window)', 'Bed-B', 'Bed-C', 'Bed-D', 'Bed-E (Door)'];
+          for (let b = 1; b <= 5; b++) {
+            await db.query(
+              `INSERT INTO beds (room_id, bed_number, bed_label, status) VALUES (?, ?, ?, 'available')`,
+              [roomId, b, bedLabels[b - 1]]
+            );
+          }
+        }
+      }
+      console.log('[InitDB] Successfully seeded 5 floors, 50 rooms, and 250 beds.');
+    }
+
+    // 3. Check & Seed 7-Day Mess Menu
+    const messCount = await db.getOne('SELECT COUNT(*) as count FROM mess_menu');
+    if (Number(messCount?.count || 0) === 0) {
+      console.log('[InitDB] Seeding weekly mess routine...');
+      const weeklyMenu = [
+        {
+          day: 'Monday',
+          breakfast: 'Idly, Vada, Pongal, Chutney, Sambar, Allam Chutney, Milk, Coffee',
+          lunch: 'Dal, Sweet (ChakkarPongal / Halwa), Chutney, Sambar, Boiled Egg, Onion Tomato Curry, Rice, Rasam, Curd',
+          dinner: 'Rice, Phulka, Pappu, Potato Curry, Dosakai Tomato, Seasonal Fruits, Rasam, Curd',
+          special: 'Monday Sweet & Evening Mirchi Bajji'
+        },
+        {
+          day: 'Tuesday',
+          breakfast: 'Idly, Chapathi with Pappu, Upma, Chutney, Pudina Chutney, Milk, Coffee',
+          lunch: 'Dal, Pulihora / Kichadi, Chutney, Akukura Pappu, Cabbage Tomato, Sambar, Rice, Rasam, Curd',
+          dinner: 'Rice, Phulka Gravy, Egg Fried Rice, Veg Fried Rice, Bendakaya Fry, Rasam, Curd',
+          special: 'Pulihora Lunch & Egg/Veg Fried Rice Dinner'
+        },
+        {
+          day: 'Wednesday',
+          breakfast: 'Idly, Plain Dosa, Chutney, Coriander Chutney, Upma, Milk, Coffee',
+          lunch: 'Dal, Tomato Pappu, Benda Iguru, Seasonal Curry, Chutney, Papad, Sambar, Rasam, Curd, Rice',
+          dinner: 'Rice, Phulka, Chicken Curry / Paneer Butter Masala, Veg Biryani, Raita, Gongura Chutney, Rasam, Curd',
+          special: 'Wednesday Feast: Chicken Curry & Biryani'
+        },
+        {
+          day: 'Thursday',
+          breakfast: 'Idly, Utappam, Upma, Chutney, Allam Chutney, Milk, Coffee',
+          lunch: 'Dal, Chutney, Seasonal Curry, Seasonal Fry, Dosakaya Pappu, Rasam, Sambar, Curd, Rice',
+          dinner: 'Boiled Egg, Rice, Phulka Pappu, Cauliflower Curry, Seasonal Fruits, Rasam, Curd',
+          special: 'Hot Punugulu & Boiled Egg Dinner'
+        },
+        {
+          day: 'Friday',
+          breakfast: 'Idly, Chapathi, Chutney, Tomato Bath, Pudina Chutney, Kurma, Milk, Coffee',
+          lunch: 'Dal, Akukura Pappu, Chutney, Seasonal Curry, Appadalu, Rasam, Sambar, Curd, Rice',
+          dinner: 'Rice, Phulka Kurma, Hyderabadi Biryani, Crispy Chicken Fry / Paneer Tikka, Veg Curries, Rasam, Curd',
+          special: 'Friday Special Biryani & Crispy Chicken Fry'
+        },
+        {
+          day: 'Saturday',
+          breakfast: 'Idly, Masala Dosa, Upma, Coriander Chutney, Milk, Coffee',
+          lunch: 'Dal, Dondakai Iguru, Drumstick Tomato, Chutney, Rasam, Sambar, Curd, Rice',
+          dinner: 'Rice, Phulka, Mixed Veg Kurma, Pappu Charu, Sweet (Badusha / Jalebi), Rasam, Curd',
+          special: 'Saturday Evening Sweet & Masala Dosa'
+        },
+        {
+          day: 'Sunday',
+          breakfast: 'Puri with Potato Kurma, Idly, Sambar, Chutney, Milk, Coffee',
+          lunch: 'Special Dum Biryani, Chicken Gravy / Paneer Masala, Raitha, Onion Salad, White Rice, Dal, Curd',
+          dinner: 'Phulka, Rice, Dal Makhani, Aloo Gobi, Seasonal Fruits, Milk, Curd',
+          special: 'Sunday Grand Lunch Biryani Feast'
+        }
+      ];
+
+      for (const m of weeklyMenu) {
+        await db.query(
+          `INSERT INTO mess_menu (day_of_week, breakfast, lunch, dinner, special_notes)
+           VALUES (?, ?, ?, ?, ?)`,
+          [m.day, m.breakfast, m.lunch, m.dinner, m.special]
+        );
+      }
+      console.log('[InitDB] Mess menu seeded successfully.');
+    }
+
+    // 4. Check & Seed Settings
+    const settingsCount = await db.getOne('SELECT COUNT(*) as count FROM settings');
+    if (Number(settingsCount?.count || 0) === 0) {
+      const defaultSettings = [
+        { key: 'hostel_name', value: 'SRI RAM PG', desc: 'Hostel Name' },
+        { key: 'hostel_address', value: 'Near Vignan University Campus, Vadlamudi, Guntur - 522213', desc: 'Physical Address' },
+        { key: 'contact_phone', value: '+91 98111 22334', desc: 'Hostel Reception / Helpline' },
+        { key: 'contact_email', value: 'help@srirampg.in', desc: 'Contact Email' },
+        { key: 'curfew_time', value: '22:00', desc: 'Night Curfew Time' },
+        { key: 'default_monthly_fee', value: '7000', desc: 'Default Monthly Fee per Student' }
+      ];
+
+      for (const s of defaultSettings) {
+        await db.query(
+          `INSERT INTO settings (key_name, value, description) VALUES (?, ?, ?)`,
+          [s.key, s.value, s.desc]
+        );
+      }
+      console.log('[InitDB] Default hostel settings seeded.');
+    }
+  } catch (err) {
+    console.error('[InitDB] Error in ensureEssentialData:', err.message);
   }
 }
 

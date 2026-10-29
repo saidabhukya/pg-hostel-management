@@ -18,7 +18,20 @@ function formatDateToISO(date) {
  */
 function formatDateDisplay(dateInput) {
   if (!dateInput) return '-';
-  const date = typeof dateInput === 'string' ? new Date(dateInput.split('T')[0]) : new Date(dateInput);
+  if (typeof dateInput === 'string') {
+    const clean = dateInput.split('T')[0].trim();
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD -> DD-MM-YYYY
+        return `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
+      } else if (parts[2].length === 4) {
+        // DD-MM-YYYY
+        return `${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[2]}`;
+      }
+    }
+  }
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
   if (isNaN(date.getTime())) return String(dateInput);
   const d = String(date.getDate()).padStart(2, '0');
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -33,17 +46,18 @@ function parseDate(dateStr) {
   if (!dateStr) return new Date();
   if (dateStr instanceof Date) return dateStr;
   
-  if (dateStr.includes('-')) {
-    const parts = dateStr.split('-');
+  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+    const parts = dateStr.split('T')[0].split('-');
     if (parts[0].length === 4) {
       // YYYY-MM-DD
       return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    } else {
+    } else if (parts.length >= 3 && parts[2].length === 4) {
       // DD-MM-YYYY
       return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
     }
   }
-  return new Date(dateStr);
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : d;
 }
 
 /**

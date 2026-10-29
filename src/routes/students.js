@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { calculateCycle, evaluateDueStatus } = require('../utils/feeCycleCalculator');
+const { calculateCycle, evaluateDueStatus, formatDateDisplay } = require('../utils/feeCycleCalculator');
 
 /**
  * GET /api/students
@@ -58,10 +58,14 @@ router.get('/', authenticateToken, async (req, res) => {
         s.gender,
         s.parent_name,
         s.parent_phone,
+        s.mother_name,
+        s.mother_phone,
+        s.address,
         s.photo_url,
         s.joining_date,
         s.monthly_fee,
         s.status AS student_status,
+        u.username,
         r.room_number,
         f.floor_number,
         b.bed_label,
@@ -88,6 +92,7 @@ router.get('/', authenticateToken, async (req, res) => {
           LIMIT 1
         ) AS latest_cycle_end_date
       FROM students s
+      LEFT JOIN users u ON u.id = s.user_id
       LEFT JOIN allocations a ON a.student_id = s.id AND a.status = 'active'
       LEFT JOIN beds b ON b.id = a.bed_id
       LEFT JOIN rooms r ON r.id = b.room_id
@@ -109,7 +114,6 @@ router.get('/', authenticateToken, async (req, res) => {
       };
     });
 
-    // If feeStatus filter requested
     let filteredList = enhancedStudents;
     if (feeStatus) {
       if (feeStatus === 'paid') {
@@ -144,7 +148,6 @@ router.get('/', authenticateToken, async (req, res) => {
 /**
  * GET /api/students/me
  * Returns the currently logged-in student's own full profile.
- * Works even if the client doesn't know the numeric student ID.
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
@@ -152,31 +155,34 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only students can access this endpoint.' });
     }
 
-    if (!req.student) {
-      return res.status(404).json({ success: false, message: 'No student profile linked to this account.' });
-    }
-
-    const studentId = req.student.id;
-
     const student = await db.getOne(
-      `SELECT s.*,
-              r.room_number, r.id AS room_id,
-              f.floor_number, f.name AS floor_name,
-              b.id AS bed_id, b.bed_label, b.bed_number,
-              a.id AS allocation_id, a.start_date AS allocation_start_date
+      `SELECT 
+        s.*,
+        u.username,
+        r.room_number,
+        r.id AS room_id,
+        f.floor_number,
+        f.name AS floor_name,
+        b.id AS bed_id,
+        b.bed_label,
+        b.bed_number,
+        a.id AS allocation_id,
+        a.start_date AS allocation_start_date
        FROM students s
+       LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN allocations a ON a.student_id = s.id AND a.status = 'active'
        LEFT JOIN beds b ON b.id = a.bed_id
        LEFT JOIN rooms r ON r.id = b.room_id
        LEFT JOIN floors f ON f.id = r.floor_id
-       WHERE s.id = ?`,
-      [studentId]
+       WHERE s.user_id = ?`,
+      [req.user.id]
     );
 
     if (!student) {
-      return res.status(404).json({ success: false, message: 'Student record not found.' });
+      return res.status(404).json({ success: false, message: 'No student profile linked to this account.' });
     }
 
+    const studentId = student.id;
     const feeCycles = await db.query(
       `SELECT * FROM fee_cycles WHERE student_id = ? ORDER BY cycle_number ASC`,
       [studentId]
@@ -219,7 +225,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const studentId = req.params.id;
 
-    // Students can only view their own profile unless they are admin
+    // Strict role check: Students can only view their own profile
     if (req.user.role === 'student') {
       const myStudentId = req.student ? Number(req.student.id) : null;
       if (!myStudentId || myStudentId !== Number(studentId)) {
@@ -233,6 +239,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const student = await db.getOne(
       `SELECT 
         s.*,
+        u.username,
         r.room_number,
         r.id AS room_id,
         f.floor_number,
@@ -243,6 +250,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         a.id AS allocation_id,
         a.start_date AS allocation_start_date
        FROM students s
+       LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN allocations a ON a.student_id = s.id AND a.status = 'active'
        LEFT JOIN beds b ON b.id = a.bed_id
        LEFT JOIN rooms r ON r.id = b.room_id
@@ -258,31 +266,26 @@ router.get('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Fee Cycles
     const feeCycles = await db.query(
       `SELECT * FROM fee_cycles WHERE student_id = ? ORDER BY cycle_number ASC`,
       [studentId]
     );
 
-    // Payments
     const payments = await db.query(
       `SELECT * FROM payments WHERE student_id = ? ORDER BY payment_date DESC, id DESC`,
       [studentId]
     );
 
-    // Complaints
     const complaints = await db.query(
       `SELECT * FROM complaints WHERE student_id = ? ORDER BY created_at DESC`,
       [studentId]
     );
 
-    // Leave Requests
     const leaveRequests = await db.query(
       `SELECT * FROM leave_requests WHERE student_id = ? ORDER BY created_at DESC`,
       [studentId]
     );
 
-    // Calculate current cycle & next due date
     const latestCycle = feeCycles[feeCycles.length - 1];
     let nextDueInfo = null;
     if (latestCycle) {
@@ -313,7 +316,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 /**
  * POST /api/students
- * Add new student with automatic bed allocation and joining-date fee cycle
+ * Add new student with credentials, automatic bed allocation, and joining-date fee cycle
  */
 router.post('/', authenticateToken, requireAdmin, upload.fields([
   { name: 'photo', maxCount: 1 },
@@ -323,6 +326,8 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
     const {
       name,
       regNumber,
+      username,
+      password,
       phone,
       email,
       college,
@@ -331,13 +336,14 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
       gender,
       parentName,
       parentPhone,
+      motherName,
+      motherPhone,
       address,
       joiningDate,
       bedId,
       monthlyFee
     } = req.body;
 
-    // Validate required fields
     if (!name || !regNumber || !phone || !email || !joiningDate || !bedId) {
       return res.status(400).json({
         success: false,
@@ -347,16 +353,29 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
 
     const regNumTrim = regNumber.trim();
     const emailTrim = email.trim();
+    const studentUsername = username && username.trim() ? username.trim() : regNumTrim;
+    const initialPassword = password && password.trim() ? password.trim() : regNumTrim;
 
-    // Check uniqueness
-    const existing = await db.getOne(
+    // Check uniqueness in students and users tables
+    const existingStudent = await db.getOne(
       'SELECT id FROM students WHERE reg_number = ? OR email = ?',
       [regNumTrim, emailTrim]
     );
-    if (existing) {
+    if (existingStudent) {
       return res.status(400).json({
         success: false,
         message: 'A student with this Registration Number or Email already exists.'
+      });
+    }
+
+    const existingUser = await db.getOne(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
+      [studentUsername]
+    );
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: `Username "${studentUsername}" is already taken. Please choose another username or use the Registration Number.`
       });
     }
 
@@ -386,37 +405,38 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
     }
 
     const feeAmount = parseFloat(monthlyFee) || 7000.00;
-    // Username = Registration Number, Password = Registration Number
-    const defaultPassword = regNumTrim;
-    const passwordHash = await bcrypt.hash(defaultPassword, 10);
+    // Hash student password securely with bcrypt
+    const passwordHash = await bcrypt.hash(initialPassword, 10);
 
-    // 1. Create User account for student portal login
+    // 1. Create User account for student portal online login
     const userRes = await db.query(
       `INSERT INTO users (username, email, password_hash, role, name, phone, avatar)
        VALUES (?, ?, ?, 'student', ?, ?, ?)`,
-      [regNumTrim, emailTrim, passwordHash, name.trim(), phone.trim(), photoUrl]
+      [studentUsername, emailTrim, passwordHash, name.trim(), phone.trim(), photoUrl]
     );
     const userId = userRes.insertId;
 
-    // 2. Insert Student record
+    // 2. Insert Student record in online cloud database
     const studentRes = await db.query(
       `INSERT INTO students (
         user_id, reg_number, name, email, phone, college, course, year,
-        gender, parent_name, parent_phone, address, photo_url, id_proof_url,
-        joining_date, monthly_fee, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+        gender, parent_name, parent_phone, mother_name, mother_phone,
+        address, photo_url, id_proof_url, joining_date, monthly_fee, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         userId,
         regNumTrim,
         name.trim(),
         emailTrim,
         phone.trim(),
-        college || 'College of Engineering',
+        college || 'Vignan University',
         course || 'B.Tech',
         year || '1st Year',
         gender || 'Male',
         parentName || 'Parent / Guardian',
         parentPhone || phone,
+        motherName || null,
+        motherPhone || null,
         address || 'Hostel Campus',
         photoUrl,
         idProofUrl,
@@ -435,7 +455,6 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
     await db.query(`UPDATE beds SET status = 'occupied' WHERE id = ?`, [bedId]);
 
     // 4. Automatically Generate Cycle 1 Based on Joining Date
-    // E.g. joining 16-09-2026 -> 16-09-2026 to 15-10-2026
     const cycle1 = calculateCycle(joiningDate, 1);
     await db.query(
       `INSERT INTO fee_cycles (student_id, cycle_number, start_date, end_date, due_date, amount, paid_amount, status, notes)
@@ -443,24 +462,24 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
       [studentId, cycle1.startDate, cycle1.endDate, cycle1.dueDate, feeAmount]
     );
 
-    // 5. Create Welcome Notification for Student
+    // 5. Create Welcome Notification
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type, link)
        VALUES (?, 'Welcome to SRI RAM PG!', ?, 'system', '#profile')`,
       [
         userId,
-        `Welcome ${name}! Your admission is confirmed. Your default login password is "${defaultPassword}". First fee cycle: ${cycle1.startDateDisplay} to ${cycle1.endDateDisplay}.`
+        `Welcome ${name}! Your admission is confirmed. Username: "${studentUsername}". First fee cycle: ${cycle1.startDateDisplay} to ${cycle1.endDateDisplay}.`
       ]
     );
 
     return res.status(201).json({
       success: true,
-      message: `Student ${name} successfully enrolled! Bed ${bed.bed_label} allocated. Login: Username & Password = "${regNumTrim}".`,
+      message: `Student ${name} successfully enrolled! Credentials: Username: "${studentUsername}", Password: "${initialPassword}".`,
       data: {
         studentId,
         regNumber: regNumTrim,
-        username: regNumTrim,
-        defaultPassword,
+        username: studentUsername,
+        password: initialPassword,
         firstCycle: cycle1
       }
     });
@@ -476,21 +495,41 @@ router.post('/', authenticateToken, requireAdmin, upload.fields([
 
 /**
  * PUT /api/students/:id
- * Update student profile information
+ * Update student profile information (with optional photo upload)
  */
-router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.put('/:id', authenticateToken, requireAdmin, upload.single('photo'), async (req, res) => {
   try {
     const studentId = req.params.id;
-    const { name, phone, email, college, course, year, parentName, parentPhone, address, monthlyFee } = req.body;
+    const {
+      name,
+      phone,
+      email,
+      college,
+      course,
+      year,
+      parentName,
+      parentPhone,
+      motherName,
+      motherPhone,
+      address,
+      monthlyFee
+    } = req.body;
 
     const existing = await db.getOne('SELECT * FROM students WHERE id = ?', [studentId]);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Student not found.' });
     }
 
+    let photoUrl = existing.photo_url;
+    if (req.file) {
+      photoUrl = `/uploads/${req.file.filename}`;
+    }
+
     await db.query(
       `UPDATE students 
-       SET name = ?, phone = ?, email = ?, college = ?, course = ?, year = ?, parent_name = ?, parent_phone = ?, address = ?, monthly_fee = ?
+       SET name = ?, phone = ?, email = ?, college = ?, course = ?, year = ?,
+           parent_name = ?, parent_phone = ?, mother_name = ?, mother_phone = ?,
+           address = ?, monthly_fee = ?, photo_url = ?
        WHERE id = ?`,
       [
         name || existing.name,
@@ -501,23 +540,27 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         year || existing.year,
         parentName || existing.parent_name,
         parentPhone || existing.parent_phone,
+        motherName !== undefined ? motherName : existing.mother_name,
+        motherPhone !== undefined ? motherPhone : existing.mother_phone,
         address || existing.address,
         monthlyFee ? parseFloat(monthlyFee) : existing.monthly_fee,
+        photoUrl,
         studentId
       ]
     );
 
-    // Also sync user name & email
+    // Sync linked user record name, email, phone, avatar
     if (existing.user_id) {
       await db.query(
-        `UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?`,
-        [name || existing.name, email || existing.email, phone || existing.phone, existing.user_id]
+        `UPDATE users SET name = ?, email = ?, phone = ?, avatar = ? WHERE id = ?`,
+        [name || existing.name, email || existing.email, phone || existing.phone, photoUrl, existing.user_id]
       );
     }
 
     return res.json({
       success: true,
-      message: 'Student details updated successfully!'
+      message: 'Student details updated successfully!',
+      photoUrl
     });
   } catch (err) {
     return res.status(500).json({
@@ -525,6 +568,144 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       message: 'Failed to update student details.',
       error: err.message
     });
+  }
+});
+
+/**
+ * POST /api/students/:id/photo
+ * Admin uploads or updates student profile photo (optional)
+ */
+router.post('/:id/photo', authenticateToken, requireAdmin, upload.single('photo'), async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const student = await db.getOne('SELECT id, user_id, name, photo_url FROM students WHERE id = ?', [studentId]);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please select an image file (JPG, PNG, WEBP) to upload.' });
+    }
+
+    const photoUrl = `/uploads/${req.file.filename}`;
+
+    // Update student table
+    await db.query('UPDATE students SET photo_url = ? WHERE id = ?', [photoUrl, studentId]);
+
+    // Update linked user table avatar so header/nav updates
+    if (student.user_id) {
+      await db.query('UPDATE users SET avatar = ? WHERE id = ?', [photoUrl, student.user_id]);
+    }
+
+    return res.json({
+      success: true,
+      message: `Profile photo for ${student.name} updated successfully!`,
+      photoUrl
+    });
+  } catch (err) {
+    console.error('[Upload Student Photo Error]', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to upload student photo.',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/students/:id/photo
+ * Admin removes custom student photo and resets to default avatar
+ */
+router.delete('/:id/photo', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const defaultPhoto = '/assets/images/default-student.png';
+    const student = await db.getOne('SELECT id, user_id, name FROM students WHERE id = ?', [studentId]);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+
+    await db.query('UPDATE students SET photo_url = ? WHERE id = ?', [defaultPhoto, studentId]);
+    if (student.user_id) {
+      await db.query('UPDATE users SET avatar = ? WHERE id = ?', [defaultPhoto, student.user_id]);
+    }
+
+    return res.json({
+      success: true,
+      message: `Photo for ${student.name} reset to default avatar.`,
+      photoUrl: defaultPhoto
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reset photo.',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * POST /api/students/:id/reset-password
+ * Admin resets student password
+ */
+router.post('/:id/reset-password', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const { newPassword } = req.body;
+
+    const student = await db.getOne('SELECT id, user_id, name, reg_number FROM students WHERE id = ?', [studentId]);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+
+    const passwordToSet = newPassword && String(newPassword).trim() ? String(newPassword).trim() : student.reg_number;
+    if (passwordToSet.length < 4) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 4 characters.' });
+    }
+
+    const newHash = await bcrypt.hash(passwordToSet, 10);
+
+    if (student.user_id) {
+      await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, student.user_id]);
+    } else {
+      const userRes = await db.query(
+        `INSERT INTO users (username, email, password_hash, role, name) VALUES (?, ?, ?, 'student', ?)`,
+        [student.reg_number, `${student.reg_number.toLowerCase()}@hostel.local`, newHash, student.name]
+      );
+      await db.query('UPDATE students SET user_id = ? WHERE id = ?', [userRes.insertId, studentId]);
+    }
+
+    return res.json({
+      success: true,
+      message: `Password for ${student.name} (${student.reg_number}) reset successfully. New Password: "${passwordToSet}".`,
+      newPassword: passwordToSet
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reset student password.',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * PUT /api/students/:id/status
+ * Admin activates/deactivates student account
+ */
+router.put('/:id/status', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const { status } = req.body;
+
+    if (!['active', 'inactive', 'left'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Status must be active, inactive, or left.' });
+    }
+
+    await db.query('UPDATE students SET status = ? WHERE id = ?', [status, studentId]);
+    return res.json({ success: true, message: `Student status updated to "${status}".` });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to update student status.', error: err.message });
   }
 });
 

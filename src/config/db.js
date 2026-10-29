@@ -10,39 +10,65 @@ let activeClient = 'none';
 
 async function initDatabase() {
   if (config.db.client === 'mysql') {
-    try {
-      // First try connecting to MySQL server (without database selected to ensure DB exists)
-      const testConn = await mysql.createConnection({
-        host: config.db.host,
-        port: config.db.port,
-        user: config.db.user,
-        password: config.db.password,
-        connectTimeout: 2000
-      });
-      await testConn.query(`CREATE DATABASE IF NOT EXISTS \`${config.db.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
-      await testConn.end();
+    const sslConfig = config.db.ssl ? { rejectUnauthorized: false } : undefined;
 
-      // Create pool with database selected
+    // 1. Try direct connection to target database first (standard for cloud MySQL e.g. TiDB, Aiven, Railway)
+    try {
       pool = mysql.createPool({
         host: config.db.host,
         port: config.db.port,
         user: config.db.user,
         password: config.db.password,
         database: config.db.database,
+        ssl: sslConfig,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        decimalNumbers: true,
+        connectTimeout: 8000
+      });
+
+      await pool.query('SELECT 1');
+      activeClient = 'mysql';
+      console.log(`[Database] Connected successfully to Cloud MySQL "${config.db.database}" on ${config.db.host}:${config.db.port} (SSL: ${Boolean(sslConfig)})`);
+      return;
+    } catch (err) {
+      console.warn(`[Database] Direct MySQL connection to "${config.db.database}" failed (${err.code || err.message}). Attempting database creation check...`);
+    }
+
+    // 2. If direct connection failed (e.g. fresh local MySQL where DB does not exist yet), try creating it
+    try {
+      const testConn = await mysql.createConnection({
+        host: config.db.host,
+        port: config.db.port,
+        user: config.db.user,
+        password: config.db.password,
+        ssl: sslConfig,
+        connectTimeout: 5000
+      });
+      await testConn.query(`CREATE DATABASE IF NOT EXISTS \`${config.db.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+      await testConn.end();
+
+      pool = mysql.createPool({
+        host: config.db.host,
+        port: config.db.port,
+        user: config.db.user,
+        password: config.db.password,
+        database: config.db.database,
+        ssl: sslConfig,
         waitForConnections: true,
         connectionLimit: 10,
         queueLimit: 0,
         decimalNumbers: true
       });
 
-      // Quick sanity check
       await pool.query('SELECT 1');
       activeClient = 'mysql';
-      console.log(`[Database] Connected to MySQL database "${config.db.database}" on ${config.db.host}:${config.db.port}`);
+      console.log(`[Database] Created and connected to MySQL database "${config.db.database}" on ${config.db.host}:${config.db.port}`);
       return;
     } catch (err) {
-      console.warn(`[Database] MySQL connection failed (${err.code || err.message}).`);
-      console.log(`[Database] Automatically falling back to embedded SQLite database for seamless out-of-the-box operation.`);
+      console.warn(`[Database] MySQL server is unavailable (${err.code || err.message}).`);
+      console.log(`[Database] Automatically falling back to local SQLite database so the application can run seamlessly.`);
       activeClient = 'sqlite';
     }
   } else {
@@ -58,7 +84,7 @@ async function initDatabase() {
   sqliteDb = new Database(config.db.sqlitePath);
   sqliteDb.pragma('journal_mode = WAL');
   sqliteDb.pragma('foreign_keys = ON');
-  console.log(`[Database] SQLite active at: ${config.db.sqlitePath}`);
+  console.log(`[Database] Local SQLite active at: ${config.db.sqlitePath}`);
 }
 
 /**
@@ -82,9 +108,9 @@ async function query(sql, params = []) {
   } else {
     // SQLite implementation
     const trimmed = sql.trim();
-    const isSelect = /^(SELECT|PRAGMA|WITH)/i.test(trimmed);
+    const isSelect = /^(SELECT|PRAGMA|WITH|SHOW)/i.test(trimmed);
 
-    // Replace MySQL-specific syntax if any
+    // Replace MySQL-specific syntax
     let normalizedSql = sql
       .replace(/NOW\(\)/gi, "datetime('now', 'localtime')")
       .replace(/CURDATE\(\)/gi, "date('now', 'localtime')");
@@ -134,7 +160,6 @@ async function execScript(sqlScript) {
       connection.release();
     }
   } else {
-    // Convert MySQL schema statements to SQLite compatible if running raw script
     sqliteDb.exec(sqlScript);
   }
 }

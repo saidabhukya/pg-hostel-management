@@ -1,6 +1,8 @@
 /**
  * Add Student Modal Component
- * Features cascading Floor -> Room -> Bed selector showing ONLY available beds
+ * Features cascading Floor -> Room -> Bed selector showing available beds,
+ * custom login credentials configuration (Username & Password) for online portal access,
+ * and joining-date based fee cycles.
  */
 const AddStudentModal = {
   allAvailableBeds: [],
@@ -13,9 +15,42 @@ const AddStudentModal = {
     await this.renderForm({ bedId, roomNumber, bedLabel });
   },
 
+  generateRandomPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$';
+    let pwd = 'Pg@';
+    for (let i = 0; i < 5; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const pwdInput = document.getElementById('as-password');
+    if (pwdInput) pwdInput.value = pwd;
+    Toast.info(`Generated password: ${pwd}`);
+  },
+
+  useRegNumberAsPassword() {
+    const regInput = document.getElementById('as-regNumber');
+    const pwdInput = document.getElementById('as-password');
+    const regVal = regInput ? regInput.value.trim() : '';
+    if (regVal && pwdInput) {
+      pwdInput.value = regVal;
+      Toast.info(`Password set to Registration Number: ${regVal}`);
+    } else {
+      Toast.warning('Please enter Registration Number first.');
+    }
+  },
+
+  syncUsername(regVal) {
+    const uInput = document.getElementById('as-username');
+    if (uInput && (!uInput.dataset.manual || uInput.dataset.manual === 'false')) {
+      uInput.value = regVal.trim();
+    }
+    const pwdInput = document.getElementById('as-password');
+    if (pwdInput && !pwdInput.value) {
+      pwdInput.value = regVal.trim();
+    }
+  },
+
   async renderForm(preselected = null) {
     try {
-      // Fetch available beds
       const res = await API.get('/rooms/options/available');
       this.allAvailableBeds = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
 
@@ -24,34 +59,35 @@ const AddStudentModal = {
         return;
       }
 
-      // Always show all 5 floors (1–5) regardless of bed availability
-      // so the warden can always see every floor in the dropdown
       const floors = [1, 2, 3, 4, 5];
       const defaultJoiningDate = Utils.getTodayISO();
 
       const content = `
         <form id="add-student-form" onsubmit="AddStudentModal.handleSubmit(event)" enctype="multipart/form-data">
-          <!-- Personal Details -->
+          <!-- 1. Personal & Academic Details -->
           <div style="font-size:0.8rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">
             1. Student Personal & Academic Details
           </div>
 
-          <!-- Photo Upload -->
+          <!-- Photo Upload (Optional) -->
           <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.25rem;padding:1rem;background:var(--bg-secondary);border-radius:var(--radius-md);border:1px dashed var(--border-color);">
-            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('as-photo-input').click()" title="Click to upload student photo">
+            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('as-photo-input').click()" title="Click to upload student photo (Optional)">
               <img
                 id="as-photo-preview"
                 src="./assets/images/default-student.png"
                 alt="Student Photo Preview"
-                style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-red-border);display:block;"
+                style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-red-border);display:block;background:#fff;"
               />
-              <div style="position:absolute;bottom:0;right:0;background:var(--primary-red);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
-                <i data-lucide="camera" style="width:13px;height:13px;color:#fff;"></i>
+              <div style="position:absolute;bottom:0;right:0;background:var(--primary-red);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                <i data-lucide="camera" style="width:14px;height:14px;color:#fff;"></i>
               </div>
             </div>
             <div style="flex:1;">
-              <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);margin-bottom:0.25rem;">Student Photo</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">JPG, PNG or WEBP · Max 5 MB · Click photo to change</div>
+              <div style="font-size:0.85rem;font-weight:600;color:var(--text-primary);margin-bottom:0.25rem;display:flex;align-items:center;gap:0.5rem;">
+                <span>Student Photo</span>
+                <span class="badge" style="background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-muted);font-size:0.7rem;font-weight:600;padding:1px 6px;">Optional</span>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">JPG, PNG or WEBP · Max 5 MB. If omitted, default profile avatar will be used.</div>
               <input
                 type="file"
                 id="as-photo-input"
@@ -59,26 +95,36 @@ const AddStudentModal = {
                 style="display:none;"
                 onchange="AddStudentModal.previewPhoto(this)"
               />
-              <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('as-photo-input').click()">
-                <i data-lucide="upload" style="width:13px;height:13px;"></i>
-                Upload Photo
-              </button>
-              <span id="as-photo-name" style="font-size:0.75rem;color:var(--text-muted);margin-left:0.5rem;">No file chosen</span>
+              <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('as-photo-input').click()">
+                  <i data-lucide="upload" style="width:13px;height:13px;"></i>
+                  Choose Photo
+                </button>
+                <button type="button" id="as-photo-clear-btn" class="btn btn-sm btn-secondary" style="display:none;color:var(--primary-red);" onclick="AddStudentModal.clearPhoto()">
+                  <i data-lucide="x" style="width:13px;height:13px;"></i>
+                  Remove
+                </button>
+                <span id="as-photo-name" style="font-size:0.75rem;color:var(--text-muted);">No file chosen (default avatar)</span>
+              </div>
             </div>
           </div>
 
           <div class="form-grid" style="margin-bottom:1.25rem;">
             <div class="form-group">
               <label class="form-label required">Student Full Name</label>
-              <input type="text" id="as-name" class="form-control" placeholder="e.g. Vikramaditya Singh" required />
+              <input type="text" id="as-name" class="form-control" placeholder="e.g. Test Student" required />
             </div>
 
             <div class="form-group">
               <label class="form-label required">Registration / Roll Number</label>
-              <input type="text" id="as-regNumber" class="form-control" placeholder="e.g. 2024CS240" required />
-              <small style="color:var(--primary-red);font-size:0.72rem;margin-top:2px;display:block;">
-                🔑 This will be used as the student's <strong>Username & Password</strong> for portal login.
-              </small>
+              <input 
+                type="text" 
+                id="as-regNumber" 
+                class="form-control" 
+                placeholder="e.g. TEST001" 
+                required 
+                oninput="AddStudentModal.syncUsername(this.value)"
+              />
             </div>
 
             <div class="form-group">
@@ -108,9 +154,8 @@ const AddStudentModal = {
                   <option value="Vasireddy Venkatadri Institute of Technology (VVIT, Nambur)">Vasireddy Venkatadri Institute of Technology (VVIT, Nambur)</option>
                   <option value="SRM University AP (Amaravati)">SRM University AP (Amaravati)</option>
                   <option value="VIT-AP University (Amaravati)">VIT-AP University (Amaravati)</option>
-                  <option value="Bapatla Engineering College (BEC, Bapatla)">Bapatla Engineering College (BEC, Bapatla)</option>
                 </optgroup>
-                <option value="Other">Other College / University (Type Manually)</option>
+                <option value="Other">Other College / University</option>
               </select>
               <div id="as-college-other-wrap" style="display:none;margin-top:0.5rem;">
                 <input type="text" id="as-college-other" class="form-control" placeholder="Enter Full College / University Name" />
@@ -121,92 +166,118 @@ const AddStudentModal = {
               <label class="form-label required">Course / Degree</label>
               <select id="as-course" class="form-control" onchange="AddStudentModal.onCourseChange(this.value)" required>
                 <option value="" disabled selected>-- Select Course / Degree --</option>
-                <optgroup label="B.Tech (Bachelor of Technology) Programs">
-                  <option value="B.Tech - Artificial Intelligence and Machine Learning (CSE - AI & ML)">B.Tech - Artificial Intelligence and Machine Learning (CSE - AI & ML)</option>
-                  <option value="B.Tech - Computer Science and Engineering (CSE)">B.Tech - Computer Science and Engineering (CSE)</option>
-                  <option value="B.Tech - Information Technology (IT)">B.Tech - Information Technology (IT)</option>
-                  <option value="B.Tech - Electronics and Communication Engineering (ECE)">B.Tech - Electronics and Communication Engineering (ECE)</option>
-                  <option value="B.Tech - Electrical and Electronics Engineering (EEE)">B.Tech - Electrical and Electronics Engineering (EEE)</option>
-                  <option value="B.Tech - Mechanical Engineering (ME)">B.Tech - Mechanical Engineering (ME)</option>
-                  <option value="B.Tech - Civil Engineering (CE)">B.Tech - Civil Engineering (CE)</option>
-                  <option value="B.Tech - Computer Science and Business Systems (CSBS)">B.Tech - Computer Science and Business Systems (CSBS)</option>
-                  <option value="B.Tech - Cyber Security (CSE - Cyber Security)">B.Tech - Cyber Security (CSE - Cyber Security)</option>
-                  <option value="B.Tech - Data Science (CSE - Data Science)">B.Tech - Data Science (CSE - Data Science)</option>
-                  <option value="B.Tech - Biotechnology (BT)">B.Tech - Biotechnology (BT)</option>
-                  <option value="B.Tech - Biomedical Engineering (BME)">B.Tech - Biomedical Engineering (BME)</option>
-                  <option value="B.Tech - Food Technology (FT)">B.Tech - Food Technology (FT)</option>
-                  <option value="B.Tech - Agricultural Engineering (Agri)">B.Tech - Agricultural Engineering (Agri)</option>
-                  <option value="B.Tech - Chemical Engineering (Chem)">B.Tech - Chemical Engineering (Chem)</option>
-                  <option value="B.Tech - Robotics and Automation (RA)">B.Tech - Robotics and Automation (RA)</option>
-                  <option value="B.Tech - Automobile Engineering">B.Tech - Automobile Engineering</option>
-                  <option value="B.Tech - Textile Technology (TT)">B.Tech - Textile Technology (TT)</option>
-                </optgroup>
-                <optgroup label="Pharmacy Programs">
-                  <option value="B.Pharm - Bachelor of Pharmacy">B.Pharm - Bachelor of Pharmacy</option>
-                  <option value="Pharm.D - Doctor of Pharmacy">Pharm.D - Doctor of Pharmacy</option>
-                  <option value="M.Pharm - Master of Pharmacy">M.Pharm - Master of Pharmacy</option>
-                </optgroup>
-                <optgroup label="Management, Applications & Postgraduate">
-                  <option value="BBA - Bachelor of Business Administration">BBA - Bachelor of Business Administration</option>
-                  <option value="BCA - Bachelor of Computer Applications">BCA - Bachelor of Computer Applications</option>
-                  <option value="B.Sc - Bachelor of Science">B.Sc - Bachelor of Science</option>
-                  <option value="MCA - Master of Computer Applications">MCA - Master of Computer Applications</option>
-                  <option value="MBA - Master of Business Administration">MBA - Master of Business Administration</option>
-                  <option value="M.Tech - Master of Technology">M.Tech - Master of Technology</option>
-                </optgroup>
-                <option value="Other">Other Course / Degree (Type Manually)</option>
+                <option value="B.Tech Computer Science and Engineering (CSE)">B.Tech Computer Science and Engineering (CSE)</option>
+                <option value="B.Tech Information Technology (IT)">B.Tech Information Technology (IT)</option>
+                <option value="B.Tech Artificial Intelligence & ML (AI&ML)">B.Tech Artificial Intelligence & ML (AI&ML)</option>
+                <option value="B.Tech Electronics & Communication (ECE)">B.Tech Electronics & Communication (ECE)</option>
+                <option value="B.Tech Mechanical Engineering (ME)">B.Tech Mechanical Engineering (ME)</option>
+                <option value="B.Pharm / M.Pharm">B.Pharm / M.Pharm</option>
+                <option value="MBA / MCA">MBA / MCA</option>
+                <option value="Other">Other Program</option>
               </select>
-              <div id="as-course-other-wrap" style="display:none;margin-top:0.5rem;">
-                <input type="text" id="as-course-other" class="form-control" placeholder="Enter Full Course / Degree Name" />
-              </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Academic Year</label>
-              <select id="as-year" class="form-control">
-                <option value="1st Year">1st Year</option>
+              <label class="form-label required">Academic Year</label>
+              <select id="as-year" class="form-control" required>
+                <option value="1st Year" selected>1st Year</option>
                 <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year" selected>3rd Year</option>
+                <option value="3rd Year">3rd Year</option>
                 <option value="4th Year">4th Year</option>
-                <option value="Postgraduate">Postgraduate</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Gender</label>
-              <select id="as-gender" class="form-control">
-                <option value="Male">Male</option>
+              <label class="form-label required">Gender</label>
+              <select id="as-gender" class="form-control" required>
+                <option value="Male" selected>Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
               </select>
             </div>
           </div>
 
-          <!-- Parent / Guardian Details -->
+          <!-- 2. PORTAL LOGIN CREDENTIALS -->
           <div style="font-size:0.8rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">
-            2. Parent / Guardian Contact
+            2. Student Online Portal Login Credentials
+          </div>
+
+          <div style="background:var(--bg-secondary);padding:1rem;border-radius:var(--radius-md);border:1px solid var(--border-color);margin-bottom:1.25rem;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label required">Login Username / ID</label>
+                <input 
+                  type="text" 
+                  id="as-username" 
+                  class="form-control" 
+                  placeholder="e.g. TEST001" 
+                  oninput="this.dataset.manual = 'true'"
+                  required 
+                />
+                <small style="color:var(--text-muted);font-size:0.72rem;margin-top:2px;display:block;">
+                  Student will enter this username to login from their phone.
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Login Password</label>
+                <div style="display:flex;gap:6px;">
+                  <input 
+                    type="text" 
+                    id="as-password" 
+                    class="form-control" 
+                    placeholder="e.g. Test@123" 
+                    required 
+                  />
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="AddStudentModal.generateRandomPassword()" title="Generate Random Password">
+                    <i data-lucide="key" style="width:13px;height:13px;"></i> Gen
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="AddStudentModal.useRegNumberAsPassword()" title="Set to Reg Number">
+                    RegNo
+                  </button>
+                </div>
+                <small style="color:var(--text-muted);font-size:0.72rem;margin-top:2px;display:block;">
+                  Set a custom password or click Gen for a strong password.
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Family & Emergency Contacts -->
+          <div style="font-size:0.8rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">
+            3. Family & Emergency Contacts
           </div>
 
           <div class="form-grid" style="margin-bottom:1.25rem;">
             <div class="form-group">
-              <label class="form-label required">Parent / Guardian Name</label>
-              <input type="text" id="as-parentName" class="form-control" placeholder="Father or Mother's Name" required />
+              <label class="form-label required">Father / Guardian Name</label>
+              <input type="text" id="as-parentName" class="form-control" placeholder="e.g. Rajesh Singh" required />
             </div>
 
             <div class="form-group">
-              <label class="form-label required">Parent Phone</label>
-              <input type="tel" id="as-parentPhone" class="form-control" placeholder="Parent contact number" required />
+              <label class="form-label required">Father / Guardian Phone</label>
+              <input type="tel" id="as-parentPhone" class="form-control" placeholder="e.g. +91 98765 11111" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Mother Name</label>
+              <input type="text" id="as-motherName" class="form-control" placeholder="e.g. Sunita Devi" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Mother Phone</label>
+              <input type="tel" id="as-motherPhone" class="form-control" placeholder="e.g. +91 98765 22222" />
             </div>
 
             <div class="form-group col-span-2">
               <label class="form-label">Permanent Address</label>
-              <input type="text" id="as-address" class="form-control" placeholder="House no, street, city, pin code" value="Sector 15, Rohini, New Delhi - 110085" />
+              <input type="text" id="as-address" class="form-control" placeholder="House no, street, city, state, pin code" value="Near College Campus, Guntur - 522002" />
             </div>
           </div>
 
-          <!-- Room Allocation & Joining-Date Fee (CRITICAL) -->
+          <!-- 4. Room Allocation & Joining-Date Fee Cycle -->
           <div style="font-size:0.8rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">
-            3. Room Allocation & Joining-Date Fee Cycle
+            4. Room Allocation & Joining-Date Fee Cycle
           </div>
 
           <div class="form-grid" style="margin-bottom:1.25rem;">
@@ -214,31 +285,13 @@ const AddStudentModal = {
               <label class="form-label required">Joining Date</label>
               <input type="date" id="as-joiningDate" class="form-control" value="${defaultJoiningDate}" required onchange="AddStudentModal.updateCyclePreview()" />
               <small style="color:var(--text-muted);font-size:0.72rem;margin-top:2px;">
-                Fee cycle is calculated strictly from this joining date.
+                Monthly billing cycle is calculated from this date.
               </small>
             </div>
 
             <div class="form-group">
               <label class="form-label required">Monthly Fee (₹)</label>
               <input type="number" id="as-monthlyFee" class="form-control" value="7000" min="1000" step="100" required onchange="AddStudentModal.updateCyclePreview()" />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label required">Fee Payment Status at Admission</label>
-              <select id="as-paymentStatus" class="form-control" onchange="AddStudentModal.onPaymentStatusChange(this.value)">
-                <option value="pending" selected>Pending (Collect fee later - Default)</option>
-                <option value="paid">Paid Now (Fee received at admission desk)</option>
-              </select>
-            </div>
-
-            <div class="form-group" id="as-paymentMethod-wrap" style="display:none;">
-              <label class="form-label required">Payment Mode</label>
-              <select id="as-paymentMethod" class="form-control">
-                <option value="UPI (PhonePe / Google Pay)">UPI (PhonePe / Google Pay / Paytm)</option>
-                <option value="Cash at Desk">Cash at Reception Desk</option>
-                <option value="Bank NetBanking">Bank Transfer / IMPS / NEFT</option>
-                <option value="Debit / Credit Card">Debit / Credit Card</option>
-              </select>
             </div>
 
             <!-- CASCADING SELECTORS: Floor -> Room -> Bed -->
@@ -265,24 +318,17 @@ const AddStudentModal = {
             </div>
 
             <div class="form-group col-span-2">
-              <label class="form-label required">Select Available Bed</label>
+              <label class="form-label required">Select Bed</label>
               <select id="as-bed" class="form-control" required disabled>
                 <option value="">-- Select Room First --</option>
               </select>
             </div>
           </div>
 
-          <!-- Calculated Billing Cycle Preview Box -->
-          <div id="as-cycle-preview" style="background:var(--bg-secondary);border:1px dashed var(--primary-red-border);border-radius:var(--radius-md);padding:0.85rem 1rem;margin-bottom:1.25rem;font-size:0.84rem;color:var(--text-secondary);">
-            <strong>Initial Billing Cycle Preview:</strong>
-            <div id="as-cycle-preview-text" style="margin-top:0.25rem;color:var(--primary-red);font-weight:700;">
-              Select joining date to preview cycle...
-            </div>
-          </div>
-
-          <div style="display:flex;justify-content:flex-end;gap:0.75rem;padding-top:1rem;border-top:1px solid var(--border-color);">
+          <!-- SUBMIT ACTIONS -->
+          <div style="display:flex;justify-content:flex-end;gap:0.75rem;padding-top:1rem;border-top:1px solid var(--border-color);margin-top:1rem;">
             <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
-            <button type="submit" id="as-submit-btn" class="btn btn-primary">
+            <button type="submit" id="as-submit-btn" class="btn btn-primary" style="padding:0.6rem 1.5rem;">
               <i data-lucide="check-circle" style="width:16px;height:16px;"></i>
               <span>Enroll Student & Allocate Bed</span>
             </button>
@@ -291,35 +337,17 @@ const AddStudentModal = {
       `;
 
       Modal.open({
-        title: 'New Student Admission & Bed Allocation',
-        content: content,
+        title: 'Enroll New Student & Allocate Bed',
+        content,
         maxWidth: '720px'
       });
 
-      this.updateCyclePreview();
-
-      // If preselected bed passed (e.g. from room detail modal)
-      if (preselected) {
-        const matchingBed = this.allAvailableBeds.find(b => b.bed_id === preselected.bedId);
-        if (matchingBed) {
-          const floorSelect = document.getElementById('as-floor');
-          if (floorSelect) {
-            floorSelect.value = matchingBed.floor_number;
-            this.onFloorChange(matchingBed.floor_number);
-            const roomSelect = document.getElementById('as-room');
-            if (roomSelect) {
-              roomSelect.value = matchingBed.room_number;
-              this.onRoomChange(matchingBed.room_number);
-              const bedSelect = document.getElementById('as-bed');
-              if (bedSelect) {
-                bedSelect.value = matchingBed.bed_id;
-              }
-            }
-          }
-        }
+      if (preselected && preselected.bedId) {
+        this.applyPreselectedBed(preselected);
       }
-    } catch (e) {
-      Toast.error('Failed to load admission form: ' + e.message);
+    } catch (err) {
+      console.error('[AddStudentModal Error]', err);
+      Toast.error('Failed to load bed availability: ' + err.message);
     }
   },
 
@@ -328,138 +356,115 @@ const AddStudentModal = {
     const bedSelect = document.getElementById('as-bed');
     if (!roomSelect || !bedSelect) return;
 
-    if (!floorNum) {
-      roomSelect.innerHTML = '<option value="">-- Select Floor First --</option>';
-      roomSelect.disabled = true;
-      bedSelect.innerHTML = '<option value="">-- Select Room First --</option>';
-      bedSelect.disabled = true;
-      return;
-    }
-
-    // Filter available rooms on this floor
-    const bedsOnFloor = this.allAvailableBeds.filter(b => b.floor_number === Number(floorNum));
-    const uniqueRooms = [...new Set(bedsOnFloor.map(b => b.room_number))].sort();
-
-    if (uniqueRooms.length === 0) {
-      // Floor exists but all its beds are occupied/maintenance
-      roomSelect.innerHTML = '<option value="">— No available rooms on this floor —</option>';
-      roomSelect.disabled = true;
-      bedSelect.innerHTML = '<option value="">— No available beds —</option>';
-      bedSelect.disabled = true;
-      Toast.info(`Floor ${floorNum} has no available beds. Please choose another floor.`);
-      return;
-    }
-
-    roomSelect.innerHTML = '<option value="">-- Choose Room --</option>' +
-      uniqueRooms.map(rm => `<option value="${rm}">Room ${rm}</option>`).join('');
-    roomSelect.disabled = false;
-
-    bedSelect.innerHTML = '<option value="">-- Choose Room First --</option>';
+    roomSelect.innerHTML = '<option value="">-- Choose Room --</option>';
+    bedSelect.innerHTML = '<option value="">-- Select Room First --</option>';
     bedSelect.disabled = true;
+
+    if (!floorNum) {
+      roomSelect.disabled = true;
+      return;
+    }
+
+    const floorInt = parseInt(floorNum, 10);
+    const roomsOnFloor = [];
+    for (let r = 1; r <= 10; r++) {
+      roomsOnFloor.push(`${floorInt}${String(r).padStart(2, '0')}`);
+    }
+
+    roomsOnFloor.forEach(rNum => {
+      const freeBeds = this.allAvailableBeds.filter(b => b.room_number === rNum);
+      const opt = document.createElement('option');
+      opt.value = rNum;
+      opt.textContent = `Room ${rNum} (${freeBeds.length} bed${freeBeds.length !== 1 ? 's' : ''} available)`;
+      if (freeBeds.length === 0) opt.disabled = true;
+      roomSelect.appendChild(opt);
+    });
+
+    roomSelect.disabled = false;
   },
 
   onRoomChange(roomNum) {
     const bedSelect = document.getElementById('as-bed');
     if (!bedSelect) return;
 
+    bedSelect.innerHTML = '<option value="">-- Choose Bed --</option>';
     if (!roomNum) {
-      bedSelect.innerHTML = '<option value="">-- Select Room First --</option>';
       bedSelect.disabled = true;
       return;
     }
 
-    // Filter available beds in this room
-    const bedsInRoom = this.allAvailableBeds.filter(b => b.room_number === roomNum);
+    const availableBeds = this.allAvailableBeds.filter(b => b.room_number === roomNum);
+    availableBeds.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.bed_id;
+      opt.textContent = `${b.bed_label} (Bed #${b.bed_number}) - Available`;
+      bedSelect.appendChild(opt);
+    });
 
-    bedSelect.innerHTML = '<option value="">-- Choose Available Bed --</option>' +
-      bedsInRoom.map(b => `<option value="${b.bed_id}">${b.bed_label} (Available)</option>`).join('');
     bedSelect.disabled = false;
   },
 
-  updateCyclePreview() {
-    const dateInput = document.getElementById('as-joiningDate');
-    const feeInput = document.getElementById('as-monthlyFee');
-    const previewEl = document.getElementById('as-cycle-preview-text');
-    if (!dateInput || !previewEl) return;
-
-    const joiningDate = dateInput.value;
-    const fee = feeInput ? feeInput.value : 7000;
-
-    if (!joiningDate) {
-      previewEl.innerText = 'Please select joining date.';
-      return;
+  applyPreselectedBed(pre) {
+    const selectedBed = this.allAvailableBeds.find(b => String(b.bed_id) === String(pre.bedId));
+    if (selectedBed) {
+      const floorSelect = document.getElementById('as-floor');
+      if (floorSelect) {
+        floorSelect.value = selectedBed.floor_number;
+        this.onFloorChange(selectedBed.floor_number);
+        const roomSelect = document.getElementById('as-room');
+        if (roomSelect) {
+          roomSelect.value = selectedBed.room_number;
+          this.onRoomChange(selectedBed.room_number);
+          const bedSelect = document.getElementById('as-bed');
+          if (bedSelect) bedSelect.value = selectedBed.bed_id;
+        }
+      }
     }
-
-    try {
-      // Calculate Cycle 1
-      const d = new Date(joiningDate);
-      const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
-      const cycleEnd = new Date(nextMonth.getTime() - (24 * 60 * 60 * 1000));
-
-      const formatD = (dt) => {
-        const day = String(dt.getDate()).padStart(2, '0');
-        const m = String(dt.getMonth() + 1).padStart(2, '0');
-        return `${day}-${m}-${dt.getFullYear()}`;
-      };
-
-      previewEl.innerText = `Cycle 1: ${formatD(d)} → ${formatD(cycleEnd)} (Due: ${formatD(cycleEnd)} • ₹${Number(fee).toLocaleString('en-IN')})`;
-    } catch (e) {
-      previewEl.innerText = 'Calculating...';
-    }
-  },
-
-  /** Live preview when user picks a photo file */
-  previewPhoto(input) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-
-    // Validate size client-side (5 MB)
-    if (file.size > 5 * 1024 * 1024) {
-      Toast.error('Photo must be under 5 MB.');
-      input.value = '';
-      return;
-    }
-
-    const preview = document.getElementById('as-photo-preview');
-    const nameEl  = document.getElementById('as-photo-name');
-    if (preview) {
-      const reader = new FileReader();
-      reader.onload = (e) => { preview.src = e.target.result; };
-      reader.readAsDataURL(file);
-    }
-    if (nameEl) nameEl.textContent = file.name;
   },
 
   onCollegeChange(val) {
-    const wrap = document.getElementById('as-college-other-wrap');
-    const input = document.getElementById('as-college-other');
-    if (wrap) {
-      if (val === 'Other') {
-        wrap.style.display = 'block';
-        if (input) input.focus();
-      } else {
-        wrap.style.display = 'none';
-      }
+    const otherWrap = document.getElementById('as-college-other-wrap');
+    if (otherWrap) otherWrap.style.display = val === 'Other' ? 'block' : 'none';
+  },
+
+  onCourseChange(val) {},
+  updateCyclePreview() {},
+
+  previewPhoto(input) {
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const preview = document.getElementById('as-photo-preview');
+      const nameEl = document.getElementById('as-photo-name');
+      const clearBtn = document.getElementById('as-photo-clear-btn');
+      if (nameEl) nameEl.textContent = file.name;
+      if (clearBtn) clearBtn.style.display = 'inline-flex';
+      const reader = new FileReader();
+      reader.onload = e => {
+        if (preview) preview.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      Utils.renderIcons();
     }
   },
 
-  onPaymentStatusChange(val) {
-    const wrap = document.getElementById('as-paymentMethod-wrap');
-    if (wrap) {
-      wrap.style.display = val === 'paid' ? 'block' : 'none';
-    }
+  clearPhoto() {
+    const input = document.getElementById('as-photo-input');
+    if (input) input.value = '';
+    const preview = document.getElementById('as-photo-preview');
+    if (preview) preview.src = './assets/images/default-student.png';
+    const nameEl = document.getElementById('as-photo-name');
+    if (nameEl) nameEl.textContent = 'No file chosen (default avatar)';
+    const clearBtn = document.getElementById('as-photo-clear-btn');
+    if (clearBtn) clearBtn.style.display = 'none';
   },
 
-  onCourseChange(val) {
-    const wrap = document.getElementById('as-course-other-wrap');
-    const input = document.getElementById('as-course-other');
-    if (wrap) {
-      if (val === 'Other') {
-        wrap.style.display = 'block';
-        if (input) input.focus();
-      } else {
-        wrap.style.display = 'none';
-      }
+  copyCredentials(user, pass) {
+    const text = `SRI RAM PG - Student Login Credentials\nUsername: ${user}\nPassword: ${pass}\nPortal: ${window.location.origin}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      Toast.success('Credentials copied to clipboard!');
+    } else {
+      prompt('Copy credentials:', text);
     }
   },
 
@@ -467,133 +472,118 @@ const AddStudentModal = {
     e.preventDefault();
     const submitBtn = document.getElementById('as-submit-btn');
 
-    const name       = document.getElementById('as-name').value.trim();
-    const regNumber  = document.getElementById('as-regNumber').value.trim();
-    const phone      = document.getElementById('as-phone').value.trim();
-    const email      = document.getElementById('as-email').value.trim();
-
-    const collegeSelect = document.getElementById('as-college');
-    const collegeOther  = document.getElementById('as-college-other');
-    let college = collegeSelect ? collegeSelect.value : '';
-    if (college === 'Other' && collegeOther && collegeOther.value.trim()) {
-      college = collegeOther.value.trim();
+    const name = document.getElementById('as-name')?.value.trim();
+    const regNumber = document.getElementById('as-regNumber')?.value.trim();
+    const username = document.getElementById('as-username')?.value.trim() || regNumber;
+    const password = document.getElementById('as-password')?.value.trim() || regNumber;
+    const phone = document.getElementById('as-phone')?.value.trim();
+    const email = document.getElementById('as-email')?.value.trim();
+    let college = document.getElementById('as-college')?.value;
+    if (college === 'Other') {
+      college = document.getElementById('as-college-other')?.value.trim() || 'Other College';
     }
-
-    const courseSelect  = document.getElementById('as-course');
-    const courseOther   = document.getElementById('as-course-other');
-    let course = courseSelect ? courseSelect.value : '';
-    if (course === 'Other' && courseOther && courseOther.value.trim()) {
-      course = courseOther.value.trim();
-    }
-
-    const year       = document.getElementById('as-year').value;
-    const gender     = document.getElementById('as-gender').value;
-    const parentName  = document.getElementById('as-parentName').value.trim();
-    const parentPhone = document.getElementById('as-parentPhone').value.trim();
-    const address    = document.getElementById('as-address').value.trim();
-    const joiningDate = document.getElementById('as-joiningDate').value;
-    const monthlyFee = document.getElementById('as-monthlyFee').value;
-    const bedId      = document.getElementById('as-bed').value;
+    const course = document.getElementById('as-course')?.value;
+    const year = document.getElementById('as-year')?.value;
+    const gender = document.getElementById('as-gender')?.value;
+    const parentName = document.getElementById('as-parentName')?.value.trim();
+    const parentPhone = document.getElementById('as-parentPhone')?.value.trim();
+    const motherName = document.getElementById('as-motherName')?.value.trim();
+    const motherPhone = document.getElementById('as-motherPhone')?.value.trim();
+    const address = document.getElementById('as-address')?.value.trim();
+    const joiningDate = document.getElementById('as-joiningDate')?.value;
+    const monthlyFee = document.getElementById('as-monthlyFee')?.value;
+    const bedId = document.getElementById('as-bed')?.value;
     const photoInput = document.getElementById('as-photo-input');
 
-    if (!college) {
-      Toast.error('Please select or enter the Student College / University.');
-      return;
-    }
-    if (!course) {
-      Toast.error('Please select or enter the Student Course / Degree.');
-      return;
-    }
-
-    if (!bedId) {
-      Toast.error('Please select an available bed for the student.');
+    if (!name || !regNumber || !phone || !email || !bedId || !joiningDate) {
+      Toast.error('Please fill in all mandatory fields.');
       return;
     }
 
     try {
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>Saving...</span>';
+        submitBtn.innerHTML = '<span>Enrolling Student...</span>';
       }
 
-      // Build FormData so the photo file is sent as multipart upload
       const fd = new FormData();
-      fd.append('name',        name);
-      fd.append('regNumber',   regNumber);
-      fd.append('phone',       phone);
-      fd.append('email',       email);
-      fd.append('college',     college);
-      fd.append('course',      course);
-      fd.append('year',        year);
-      fd.append('gender',      gender);
-      fd.append('parentName',  parentName);
+      fd.append('name', name);
+      fd.append('regNumber', regNumber);
+      fd.append('username', username);
+      fd.append('password', password);
+      fd.append('phone', phone);
+      fd.append('email', email);
+      fd.append('college', college);
+      fd.append('course', course);
+      fd.append('year', year);
+      fd.append('gender', gender);
+      fd.append('parentName', parentName);
       fd.append('parentPhone', parentPhone);
-      fd.append('address',     address);
+      if (motherName) fd.append('motherName', motherName);
+      if (motherPhone) fd.append('motherPhone', motherPhone);
+      fd.append('address', address);
       fd.append('joiningDate', joiningDate);
-      fd.append('monthlyFee',  monthlyFee);
-      fd.append('bedId',       bedId);
+      fd.append('monthlyFee', monthlyFee);
+      fd.append('bedId', bedId);
 
-      const selectedBed = this.allAvailableBeds.find(b => String(b.bed_id) === String(bedId));
-      const roomNum = selectedBed ? selectedBed.room_number : (document.getElementById('as-room')?.value || '');
-      const floorNum = selectedBed ? selectedBed.floor_number : (document.getElementById('as-floor')?.value || '');
-      
-      const bedSelect = document.getElementById('as-bed');
-      const bedText = bedSelect && bedSelect.selectedIndex >= 0 ? bedSelect.options[bedSelect.selectedIndex].text : '';
-      const matchedLabel = (bedText.match(/Bed-[A-E]/i) || [])[0];
-      const bedLabel = selectedBed ? selectedBed.bed_label : (matchedLabel || 'Bed-A');
-
-      fd.append('roomNumber',  roomNum);
-      fd.append('floorNumber', floorNum);
-      fd.append('bedLabel',    bedLabel);
-
-      const paymentStatusEl = document.getElementById('as-paymentStatus');
-      const paymentMethodEl = document.getElementById('as-paymentMethod');
-      fd.append('paymentStatus', paymentStatusEl ? paymentStatusEl.value : 'pending');
-      fd.append('paymentMethod', paymentMethodEl ? paymentMethodEl.value : 'Cash at Desk');
       if (photoInput && photoInput.files && photoInput.files[0]) {
         fd.append('photo', photoInput.files[0]);
       }
 
-      // Use FormData variant (API.post detects FormData and skips JSON.stringify)
       const res = await API.post('/students', fd);
 
       if (res.success) {
         Modal.close();
 
-        // Show login credentials info popup
-        const regNum = regNumber.trim();
+        // Show credentials popup with copy button
         Modal.open({
           title: '✅ Student Enrolled Successfully!',
           content: `
             <div style="text-align:center;padding:0.5rem 0;">
               <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎉</div>
               <p style="font-size:0.95rem;font-weight:600;color:var(--text-primary);margin-bottom:1.25rem;">${res.message}</p>
-              <div style="background:var(--bg-secondary);border:2px solid var(--primary-red-border);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1rem;text-align:left;">
-                <div style="font-size:0.78rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">🔑 Student Portal Login Credentials</div>
+              
+              <div style="background:var(--bg-secondary);border:2px solid var(--primary-red-border);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1.25rem;text-align:left;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">
+                  🔑 Registered Student Portal Credentials
+                </div>
+                
                 <div style="display:flex;flex-direction:column;gap:0.5rem;">
                   <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:var(--bg-app);border-radius:var(--radius-sm);">
-                    <span style="font-size:0.85rem;color:var(--text-secondary);">Username</span>
-                    <code style="font-size:0.9rem;font-weight:700;color:var(--primary-red);background:var(--primary-red-light);padding:2px 8px;border-radius:4px;">${regNum}</code>
+                    <span style="font-size:0.85rem;color:var(--text-secondary);">Student Name</span>
+                    <strong style="font-size:0.9rem;color:var(--text-primary);">${Utils.escapeHTML(name)}</strong>
                   </div>
+                  
                   <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:var(--bg-app);border-radius:var(--radius-sm);">
-                    <span style="font-size:0.85rem;color:var(--text-secondary);">Password</span>
-                    <code style="font-size:0.9rem;font-weight:700;color:var(--primary-red);background:var(--primary-red-light);padding:2px 8px;border-radius:4px;">${regNum}</code>
+                    <span style="font-size:0.85rem;color:var(--text-secondary);">Portal Username</span>
+                    <code style="font-size:0.95rem;font-weight:800;color:var(--primary-red);background:var(--primary-red-light);padding:2px 10px;border-radius:4px;">${Utils.escapeHTML(username)}</code>
+                  </div>
+                  
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:var(--bg-app);border-radius:var(--radius-sm);">
+                    <span style="font-size:0.85rem;color:var(--text-secondary);">Portal Password</span>
+                    <code style="font-size:0.95rem;font-weight:800;color:var(--primary-red);background:var(--primary-red-light);padding:2px 10px;border-radius:4px;">${Utils.escapeHTML(password)}</code>
                   </div>
                 </div>
-                <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;">
-                  ℹ️ Student can login using their Registration Number as both username and password. They can change password from Settings after login.
+
+                <div style="margin-top:0.85rem;display:flex;justify-content:center;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="AddStudentModal.copyCredentials('${Utils.escapeHTML(username)}', '${Utils.escapeHTML(password)}')">
+                    <i data-lucide="copy" style="width:14px;height:14px;"></i> Copy Credentials
+                  </button>
+                </div>
+
+                <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.85rem;text-align:center;">
+                  📱 The student can immediately open the public website from their phone and login using these credentials.
                 </p>
               </div>
+
               <button class="btn btn-primary" onclick="Modal.close()" style="width:100%;">
                 <i data-lucide="check" style="width:16px;height:16px;"></i> Done
               </button>
             </div>
           `,
-          maxWidth: '420px'
+          maxWidth: '460px'
         });
-        Utils.renderIcons();
 
-        // Refresh views if open
         if (window.StudentsPage) StudentsPage.loadStudents();
         if (window.HostelStructurePage) HostelStructurePage.loadStructure();
         if (window.AdminDashboard && App.currentRoute === 'dashboard') AdminDashboard.loadData();

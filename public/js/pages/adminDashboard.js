@@ -445,9 +445,14 @@ const AdminDashboard = {
                     <td><span class="badge badge-info">${p.receipt_number}</span></td>
                     <td style="font-weight:700;color:var(--status-success);">${Utils.formatINR(p.amount)}</td>
                     <td>
-                      <button class="btn btn-sm btn-secondary" onclick="ReceiptModal.open(${p.id})">
-                        <i data-lucide="eye" style="width:14px;height:14px;"></i>
-                      </button>
+                      <div style="display:flex;gap:0.35rem;align-items:center;">
+                        <button class="btn btn-sm btn-secondary" onclick="ReceiptModal.open(${p.id})" title="View Receipt">
+                          <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                        </button>
+                        <button class="btn btn-sm" style="background:#25d366;color:#ffffff;border:none;padding:0.3rem 0.5rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student')" title="Send PDF Receipt to Student on WhatsApp (+91 ${p.student_phone || ''})">
+                          <i data-lucide="message-circle" style="width:14px;height:14px;"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}

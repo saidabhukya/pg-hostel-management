@@ -1,12 +1,13 @@
 /**
  * SRI RAM PG - Login Page Component
  * Implements full-screen rotating hostel background slider (2000ms loop),
- * white glassmorphic center card, vertical thumbnails with glowing active state,
+ * white center card, dual-role selection (Student Login & Warden / Admin Login),
  * slider navigation controls, and comprehensive branding.
  */
 const LoginPage = {
   currentSlide: 0,
   sliderTimer: null,
+  activeRole: 'student', // 'student' or 'admin'
 
   slides: [
     {
@@ -41,6 +42,44 @@ const LoginPage = {
     }
   ],
 
+  setRole(role) {
+    this.activeRole = role;
+    const studentBtn = document.getElementById('tab-btn-student');
+    const adminBtn = document.getElementById('tab-btn-admin');
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    const helperEl = document.getElementById('login-role-helper');
+    const submitBtn = document.getElementById('login-submit-btn');
+
+    const activeStyle = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:0.6rem 0.75rem;font-size:0.82rem;font-weight:700;border-radius:8px;border:none;cursor:pointer;background:#e11d48;color:#ffffff;box-shadow:0 2px 4px rgba(225,29,72,0.25);transition:all 0.2s;';
+    const inactiveStyle = 'flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:0.6rem 0.75rem;font-size:0.82rem;font-weight:600;border-radius:8px;border:none;cursor:pointer;background:transparent;color:#64748b;transition:all 0.2s;';
+
+    if (role === 'student') {
+      if (studentBtn) studentBtn.style.cssText = activeStyle;
+      if (adminBtn) adminBtn.style.cssText = inactiveStyle;
+      if (usernameInput) usernameInput.placeholder = 'Student ID / Reg Number (e.g. TEST001)';
+      if (passwordInput) passwordInput.placeholder = 'Student Password';
+      if (helperEl) {
+        helperEl.innerHTML = `🎓 <strong>Student Resident Portal:</strong> Enter your registered Student ID / Username and Password.`;
+      }
+      if (submitBtn) {
+        submitBtn.innerHTML = `<span>Login to Student Portal</span> <i data-lucide="arrow-right"></i>`;
+      }
+    } else {
+      if (studentBtn) studentBtn.style.cssText = inactiveStyle;
+      if (adminBtn) adminBtn.style.cssText = activeStyle;
+      if (usernameInput) usernameInput.placeholder = 'Admin Username or Email';
+      if (passwordInput) passwordInput.placeholder = 'Admin Password';
+      if (helperEl) {
+        helperEl.innerHTML = `👑 <strong>Warden / Admin Portal:</strong> Authorized administration desk and hostel warden access.`;
+      }
+      if (submitBtn) {
+        submitBtn.innerHTML = `<span>Login to Admin Portal</span> <i data-lucide="arrow-right"></i>`;
+      }
+    }
+    if (typeof Utils !== 'undefined' && Utils.renderIcons) Utils.renderIcons();
+  },
+
   render() {
     return `
       <div class="sri-ram-login-viewport" id="sri-ram-viewport">
@@ -54,13 +93,11 @@ const LoginPage = {
               aria-hidden="${idx !== 0}"
             ></div>
           `).join('')}
-          <!-- Dark blue gradient overlay for optimal readability & contrast -->
           <div class="sri-ram-bg-overlay"></div>
-          <!-- Subtle decorative ambient wave line -->
           <div class="sri-ram-ambient-curve"></div>
         </div>
 
-        <!-- 2. TOP BRANDING BAR (Overlay) -->
+        <!-- 2. TOP BRANDING BAR (Only PG Name) -->
         <header class="sri-ram-top-bar">
           <div class="sri-ram-top-left">
             <div class="sri-ram-brand-logo-wrap">
@@ -68,12 +105,7 @@ const LoginPage = {
             </div>
             <div class="sri-ram-brand-text">
               <span class="sri-ram-nav-title">SRI RAM <span class="nav-title-red">PG</span></span>
-              <span class="sri-ram-nav-subtitle">Comfort | Safety | Home Away From Home</span>
             </div>
-          </div>
-
-          <div class="sri-ram-top-right">
-            <span class="sri-ram-motto">Better Stays &bull; Brighter Futures</span>
           </div>
         </header>
 
@@ -85,20 +117,41 @@ const LoginPage = {
               <img src="./assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG" class="sri-ram-card-logo" />
             </div>
 
-            <!-- Title & Subtitle -->
-            <h1 class="sri-ram-card-title">SRI RAM <span class="title-highlight">PG</span></h1>
-            <p class="sri-ram-card-subtitle">Your comfort, your home away from home.</p>
+            <!-- Title: Only PG Name -->
+            <h1 class="sri-ram-card-title" style="margin-bottom:1.25rem;">SRI RAM <span class="title-highlight">PG</span></h1>
+
+            <!-- ROLE SELECTOR TABS -->
+            <div style="display:flex;gap:6px;background:#f1f5f9;padding:4px;border-radius:10px;margin-bottom:1.25rem;border:1px solid #e2e8f0;">
+              <button 
+                type="button" 
+                id="tab-btn-student" 
+                onclick="LoginPage.setRole('student')" 
+                style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:0.6rem 0.75rem;font-size:0.82rem;font-weight:700;border-radius:8px;border:none;cursor:pointer;background:#e11d48;color:#ffffff;box-shadow:0 2px 4px rgba(225,29,72,0.25);transition:all 0.2s;"
+              >
+                <i data-lucide="graduation-cap" style="width:15px;height:15px;"></i>
+                <span>Student Login</span>
+              </button>
+              <button 
+                type="button" 
+                id="tab-btn-admin" 
+                onclick="LoginPage.setRole('admin')" 
+                style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:0.6rem 0.75rem;font-size:0.82rem;font-weight:600;border-radius:8px;border:none;cursor:pointer;background:transparent;color:#64748b;transition:all 0.2s;"
+              >
+                <i data-lucide="shield" style="width:15px;height:15px;"></i>
+                <span>Warden / Admin</span>
+              </button>
+            </div>
 
             <!-- Login Form -->
             <form id="login-form" onsubmit="LoginPage.handleSubmit(event)" novalidate>
-              <!-- Username or Email Field -->
+              <!-- Username or Student ID Field -->
               <div class="sri-ram-field-group">
                 <i data-lucide="user" class="sri-ram-field-icon"></i>
                 <input 
                   type="text" 
                   id="login-username" 
                   class="sri-ram-input" 
-                  placeholder="Username, Roll/Reg Number, or Email" 
+                  placeholder="Student ID / Reg Number (e.g. TEST001)" 
                   required 
                   autocomplete="username"
                 />
@@ -111,7 +164,7 @@ const LoginPage = {
                   type="password" 
                   id="login-password" 
                   class="sri-ram-input has-toggle" 
-                  placeholder="Password (Default: Reg Number)" 
+                  placeholder="Student Password" 
                   required 
                   autocomplete="current-password"
                 />
@@ -127,8 +180,9 @@ const LoginPage = {
                 </button>
               </div>
 
-              <div style="font-size:0.75rem;color:var(--text-muted);margin:0.25rem 0 0.85rem;background:rgba(255,255,255,0.06);padding:0.4rem 0.6rem;border-radius:var(--radius-sm);border-left:3px solid var(--primary-red);line-height:1.4;">
-                🎓 <strong>Students:</strong> Enter your <strong>Registration Number</strong> as both Username & Password.
+              <!-- Contextual helper alert -->
+              <div id="login-role-helper" style="font-size:0.75rem;color:var(--text-muted);margin:0.25rem 0 0.85rem;background:rgba(225,29,72,0.06);padding:0.45rem 0.65rem;border-radius:var(--radius-sm);border-left:3px solid var(--primary-red);line-height:1.4;">
+                🎓 <strong>Student Resident Portal:</strong> Enter your registered Student ID / Username and Password.
               </div>
 
               <!-- Options Row: Remember Me & Forgot Password -->
@@ -142,9 +196,9 @@ const LoginPage = {
                 </a>
               </div>
 
-              <!-- Blue-to-Teal Gradient Login Button -->
+              <!-- Login Button -->
               <button type="submit" id="login-submit-btn" class="sri-ram-submit-btn">
-                <span>Login</span>
+                <span>Login to Student Portal</span>
                 <i data-lucide="arrow-right"></i>
               </button>
             </form>
@@ -155,52 +209,37 @@ const LoginPage = {
             </div>
 
             <!-- Register Link -->
-            <div class="sri-ram-register-row" style="margin-bottom: 0.25rem;">
-              <span>Don't have an account?</span>
+            <div class="sri-ram-register-row" style="margin-bottom: 0.5rem;">
+              <span>New resident student?</span>
               <a href="javascript:void(0)" class="sri-ram-register-link" onclick="LoginPage.handleRegister(event)">
-                Register
+                Admissions & Enrollment
               </a>
+            </div>
+
+            <!-- Server Connection Indicator -->
+            <div style="margin-top:0.75rem;font-size:0.72rem;color:var(--text-muted);display:flex;align-items:center;justify-content:center;gap:6px;">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;"></span>
+              <span>Online Cloud Database Sync Active</span>
+              <a href="javascript:void(0)" onclick="LoginPage.openServerConfigModal()" style="color:var(--text-muted);text-decoration:underline;margin-left:4px;">Server</a>
             </div>
           </div>
         </main>
-
-        <!-- 4. BOTTOM BRANDING BAR (Overlay) -->
-        <footer class="sri-ram-bottom-bar">
-          <div class="sri-ram-bottom-left">
-            <i data-lucide="shield-check" class="bottom-shield-icon"></i>
-            <span>Safe &nbsp;|&nbsp; Secure &nbsp;|&nbsp; Comfortable</span>
-          </div>
-
-          <div class="sri-ram-bottom-right">
-            <span>More than just a stay...</span>
-            <i data-lucide="heart" class="bottom-heart-icon"></i>
-          </div>
-        </footer>
       </div>
     `;
   },
 
-  /**
-   * Initializes the 2000ms auto-advancing slideshow with smooth crossfades
-   */
   initSlider() {
-    this.cleanup(); // Clear any existing timer
+    this.cleanup();
     this.currentSlide = 0;
-
-    // Start 2000ms loop
     this.sliderTimer = setInterval(() => {
       this.nextSlide();
     }, 2000);
   },
 
-  /**
-   * Navigate to a specific slide (0-4), updating backgrounds, thumbnails, and indicator dots
-   */
   goToSlide(idx) {
     if (idx < 0 || idx >= this.slides.length) return;
     this.currentSlide = idx;
 
-    // 1. Update background slide elements
     for (let i = 0; i < this.slides.length; i++) {
       const slideEl = document.getElementById(`bg-slide-${i}`);
       if (slideEl) {
@@ -214,7 +253,6 @@ const LoginPage = {
       }
     }
 
-    // Reset the 2000ms timer so each slide displays for 2 seconds
     if (this.sliderTimer) {
       clearInterval(this.sliderTimer);
       this.sliderTimer = setInterval(() => {
@@ -233,9 +271,6 @@ const LoginPage = {
     this.goToSlide(prevIdx);
   },
 
-  /**
-   * Cleans up the background rotation interval when unmounting or navigating
-   */
   cleanup() {
     if (this.sliderTimer) {
       clearInterval(this.sliderTimer);
@@ -258,14 +293,6 @@ const LoginPage = {
     Utils.renderIcons();
   },
 
-  fillCredentials(username, password) {
-    const uInput = document.getElementById('login-username');
-    const pInput = document.getElementById('login-password');
-    if (uInput) uInput.value = username;
-    if (pInput) pInput.value = password;
-    Toast.info(`Credentials filled: ${username}`);
-  },
-
   async handleSubmit(e) {
     e.preventDefault();
     const usernameInput = document.getElementById('login-username');
@@ -286,30 +313,27 @@ const LoginPage = {
         submitBtn.innerHTML = `<span>Signing in...</span>`;
       }
 
+      // Online backend authentication call
       const res = await API.post('/auth/login', { username, password });
 
       if (res && res.success) {
-        // Clean up the background animation interval before leaving
         this.cleanup();
 
         API.setToken(res.token);
         API.setUser(res.user);
         API.setStudent(res.student);
 
-        // Keep in-memory user reference active
         App.user = res.user;
 
-        Toast.success(res.message || 'Welcome to SRI RAM PG!');
+        Toast.success(res.message || 'Login successful!');
 
         // Mount authenticated layout
         App.renderAuthenticatedShell();
 
-        // Initialize live notification listeners
         if (typeof NotificationCenter !== 'undefined') {
           NotificationCenter.init();
         }
 
-        // Show floating AI Assistant
         const fab = document.getElementById('ai-assistant-btn');
         if (fab) fab.style.display = 'flex';
 
@@ -319,13 +343,17 @@ const LoginPage = {
         } else {
           App.navigate('student-dashboard');
         }
+      } else {
+        Toast.error(res?.message || 'Invalid username or password.');
       }
     } catch (err) {
+      console.error('[Login Error]', err);
       Toast.error(err.message || 'Invalid username or password.');
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `<span>Login</span> <i data-lucide="arrow-right"></i>`;
+        const btnLabel = this.activeRole === 'admin' ? 'Login to Admin Portal' : 'Login to Student Portal';
+        submitBtn.innerHTML = `<span>${btnLabel}</span> <i data-lucide="arrow-right"></i>`;
         Utils.renderIcons();
       }
     }
@@ -337,13 +365,13 @@ const LoginPage = {
       content: `
         <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.6;">
           <p style="margin-bottom:1rem;">
-            For your security, resident student & warden account credentials are sync-locked with SRI RAM PG Admissions & Registry.
+            For your security, resident student credentials are managed via the hostel administration desk.
           </p>
           <div style="background:var(--bg-secondary);padding:1rem;border-radius:var(--radius-md);border-left:3px solid #dc2626;margin-bottom:1rem;">
-            <strong style="color:var(--text-primary);">Need to reset your password?</strong><br/>
-            &bull; <strong>Students:</strong> Contact the hostel warden desk with your Student ID card.<br/>
-            &bull; <strong>Admin / Warden:</strong> Use the Settings page inside the admin portal to update your credentials.<br/>
-            &bull; <strong>Helpline:</strong> +91 120 232 4000 &bull; support@srirampg.in
+            <strong style="color:var(--text-primary);">Need to reset your credentials?</strong><br/>
+            &bull; <strong>Students:</strong> Contact the hostel warden desk or Chief Warden with your Student ID card.<br/>
+            &bull; <strong>Warden / Admin:</strong> Log in and update your credentials in Settings.<br/>
+            &bull; <strong>Helpline:</strong> +91 98111 22334 &bull; help@srirampg.in
           </div>
           <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;">
             <button class="btn btn-primary" onclick="Modal.close()">Got it</button>
@@ -357,21 +385,21 @@ const LoginPage = {
   handleRegister(e) {
     if (e) e.preventDefault();
     Modal.open({
-      title: 'SRI RAM PG - Resident Registration',
+      title: 'SRI RAM PG - Resident Admissions',
       content: `
         <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.6;">
           <div style="text-align:center;margin-bottom:1.25rem;">
             <img src="./assets/images/sri-ram-pg-logo.svg" alt="SRI RAM PG" style="width:65px;height:auto;margin:0 auto 0.5rem;" />
             <h3 style="font-size:1.15rem;font-weight:800;color:var(--text-primary);margin:0;">Admissions & Bed Allocation</h3>
-            <p style="font-size:0.8rem;color:var(--text-muted);margin:0.25rem 0 0;">SRI RAM PG &bull; Better Stays, Brighter Futures</p>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin:0.25rem 0 0;">SRI RAM PG</p>
           </div>
           <p style="margin-bottom:0.75rem;">
-            Student resident admissions and bed allocations are handled directly by the hostel administration office.
+            Student resident admissions and bed allocations are processed through the administration office.
           </p>
           <ul style="padding-left:1.25rem;margin-bottom:1.25rem;font-size:0.85rem;">
-            <li>If you are an enrolled resident, your account username and default password is your <strong>Registration Number</strong> (e.g. <code>2024IT123</code>).</li>
-            <li>For new admissions or inquiries, visit the warden reception desk or call <strong>+91 120 232 4000</strong>.</li>
-            <li>Online applications: write to <strong>admissions@srirampg.in</strong>.</li>
+            <li>Once enrolled by the warden, your login credentials will be provided to you.</li>
+            <li>You can log in from any phone, laptop, or desktop via the online portal.</li>
+            <li>For admissions, visit the reception desk or call <strong>+91 98111 22334</strong>.</li>
           </ul>
           <div style="display:flex;justify-content:flex-end;">
             <button class="btn btn-primary" onclick="Modal.close()">Close</button>
@@ -382,15 +410,45 @@ const LoginPage = {
     });
   },
 
-  async resetDemoDatabase() {
-    try {
-      Toast.info('Restoring SRI RAM PG demo records...');
-      await API.post('/auth/reset-demo');
-      Modal.close();
-      Toast.success('Database restored! Use admin/admin123 or 2024IT123/student123.');
-    } catch (e) {
-      Toast.error('Failed to reset demo: ' + e.message);
-    }
+  openServerConfigModal() {
+    const currentApi = API.baseUrl;
+    Modal.open({
+      title: 'Online Server & API Configuration',
+      content: `
+        <div style="font-size:0.88rem;color:var(--text-secondary);line-height:1.6;">
+          <p style="margin-bottom:0.75rem;">
+            Current Backend Endpoint:
+            <code style="display:block;background:var(--bg-secondary);padding:0.4rem 0.6rem;border-radius:4px;margin-top:4px;color:var(--primary-red);word-break:break-all;">${currentApi}</code>
+          </p>
+          <div class="form-group" style="margin-top:1rem;">
+            <label class="form-label">Custom Backend / API URL</label>
+            <input 
+              type="text" 
+              id="cfg-custom-api" 
+              class="form-control" 
+              placeholder="e.g. https://your-hostel-api.onrender.com/api" 
+              value="${localStorage.getItem('pg_hostel_api_url') || ''}"
+            />
+            <small style="color:var(--text-muted);font-size:0.75rem;margin-top:4px;display:block;">
+              Leave blank to automatically use the default production server origin.
+            </small>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1.25rem;">
+            <button class="btn btn-secondary btn-sm" onclick="Modal.close()">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="LoginPage.saveServerConfig()">Save & Reconnect</button>
+          </div>
+        </div>
+      `,
+      maxWidth: '480px'
+    });
+  },
+
+  saveServerConfig() {
+    const input = document.getElementById('cfg-custom-api');
+    const val = input ? input.value.trim() : '';
+    API.setCustomApiUrl(val);
+    Modal.close();
+    Toast.success('Backend server configuration updated.');
   }
 };
 
