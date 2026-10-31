@@ -179,6 +179,11 @@ const App = {
           await PaymentsPage.afterRender();
           break;
 
+        case 'attendance':
+          pageContainer.innerHTML = await AttendancePage.render();
+          await AttendancePage.afterRender();
+          break;
+
         case 'complaints':
           pageContainer.innerHTML = await ComplaintsPage.render();
           await ComplaintsPage.afterRender();

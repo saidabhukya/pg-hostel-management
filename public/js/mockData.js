@@ -342,6 +342,7 @@
       announcements: getDefaultAnnouncements(),
       leaveRequests: [],
       mealAlerts: [],
+      attendance: [],
       settings: {
         hostel_name: 'SRI RAM PG',
         hostel_address: 'OPP. VIGNAN UNIVERSITY',
@@ -1790,6 +1791,7 @@
         student_status: feeStatus,
         latest_cycle_status: feeStatus,
         photo_url: photoUrl,
+        username: (data.username || data.regNumber || data.reg_number || '').trim(),
         password: data.password || data.regNumber || data.reg_number,
         status: 'active'
       };

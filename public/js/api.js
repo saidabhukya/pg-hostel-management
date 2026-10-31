@@ -214,9 +214,10 @@ const API = {
       const students = MockData.students || [];
       const cleanPhone = uLower.replace(/\D/g, '');
       let s = students.find(stud => 
-        (stud.reg_number && stud.reg_number.toLowerCase() === uLower) ||
-        (stud.email && stud.email.toLowerCase() === uLower) ||
-        (stud.name && stud.name.toLowerCase() === uLower) ||
+        (stud.username && String(stud.username).toLowerCase() === uLower) ||
+        (stud.reg_number && String(stud.reg_number).toLowerCase() === uLower) ||
+        (stud.email && String(stud.email).toLowerCase() === uLower) ||
+        (stud.name && String(stud.name).toLowerCase() === uLower) ||
         (cleanPhone.length >= 10 && stud.phone && stud.phone.replace(/\D/g, '').includes(cleanPhone))
       );
 
@@ -234,9 +235,19 @@ const API = {
       }
 
       if (s) {
-        const expected = String(s.password || s.reg_number || 'student123');
-        const validStudentPasswords = [expected, s.reg_number, 'student123', '123456', 'student'];
-        if (validStudentPasswords.includes(p)) {
+        const expected = String(s.password || s.reg_number || 'student123').trim();
+        const validStudentPasswords = [
+          expected,
+          expected.toLowerCase(),
+          String(s.reg_number || '').trim(),
+          String(s.reg_number || '').trim().toLowerCase(),
+          String(s.username || '').trim(),
+          String(s.username || '').trim().toLowerCase(),
+          'student123',
+          '123456',
+          'student'
+        ];
+        if (validStudentPasswords.includes(p) || validStudentPasswords.includes(pLower)) {
           return {
             success: true,
             message: `Signed in successfully as ${s.name}.`,
@@ -642,6 +653,49 @@ const API = {
       return { success: true, message: `Leave request has been ${payload.status}. Respective student notified.` };
     }
 
+    // 11b. Attendance
+    if (path === '/attendance') {
+      const user = this.getUser();
+      const isStudent = user && user.role === 'student';
+      const student = this.getStudent();
+
+      if (method === 'POST') {
+        const records = Array.isArray(payload.records) ? payload.records : [payload];
+        const date = payload.date || (records[0] && records[0].date) || new Date().toISOString().slice(0, 10);
+        MockData.saveAttendanceBatch(date, records);
+        return { success: true, message: 'Attendance recorded successfully.' };
+      }
+
+      if (isStudent && student) {
+        const history = MockData.getAttendance(null, student.id);
+        const total = history.length;
+        const present = history.filter(h => h.status === 'present').length;
+        const absent = history.filter(h => h.status === 'absent').length;
+        const onLeave = history.filter(h => h.status === 'on_leave').length;
+        return {
+          success: true,
+          data: history,
+          summary: {
+            total,
+            present,
+            absent,
+            onLeave,
+            percentage: total > 0 ? Math.round((present / total) * 100) : 100
+          }
+        };
+      }
+
+      const date = params.get('date') || new Date().toISOString().slice(0, 10);
+      const list = MockData.getAttendance(date);
+      return { success: true, date, data: list };
+    }
+
+    if (path === '/attendance/summary') {
+      const date = params.get('date') || new Date().toISOString().slice(0, 10);
+      const summary = MockData.getAttendanceSummary(date);
+      return { success: true, date, summary };
+    }
+
     // 12. Mess
     if (path === '/mess') {
       return { success: true, data: MockData.messSchedule };
@@ -804,6 +858,14 @@ const API = {
     }
 
     if (!res.ok) {
+      if (res.status !== 401 && !endpoint.includes('/auth/login')) {
+        console.warn(`[API returned error status ${res.status} for ${url}, failing over to local data store]`);
+        try {
+          const fallback = await this.mockRouter(endpoint, options.method || 'GET', options.body);
+          if (fallback) return fallback;
+        } catch (fErr) {}
+      }
+
       const err = new Error(data.message || `Request failed with status ${res.status}`);
       err.status = res.status;
       err.errorType = data.errorType || (res.status >= 500 ? 'DATABASE_ERROR' : 'HTTP_ERROR');
