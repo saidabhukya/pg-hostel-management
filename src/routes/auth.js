@@ -136,10 +136,11 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('[Auth Error]', err);
+    const isDb = err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR' || (err.message && err.message.toLowerCase().includes('database')) || (err.message && err.message.toLowerCase().includes('sqlite'));
     return res.status(500).json({
       success: false,
-      message: 'Unable to connect to server. Please try again.',
-      error: err.message
+      errorType: isDb ? 'DATABASE_ERROR' : 'SERVER_ERROR',
+      message: isDb ? 'Database connection failure. Please check database server.' : 'Server error occurred during authentication.'
     });
   }
 });

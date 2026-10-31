@@ -761,7 +761,15 @@ const API = {
       res = await fetch(url, config);
     } catch (netErr) {
       console.warn(`[API Network Failed for ${url}, switching to client dataset]:`, netErr.message);
-      return this.mockRouter(endpoint, options.method || 'GET', options.body);
+      try {
+        const mockResult = await this.mockRouter(endpoint, options.method || 'GET', options.body);
+        if (mockResult && (mockResult.success || endpoint.includes('/auth/login'))) {
+          return mockResult;
+        }
+      } catch (mErr) {}
+      const err = new Error('Network failure: Unable to reach backend server. Please verify connection.');
+      err.isNetworkError = true;
+      throw err;
     }
 
     // 2. Intercept static host 405 (Method Not Allowed) or 404 (Not Found)
@@ -788,11 +796,19 @@ const API = {
           window.App.renderLoginPage();
         }
       }
-      throw new Error(data.message || 'Invalid username or password.');
+      const err = new Error(data.message || 'Invalid username or password.');
+      err.status = 401;
+      err.errorType = 'AUTH_FAILED';
+      err.data = data;
+      throw err;
     }
 
     if (!res.ok) {
-      throw new Error(data.message || `Request failed with status ${res.status}`);
+      const err = new Error(data.message || `Request failed with status ${res.status}`);
+      err.status = res.status;
+      err.errorType = data.errorType || (res.status >= 500 ? 'DATABASE_ERROR' : 'HTTP_ERROR');
+      err.data = data;
+      throw err;
     }
 
     return data;

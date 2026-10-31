@@ -39,7 +39,7 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET || 'pg_hostel_secret_jwt_key_2026_super_secure_college_portal',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   db: {
-    client: process.env.DB_CLIENT || (connUrl ? 'mysql' : 'mysql'),
+    client: process.env.DB_CLIENT || (connUrl || (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') ? 'mysql' : 'sqlite'),
     url: connUrl || null,
     host: dbHost,
     port: dbPort,

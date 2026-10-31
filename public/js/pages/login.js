@@ -350,15 +350,24 @@ const LoginPage = {
 
       let res = null;
       let authenticated = false;
+      let lastServerMessage = null;
+      let isDbError = false;
 
       // 1. Attempt API authentication (online backend or static router)
       try {
         res = await API.post('/auth/login', { username, password, role: this.activeRole });
         if (res && res.success) {
           authenticated = true;
+        } else if (res && !res.success) {
+          lastServerMessage = res.message;
+          if (res.errorType === 'DATABASE_ERROR') isDbError = true;
         }
       } catch (apiErr) {
         console.warn('[API Auth Error/Fallback]:', apiErr.message);
+        lastServerMessage = apiErr.message;
+        if (apiErr.errorType === 'DATABASE_ERROR' || (apiErr.message && apiErr.message.toLowerCase().includes('database'))) {
+          isDbError = true;
+        }
       }
 
       // 2. Direct MockData client-side verification fallback (if static host or backend offline)
@@ -492,23 +501,35 @@ const LoginPage = {
       if (res && res.success) {
         this.cleanup();
 
-        API.setToken(res.token);
-        API.setUser(res.user);
-        API.setStudent(res.student);
+        try {
+          if (typeof API !== 'undefined') {
+            API.setToken(res.token);
+            API.setUser(res.user);
+            API.setStudent(res.student);
+          }
+        } catch (storageErr) {
+          console.warn('[Storage Error]:', storageErr);
+        }
 
-        App.user = res.user;
+        if (typeof window !== 'undefined' && window.App) {
+          window.App.user = res.user;
+        }
 
-        Toast.success(res.message || 'Login successful!');
+        try {
+          Toast.success(res.message || 'Login successful!');
+        } catch (toastErr) {}
 
         // Mount authenticated layout safely
         try {
-          App.renderAuthenticatedShell();
+          if (window.App && typeof window.App.renderAuthenticatedShell === 'function') {
+            window.App.renderAuthenticatedShell();
+          }
         } catch (shellErr) {
           console.error('[RenderShell Error]:', shellErr);
         }
 
         try {
-          if (typeof NotificationCenter !== 'undefined') {
+          if (typeof NotificationCenter !== 'undefined' && typeof NotificationCenter.init === 'function') {
             NotificationCenter.init();
           }
         } catch (notifErr) {
@@ -520,17 +541,36 @@ const LoginPage = {
 
         // Role-based route dispatch
         try {
-          const targetRoute = res.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
-          App.navigate(targetRoute);
+          const targetRoute = (res.user && res.user.role === 'admin') ? 'dashboard' : 'student-dashboard';
+          if (window.App && typeof window.App.navigate === 'function') {
+            window.App.navigate(targetRoute);
+          }
         } catch (navErr) {
           console.error('[Navigation Error]:', navErr);
         }
       } else {
-        Toast.error(res ? res.message : 'Invalid username or password.');
+        // Detailed, helpful error messaging
+        let errorMsg = 'Invalid username or password.';
+        if (isDbError) {
+          errorMsg = 'Database connection failure. Please verify database server is running.';
+        } else if (lastServerMessage && !lastServerMessage.toLowerCase().includes('unexpected') && !lastServerMessage.toLowerCase().includes('object')) {
+          errorMsg = lastServerMessage;
+        }
+        Toast.error(errorMsg);
       }
     } catch (err) {
       console.error('[Login Catch Error]', err);
-      Toast.error('An unexpected error occurred. Please try again.');
+      let errorMsg = 'Authentication error. Please try again.';
+      if (err.isNetworkError || (err.message && (err.message.includes('Network') || err.message === 'Failed to fetch'))) {
+        errorMsg = 'Network failure: Unable to reach backend server. Please check your internet connection.';
+      } else if (err.errorType === 'DATABASE_ERROR' || (err.message && err.message.toLowerCase().includes('database'))) {
+        errorMsg = 'Database connection failure. Please check database configuration.';
+      } else if (err.status === 401 || (err.message && err.message.toLowerCase().includes('invalid username'))) {
+        errorMsg = 'Invalid username or password.';
+      } else if (err.message && !err.message.includes('object') && !err.message.includes('script error')) {
+        errorMsg = err.message;
+      }
+      Toast.error(errorMsg);
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
