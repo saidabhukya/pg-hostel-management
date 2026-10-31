@@ -7,29 +7,78 @@ const RoomDetailModal = {
 
   async open(roomNumber) {
     try {
-      const res = await API.get(`/rooms/${roomNumber}`);
-      if (!res.success) {
-        Toast.error(res.message);
+      let data = null;
+      try {
+        const res = await API.get(`/rooms/${roomNumber}`);
+        if (res && res.success && res.data) {
+          data = res.data;
+        }
+      } catch (e) {
+        console.warn('API /rooms/:roomNumber fetch failed, checking local dataset');
+      }
+
+      if (!data && typeof MockData !== 'undefined') {
+        data = MockData.getRoomDetails(roomNumber);
+      }
+
+      if (!data || !data.room) {
+        Toast.error(`Could not load details for Room ${roomNumber}.`);
         return;
       }
 
-      this.currentRoomData = res.data;
-      const { room, beds } = res.data;
+      this.currentRoomData = data;
+      const { room, beds } = data;
+      const occupiedBeds = (beds || []).filter(b => b.status === 'occupied' && b.student_name);
       const user = API.getUser();
       const isAdmin = user && user.role === 'admin';
 
       const content = `
         <div style="margin-bottom:1.25rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);padding:1rem 1.25rem;border-radius:var(--radius-md);margin-bottom:1.25rem;border:1px solid var(--border-color);">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);padding:1rem 1.25rem;border-radius:var(--radius-md);margin-bottom:1rem;border:1px solid var(--border-color);">
             <div>
               <div style="font-size:1.3rem;font-weight:800;color:var(--text-primary);">Room ${room.room_number}</div>
-              <div style="font-size:0.84rem;color:var(--text-muted);">${room.floor_name} • ${room.type}</div>
+              <div style="font-size:0.84rem;color:var(--text-muted);">${room.floor_name} • ${room.type || 'Standard 5-Bed'}</div>
             </div>
             <div style="text-align:right;">
-              <span class="badge badge-info" style="font-size:0.85rem;padding:0.4rem 0.85rem;">
-                Capacity: ${room.capacity} Residents
+              <span class="badge ${occupiedBeds.length === (room.capacity || 5) ? 'badge-danger' : 'badge-success'}" style="font-size:0.85rem;padding:0.4rem 0.85rem;">
+                ${occupiedBeds.length} / ${room.capacity || 5} Residents Allocated
               </span>
             </div>
+          </div>
+
+          <!-- Occupants Summary Banner -->
+          <div style="background:var(--bg-secondary);padding:0.9rem 1.15rem;border-radius:var(--radius-md);margin-bottom:1.25rem;border:1px solid var(--border-color);border-left:4px solid ${occupiedBeds.length > 0 ? 'var(--primary-red)' : 'var(--status-success)'};">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;flex-wrap:wrap;gap:0.5rem;">
+              <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:var(--primary-red);letter-spacing:0.5px;display:flex;align-items:center;gap:0.4rem;">
+                <i data-lucide="users" style="width:14px;height:14px;"></i>
+                <span>Students Allocated in Room ${room.room_number} (${occupiedBeds.length})</span>
+              </div>
+              <span style="font-size:0.78rem;color:var(--text-muted);font-weight:600;">
+                ${Math.max(0, (room.capacity || 5) - occupiedBeds.length)} Vacant Bed${(room.capacity || 5) - occupiedBeds.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            
+            ${occupiedBeds.length > 0 ? `
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                ${occupiedBeds.map(b => `
+                  <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.45rem 0.8rem;display:inline-flex;align-items:center;gap:0.6rem;font-size:0.84rem;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                    <span class="badge badge-danger" style="font-size:0.7rem;padding:2px 6px;">${b.bed_label}</span>
+                    <div>
+                      <div style="font-weight:700;color:var(--text-primary);cursor:pointer;" onclick="Modal.close(); StudentProfile.open(${b.student_id})" title="Click to view full profile of ${Utils.escapeHTML(b.student_name)}">
+                        ${Utils.escapeHTML(b.student_name)} <span style="font-size:0.75rem;color:var(--primary-red);">↗</span>
+                      </div>
+                      <div style="font-size:0.72rem;color:var(--text-muted);">
+                        Roll: <strong>${b.reg_number}</strong>${b.course ? ` • ${Utils.escapeHTML(b.course)}` : ''}${b.student_phone ? ` • ${b.student_phone}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : `
+              <div style="font-size:0.82rem;color:var(--text-muted);font-style:italic;">
+                No students currently allocated to Room ${room.room_number}. Click "Allocate" on any vacant bed below to enroll a student.
+              </div>
+            `}
           </div>
 
           <!-- 5 BEDS LIST -->

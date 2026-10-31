@@ -29,10 +29,23 @@ router.get('/structure', authenticateToken, async (req, res) => {
       ORDER BY r.room_number ASC
     `);
 
+    // Active occupants per room
+    const activeOccupants = await db.query(`
+      SELECT s.id, s.name, s.reg_number, b.room_id, b.bed_label, s.phone
+      FROM allocations a
+      JOIN students s ON s.id = a.student_id
+      JOIN beds b ON b.id = a.bed_id
+      WHERE a.status = 'active'
+    `);
+
     // Group rooms by floor
     const floorsData = floors.map(floor => {
       const floorRooms = roomsWithBeds
         .filter(rm => Number(rm.floor_id) === Number(floor.id))
+        .map(rm => ({
+          ...rm,
+          occupants: activeOccupants.filter(o => Number(o.room_id) === Number(rm.id))
+        }))
         .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
 
       const totalBeds = floorRooms.reduce((acc, r) => acc + Number(r.total_beds), 0);

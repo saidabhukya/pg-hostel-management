@@ -364,6 +364,19 @@ const API = {
       MockData.updateBedStatus(bedId, payload.status);
       return { success: true, message: 'Bed status updated' };
     }
+    if (path === '/rooms/beds/transfer' && method === 'POST') {
+      const { studentId, targetBedId, reason } = payload;
+      const updated = MockData.transferStudent(studentId, targetBedId, reason);
+      return { success: true, message: 'Student transferred successfully!', data: updated };
+    }
+    if (path.startsWith('/rooms/') && !path.includes('/beds/') && !path.includes('/structure') && !path.includes('/available') && !path.includes('/options') && method === 'GET') {
+      const rNum = path.split('/')[2];
+      const roomData = MockData.getRoomDetails(rNum);
+      if (roomData) {
+        return { success: true, data: roomData };
+      }
+      return { success: false, message: `Room ${rNum} not found.` };
+    }
 
     // 5. Fees
     if (path === '/fees/cycles') {

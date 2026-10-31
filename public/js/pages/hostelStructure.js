@@ -95,8 +95,15 @@ const HostelStructurePage = {
         </div>
 
         <div class="rooms-grid">
-          ${floor.rooms.map(r => `
-            <div class="room-card ${r.room_number === '205' ? 'style="border-color:var(--primary-red);"' : ''}" onclick="RoomDetailModal.open('${r.room_number}')" title="Click to inspect Room ${r.room_number}">
+          ${floor.rooms.map(r => {
+            const occupants = r.occupants || [];
+            const occupantNames = occupants.map(o => o.name).filter(Boolean);
+            const tooltip = occupantNames.length > 0 
+              ? `Room ${r.room_number}: ${occupantNames.join(', ')}` 
+              : `Room ${r.room_number}: All 5 beds vacant`;
+
+            return `
+            <div class="room-card" onclick="RoomDetailModal.open('${r.room_number}')" title="${tooltip}">
               <div class="room-card-number">Room ${r.room_number}</div>
               
               <!-- 5 Bed Dots Representation -->
@@ -109,8 +116,25 @@ const HostelStructurePage = {
               <div class="room-occupancy-text">
                 ${r.occupied_beds} / 5 Beds Occupied
               </div>
+
+              <!-- Student Names in Room -->
+              ${occupants.length > 0 ? `
+                <div class="room-occupants-mini" style="font-size:0.71rem;color:var(--text-secondary);border-top:1px dashed var(--border-color);padding-top:0.35rem;margin-top:0.35rem;text-align:left;line-height:1.35;max-height:52px;overflow:hidden;">
+                  ${occupants.slice(0, 2).map(o => `
+                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${Utils.escapeHTML(o.name)} (${o.bed_label || 'Bed'})">
+                      <span style="color:var(--primary-red);font-weight:700;">•</span> <strong>${Utils.escapeHTML(o.name)}</strong>
+                    </div>
+                  `).join('')}
+                  ${occupants.length > 2 ? `
+                    <div style="font-size:0.68rem;color:var(--primary-red);font-weight:700;margin-top:2px;">+${occupants.length - 2} more student${occupants.length - 2 > 1 ? 's' : ''}...</div>
+                  ` : ''}
+                </div>
+              ` : `
+                <div style="font-size:0.69rem;color:var(--text-muted);margin-top:0.35rem;font-style:italic;">All beds vacant</div>
+              `}
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
     `).join('');

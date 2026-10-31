@@ -1351,7 +1351,15 @@
             capacity: 5,
             occupied_beds: occupiedCount,
             available_beds: availableCount,
-            maintenance_beds: maintenanceCount
+            maintenance_beds: maintenanceCount,
+            occupants: occupants.map(s => ({
+              id: s.id,
+              name: s.name,
+              reg_number: s.reg_number,
+              bed_label: s.bed_label || 'Bed',
+              phone: s.phone,
+              course: s.course
+            }))
           });
         }
 
@@ -1514,20 +1522,30 @@
     },
 
     getRoomDetails(rNum) {
-      rNum = String(rNum);
+      rNum = String(rNum).trim();
       const floorNum = parseInt(rNum.charAt(0), 10) || 1;
-      const studentsInRoom = store.students.filter(s => String(s.room_number) === rNum);
+      const studentsInRoom = (store.students || []).filter(s => String(s.room_number || '').trim() === rNum);
       const beds = [];
+      const assignedStudentIds = new Set();
 
       for (let b = 1; b <= 5; b++) {
-        const label = `Bed-${bedLetters[b - 1]}`;
+        const letter = bedLetters[b - 1] || 'A';
+        const label = `Bed-${letter}`;
         const key = `${rNum}_${label}`;
         const bedId = (floorNum - 1) * 50 + (parseInt(rNum.slice(-2), 10) - 1) * 5 + b;
 
-        const student = studentsInRoom.find(s => s.bed_label === label);
-        const isMaintenance = store.maintenanceBeds.includes(key);
+        const student = studentsInRoom.find(s => 
+          !assignedStudentIds.has(s.id) && (
+            s.bed_label === label ||
+            String(s.bed_id) === String(bedId) ||
+            (s.bed_label && s.bed_label.replace(/^Bed-?/i, '').trim().toUpperCase() === letter) ||
+            (s.bed_number && Number(s.bed_number) === b)
+          )
+        );
+        const isMaintenance = store.maintenanceBeds && store.maintenanceBeds.includes(key);
 
         if (student) {
+          assignedStudentIds.add(student.id);
           beds.push({
             id: bedId,
             bed_number: b,
@@ -1575,6 +1593,25 @@
             year: null,
             joining_date: null
           });
+        }
+      }
+
+      // If any students in this room were not matched above, place them into vacant beds so they are never missed
+      const unplacedStudents = studentsInRoom.filter(s => !assignedStudentIds.has(s.id));
+      for (const unplaced of unplacedStudents) {
+        const vacantBed = beds.find(bd => bd.status === 'available');
+        if (vacantBed) {
+          vacantBed.status = 'occupied';
+          vacantBed.student_id = unplaced.id;
+          vacantBed.student_name = unplaced.name;
+          vacantBed.reg_number = unplaced.reg_number;
+          vacantBed.student_phone = unplaced.phone;
+          vacantBed.student_email = unplaced.email;
+          vacantBed.college = unplaced.college || 'Vignan University';
+          vacantBed.course = unplaced.course || 'B.Tech';
+          vacantBed.year = unplaced.year || '1st Year';
+          vacantBed.joining_date = unplaced.joining_date;
+          assignedStudentIds.add(unplaced.id);
         }
       }
 
