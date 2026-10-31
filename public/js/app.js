@@ -26,7 +26,10 @@ const App = {
             this.renderAuthenticatedShell();
             
             // Route to URL hash or default
-            const initialRoute = window.location.hash ? window.location.hash.substring(1) : (this.user.role === 'admin' ? 'dashboard' : 'student-dashboard');
+            let initialRoute = window.location.hash ? window.location.hash.substring(1) : '';
+            if (!initialRoute || initialRoute === 'login' || initialRoute === 'logout') {
+              initialRoute = this.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
+            }
             this.navigate(initialRoute);
             
             // Initialize notifications
@@ -46,7 +49,10 @@ const App = {
           if (cachedUser) {
             this.user = cachedUser;
             this.renderAuthenticatedShell();
-            const initialRoute = window.location.hash ? window.location.hash.substring(1) : (this.user.role === 'admin' ? 'dashboard' : 'student-dashboard');
+            let initialRoute = window.location.hash ? window.location.hash.substring(1) : '';
+            if (!initialRoute || initialRoute === 'login' || initialRoute === 'logout') {
+              initialRoute = this.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
+            }
             this.navigate(initialRoute);
             if (typeof NotificationCenter !== 'undefined') {
               NotificationCenter.init();

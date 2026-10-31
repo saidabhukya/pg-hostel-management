@@ -22,7 +22,7 @@ const StudentDashboard = {
           <div style="display:flex;align-items:center;gap:1.25rem;">
             <div class="user-avatar" style="width:64px;height:64px;font-size:1.5rem;border:3px solid var(--primary-red);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.1);background:#fff;">
               ${(student && student.photo_url && student.photo_url !== '/assets/images/default-student.png') || (user && user.avatar && user.avatar !== '/assets/images/default-avatar.png' && user.avatar !== '/assets/images/default-student.png') ? `
-                <img src="${(student && student.photo_url) || (user && user.avatar)}" alt="${Utils.escapeHTML((student && student.name) || user.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user ? user.name.charAt(0) : 'S'}';" />
+                <img src="${(student && student.photo_url) || (user && user.avatar)}" alt="${Utils.escapeHTML((student && student.name) || (user ? user.name : 'Resident'))}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user ? user.name.charAt(0) : 'S'}';" />
               ` : (user ? user.name.charAt(0) : 'S')}
             </div>
             <div>
@@ -397,12 +397,12 @@ const StudentDashboard = {
         const leaveRes = await API.get('/leave-requests');
         let leaves = (leaveRes && leaveRes.success && Array.isArray(leaveRes.data)) ? leaveRes.data : [];
         if (leaves.length === 0 && typeof MockData !== 'undefined' && MockData.leaveRequests) {
-          leaves = MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student.id));
+          leaves = MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student ? student.id : (user ? user.id : 4)));
         }
         this._renderLeaves(leaves);
       } catch(le) {
         let leaves = (typeof MockData !== 'undefined' && MockData.leaveRequests)
-          ? MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student.id))
+          ? MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student ? student.id : (user ? user.id : 4)))
           : [];
         this._renderLeaves(leaves);
       }
@@ -427,8 +427,9 @@ const StudentDashboard = {
       console.warn('[StudentDashboard] Online load failed, loading local dataset:', e.message);
 
       // 1. Fee cycles fallback
+      const studentId = student ? student.id : (user ? user.id : 4);
       const cycles = (typeof MockData !== 'undefined' && MockData.feeCycles)
-        ? MockData.feeCycles.filter(c => Number(c.student_id) === Number(student.id))
+        ? MockData.feeCycles.filter(c => Number(c.student_id) === Number(studentId))
         : [];
       const payContainer = document.getElementById('stu-payments-container');
       if (payContainer) {
@@ -512,8 +513,9 @@ const StudentDashboard = {
       }
 
       // 4. Leave fallback
+      const studentIdFallback = student ? student.id : (user ? user.id : 4);
       const leaves = (typeof MockData !== 'undefined' && MockData.leaveRequests)
-        ? MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student.id))
+        ? MockData.leaveRequests.filter(l => Number(l.student_id) === Number(studentIdFallback))
         : [];
       this._renderLeaves(leaves);
 
