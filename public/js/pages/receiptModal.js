@@ -453,9 +453,12 @@ Opp. Vignan University, Vadlamudi
       }
 
       // If student phone is missing on receipt, look it up from student record
-      if ((!p.student_phone && !p.phone) && p.student_id) {
+      if ((!p.student_phone && !p.phone) && (p.student_id || p.reg_number)) {
         const students = (typeof MockData !== 'undefined' && MockData.students) || [];
-        const found = students.find(s => Number(s.id) === Number(p.student_id));
+        const found = students.find(s => 
+          (p.student_id && Number(s.id) === Number(p.student_id)) ||
+          (p.reg_number && s.reg_number === p.reg_number)
+        );
         if (found) {
           p.student_phone = found.phone;
           p.phone = found.phone;
@@ -479,26 +482,15 @@ Opp. Vignan University, Vadlamudi
       }
 
       const message = this.getWhatsAppMessage(p, target);
-      const filename = `Receipt_${p.receipt_number || 'HOSTEL'}_${p.reg_number || 'FEE'}.pdf`;
 
-      // 1. Download official stamped PDF receipt once to device for local copy / attaching
-      try {
-        const doc = this.buildPDFDoc(p);
-        if (doc) {
-          doc.save(filename);
-        }
-      } catch (err) {
-        console.warn('PDF file creation warning:', err);
-      }
-
-      // 2. Open WhatsApp directly targeting the student's phone number!
+      // Open WhatsApp directly targeting the student's phone number (No auto file download)
       const waUrl = cleanPhone 
         ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
 
       window.open(waUrl, '_blank');
 
-      Toast.success(`Receipt PDF downloaded! Opening WhatsApp to send receipt to ${recipientName} (+91 ${cleanPhone ? cleanPhone.slice(-10) : 'student'})...`);
+      Toast.success(`Opening WhatsApp to send receipt to ${recipientName} (+91 ${cleanPhone ? cleanPhone.slice(-10) : 'student'})...`);
     } catch (e) {
       Toast.error('Failed to prepare WhatsApp message: ' + e.message);
     } finally {
