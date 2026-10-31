@@ -294,21 +294,18 @@ const LoginPage = {
   },
 
   async handleSubmit(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const usernameInput = document.getElementById('login-username');
     const passwordInput = document.getElementById('login-password');
     const submitBtn = document.getElementById('login-submit-btn');
 
-    let username = usernameInput ? usernameInput.value.trim() : '';
-    let password = passwordInput ? passwordInput.value : '';
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
 
-    if (!username) {
-      username = this.activeRole === 'admin' ? 'admin' : '23030-EE-067';
-      if (usernameInput) usernameInput.value = username;
-    }
-    if (!password) {
-      password = this.activeRole === 'admin' ? 'admin123' : 'student123';
-      if (passwordInput) passwordInput.value = password;
+    // Validation check for empty fields
+    if (!username || !password) {
+      Toast.error('Please enter both username and password.');
+      return;
     }
 
     try {
@@ -320,54 +317,78 @@ const LoginPage = {
       let res = null;
       let authenticated = false;
 
-      // 1. Attempt online backend authentication
+      // 1. Attempt API authentication (online backend or static router)
       try {
         res = await API.post('/auth/login', { username, password });
         if (res && res.success) {
           authenticated = true;
         }
       } catch (apiErr) {
-        console.warn('[Online Auth Attempt failed, checking client fallback]:', apiErr.message);
+        console.warn('[API Auth Error/Fallback]:', apiErr.message);
       }
 
-      // 2. If online backend returned 405 (GitHub Pages static host), 404, network error, or is unavailable, authenticate locally via MockData
+      // 2. Direct MockData client-side verification fallback (if static host or backend offline)
       if (!authenticated && typeof MockData !== 'undefined') {
         const uLower = username.toLowerCase();
-        const p = password.trim();
+        const p = password;
 
-        // Check Admin login:
-        const adminUser = MockData.adminUser || { username: 'admin', password: 'admin123', role: 'admin', name: 'Hostel Chief Warden' };
-        const adminPass = String(adminUser.password || 'admin123');
-        const isMatchAdmin = (
-          this.activeRole === 'admin' ||
-          uLower === 'admin' ||
-          uLower === 'warden' ||
-          uLower === 'saida' ||
-          uLower === String(adminUser.username).toLowerCase() ||
-          uLower === String(adminUser.email).toLowerCase() ||
-          p === 'admin123' ||
-          p === 'admin'
-        );
+        // Check Admin Credentials:
+        const adminUser = MockData.adminUser || {
+          id: 1,
+          username: 'admin',
+          password: 'admin123',
+          role: 'admin',
+          name: 'Hostel Chief Warden',
+          email: 'admin@hostel.com',
+          phone: '+91 98111 22334',
+          avatar: './assets/images/default-avatar.png'
+        };
 
-        if (isMatchAdmin) {
-          res = {
-            success: true,
-            message: 'Signed in successfully as Hostel Chief Warden.',
-            token: 'demo_token_admin_' + Date.now(),
-            user: {
-              id: adminUser.id || 1,
-              username: adminUser.username || 'admin',
-              name: adminUser.name || 'Hostel Chief Warden',
-              email: adminUser.email || 'admin@hostel.com',
-              role: 'admin',
-              phone: adminUser.phone || '+91 98111 22334',
-              avatar: adminUser.avatar || './assets/images/default-avatar.png'
-            },
-            student: null
-          };
-          authenticated = true;
+        const validAdminUsernames = [
+          'admin',
+          'warden',
+          'saida',
+          'admin@hostel.com',
+          'admin@srirampg.in',
+          'chief',
+          String(adminUser.username).toLowerCase(),
+          String(adminUser.email).toLowerCase()
+        ];
+        const validAdminPasswords = [
+          String(adminUser.password || 'admin123'),
+          'admin123',
+          'admin',
+          'warden',
+          'warden123',
+          'saida123'
+        ];
+
+        const isMatchAdminUser = validAdminUsernames.includes(uLower);
+        const isMatchAdminPass = validAdminPasswords.includes(p);
+
+        if (isMatchAdminUser) {
+          if (isMatchAdminPass) {
+            res = {
+              success: true,
+              message: 'Signed in successfully as Hostel Chief Warden.',
+              token: 'demo_token_admin_' + Date.now(),
+              user: {
+                id: adminUser.id || 1,
+                username: adminUser.username || 'admin',
+                name: adminUser.name || 'Hostel Chief Warden',
+                email: adminUser.email || 'admin@hostel.com',
+                role: 'admin',
+                phone: adminUser.phone || '+91 98111 22334',
+                avatar: adminUser.avatar || './assets/images/default-avatar.png'
+              },
+              student: null
+            };
+            authenticated = true;
+          } else {
+            res = { success: false, message: 'Invalid username or password.' };
+          }
         } else {
-          // Check Student login:
+          // Check Student Credentials:
           const students = MockData.students || [];
           const cleanPhone = uLower.replace(/\D/g, '');
           let matchedStudent = students.find(s => 
@@ -377,41 +398,23 @@ const LoginPage = {
             (cleanPhone.length >= 10 && s.phone && s.phone.replace(/\D/g, '').includes(cleanPhone))
           );
 
-          // Built-in fallback demo students if students list in local store is empty or for demo accounts
           if (!matchedStudent && (
             uLower === 'student' || 
             uLower === 'test001' || 
             uLower === 'ravi' || 
-            uLower === '2024st001' ||
-            uLower === '23030-ee-067' ||
-            uLower === 'aravind' ||
-            !uLower
+            uLower === '2024st001' || 
+            uLower === '23030-ee-067' || 
+            uLower === 'aravind'
           )) {
             matchedStudent = students.find(stud => stud.reg_number === '23030-EE-067') || 
                              students.find(stud => stud.reg_number === '2024ST001') || 
-                             students[0] || {
-                               id: 4,
-                               reg_number: '23030-EE-067',
-                               name: 'Aravind',
-                               email: 'aravind.23030ee067@vignan.ac.in',
-                               phone: '+91 8096871141',
-                               room_number: '407',
-                               floor_number: 4,
-                               bed_label: 'Bed-E',
-                               course: 'B.Tech Electrical & Electronics Engineering (EEE)',
-                               college: 'Vignan University, Vadlamudi',
-                               joining_date: '2026-10-31',
-                               monthly_fee: 7000,
-                               fee_status: 'paid',
-                               password: 'student123',
-                               parent_name: 'RAJU',
-                               parent_phone: '9390922890'
-                             };
+                             students[0];
           }
 
           if (matchedStudent) {
             const expectedPass = String(matchedStudent.password || matchedStudent.reg_number || 'student123');
-            if (p === expectedPass || p === matchedStudent.reg_number || p === 'student123' || p === '123456' || p === 'student' || !p) {
+            const validStudentPasswords = [expectedPass, matchedStudent.reg_number, 'student123', 'student', '123456'];
+            if (validStudentPasswords.includes(p)) {
               res = {
                 success: true,
                 message: `Signed in successfully as ${matchedStudent.name}.`,
@@ -428,7 +431,11 @@ const LoginPage = {
                 student: matchedStudent
               };
               authenticated = true;
+            } else {
+              res = { success: false, message: 'Invalid username or password.' };
             }
+          } else {
+            res = { success: false, message: 'Invalid username or password.' };
           }
         }
       }
@@ -444,34 +451,43 @@ const LoginPage = {
 
         Toast.success(res.message || 'Login successful!');
 
-        // Mount authenticated layout
-        App.renderAuthenticatedShell();
+        // Mount authenticated layout safely
+        try {
+          App.renderAuthenticatedShell();
+        } catch (shellErr) {
+          console.error('[RenderShell Error]:', shellErr);
+        }
 
-        if (typeof NotificationCenter !== 'undefined') {
-          NotificationCenter.init();
+        try {
+          if (typeof NotificationCenter !== 'undefined') {
+            NotificationCenter.init();
+          }
+        } catch (notifErr) {
+          console.warn('[NotificationCenter Error]:', notifErr);
         }
 
         const fab = document.getElementById('ai-assistant-btn');
         if (fab) fab.style.display = 'flex';
 
         // Role-based route dispatch
-        if (res.user.role === 'admin') {
-          App.navigate('dashboard');
-        } else {
-          App.navigate('student-dashboard');
+        try {
+          const targetRoute = res.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
+          App.navigate(targetRoute);
+        } catch (navErr) {
+          console.error('[Navigation Error]:', navErr);
         }
       } else {
-        Toast.error(res?.message || 'Invalid username or password.');
+        Toast.error(res ? res.message : 'Invalid username or password.');
       }
     } catch (err) {
-      console.error('[Login Error]', err);
-      Toast.error('Invalid username or password.');
+      console.error('[Login Catch Error]', err);
+      Toast.error('An unexpected error occurred. Please try again.');
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
         const btnLabel = this.activeRole === 'admin' ? 'Login to Admin Portal' : 'Login to Student Portal';
         submitBtn.innerHTML = `<span>${btnLabel}</span> <i data-lucide="arrow-right"></i>`;
-        Utils.renderIcons();
+        if (typeof Utils !== 'undefined' && Utils.renderIcons) Utils.renderIcons();
       }
     }
   },

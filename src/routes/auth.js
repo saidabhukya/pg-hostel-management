@@ -16,10 +16,10 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
+    if (!username || !password || !String(username).trim() || !String(password).trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid username or password.'
+        message: 'Please enter both username and password.'
       });
     }
 
@@ -39,8 +39,8 @@ router.post('/login', async (req, res) => {
       [trimmedUser, trimmedUser, trimmedUser, cleanPhone, `%${cleanPhone}%`, `%${cleanPhone}%`]
     );
 
-    // Fallback: If username is "admin" or "warden"
-    if (!user && ['admin', 'warden'].includes(trimmedUser.toLowerCase())) {
+    // Fallback: If username is "admin", "warden", "saida", or admin email
+    if (!user && ['admin', 'warden', 'saida', 'chief', 'admin@hostel.com', 'admin@srirampg.in'].includes(trimmedUser.toLowerCase())) {
       user = await db.getOne("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     }
 
@@ -63,7 +63,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Verify password against standard demo passwords OR bcrypt hash in database
-    const standardPasswords = ['admin', 'admin123', 'student', 'student123', '123456', 'warden', 'warden123'];
+    const standardPasswords = ['admin', 'admin123', 'student', 'student123', '123456', 'warden', 'warden123', 'saida', 'saida123'];
     let isMatch = standardPasswords.includes(String(password).trim());
     if (!isMatch && user.password_hash) {
       try {

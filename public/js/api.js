@@ -130,38 +130,72 @@ const API = {
       const uLower = String(username || '').trim().toLowerCase();
       const p = String(password || '').trim();
 
-      const adminUser = MockData.adminUser || { username: 'admin', password: 'admin123', role: 'admin', name: 'Hostel Chief Warden' };
-      const isTryingAdmin = (
-        uLower === 'admin' ||
-        uLower === 'warden' ||
-        uLower === 'saida' ||
-        uLower.includes('admin') ||
-        uLower.includes('warden') ||
-        uLower.includes('saida') ||
-        uLower.includes('chief') ||
-        p.toLowerCase() === 'admin123' ||
-        p.toLowerCase() === 'admin' ||
-        p.toLowerCase() === 'warden'
-      );
-
-      if (isTryingAdmin) {
+      if (!uLower || !p) {
         return {
-          success: true,
-          message: 'Signed in successfully as Hostel Chief Warden.',
-          token: 'demo_token_admin_' + Date.now(),
-          user: {
-            id: adminUser.id || 1,
-            username: adminUser.username || 'admin',
-            name: adminUser.name || 'Hostel Chief Warden',
-            email: adminUser.email || 'admin@hostel.com',
-            role: 'admin',
-            phone: adminUser.phone || '+91 98111 22334',
-            avatar: adminUser.avatar || './assets/images/default-avatar.png'
-          },
-          student: null
+          success: false,
+          message: 'Please enter both username and password.'
         };
       }
 
+      const adminUser = MockData.adminUser || {
+        id: 1,
+        username: 'admin',
+        password: 'admin123',
+        role: 'admin',
+        name: 'Hostel Chief Warden',
+        email: 'admin@hostel.com',
+        phone: '+91 98111 22334',
+        avatar: './assets/images/default-avatar.png'
+      };
+
+      const validAdminUsernames = [
+        'admin',
+        'warden',
+        'saida',
+        'admin@hostel.com',
+        'admin@srirampg.in',
+        'chief',
+        String(adminUser.username).toLowerCase(),
+        String(adminUser.email).toLowerCase()
+      ];
+      const validAdminPasswords = [
+        String(adminUser.password || 'admin123'),
+        'admin123',
+        'admin',
+        'warden',
+        'warden123',
+        'saida123'
+      ];
+
+      const isMatchAdminUser = validAdminUsernames.includes(uLower);
+      const isMatchAdminPass = validAdminPasswords.includes(p);
+
+      if (isMatchAdminUser) {
+        if (isMatchAdminPass) {
+          return {
+            success: true,
+            message: 'Signed in successfully as Hostel Chief Warden.',
+            token: 'demo_token_admin_' + Date.now(),
+            user: {
+              id: adminUser.id || 1,
+              username: adminUser.username || 'admin',
+              name: adminUser.name || 'Hostel Chief Warden',
+              email: adminUser.email || 'admin@hostel.com',
+              role: 'admin',
+              phone: adminUser.phone || '+91 98111 22334',
+              avatar: adminUser.avatar || './assets/images/default-avatar.png'
+            },
+            student: null
+          };
+        } else {
+          return {
+            success: false,
+            message: 'Invalid username or password.'
+          };
+        }
+      }
+
+      // Check Student Credentials
       const students = MockData.students || [];
       const cleanPhone = uLower.replace(/\D/g, '');
       let s = students.find(stud => 
@@ -171,42 +205,49 @@ const API = {
         (cleanPhone.length >= 10 && stud.phone && stud.phone.replace(/\D/g, '').includes(cleanPhone))
       );
 
-      if (!s) {
+      if (!s && (
+        uLower === 'student' || 
+        uLower === '2024st001' || 
+        uLower === 'ravi' || 
+        uLower === '23030-ee-067' || 
+        uLower === 'aravind' || 
+        uLower === 'test001'
+      )) {
         s = students.find(stud => stud.reg_number === '23030-EE-067') || 
             students.find(stud => stud.reg_number === '2024ST001') || 
-            students[0] || {
-              id: 4,
-              reg_number: '23030-EE-067',
-              name: 'Aravind',
-              email: 'aravind.23030ee067@vignan.ac.in',
-              phone: '+91 8096871141',
-              room_number: '407',
-              floor_number: 4,
-              bed_label: 'Bed-E',
-              course: 'B.Tech Electrical & Electronics Engineering (EEE)',
-              college: 'Vignan University, Vadlamudi',
-              joining_date: '2026-10-31',
-              monthly_fee: 7000,
-              fee_status: 'paid',
-              parent_name: 'RAJU',
-              parent_phone: '9390922890'
-            };
+            students[0];
+      }
+
+      if (s) {
+        const expected = String(s.password || s.reg_number || 'student123');
+        const validStudentPasswords = [expected, s.reg_number, 'student123', '123456', 'student'];
+        if (validStudentPasswords.includes(p)) {
+          return {
+            success: true,
+            message: `Signed in successfully as ${s.name}.`,
+            token: 'demo_token_student_' + (s.id || 4) + '_' + Date.now(),
+            user: {
+              id: s.id || 4,
+              username: s.reg_number || '23030-EE-067',
+              name: s.name || 'Aravind',
+              email: s.email || 'aravind@vignan.ac.in',
+              role: 'student',
+              phone: s.phone || '+91 8096871141',
+              avatar: s.photo_url || './assets/images/default-student.png'
+            },
+            student: s
+          };
+        } else {
+          return {
+            success: false,
+            message: 'Invalid username or password.'
+          };
+        }
       }
 
       return {
-        success: true,
-        message: `Signed in successfully as ${s.name}.`,
-        token: 'demo_token_student_' + (s.id || 4) + '_' + Date.now(),
-        user: {
-          id: s.id || 4,
-          username: s.reg_number || '23030-EE-067',
-          name: s.name || 'Aravind',
-          email: s.email || 'aravind@vignan.ac.in',
-          role: 'student',
-          phone: s.phone || '+91 8096871141',
-          avatar: s.photo_url || './assets/images/default-student.png'
-        },
-        student: s
+        success: false,
+        message: 'Invalid username or password.'
       };
     }
 
