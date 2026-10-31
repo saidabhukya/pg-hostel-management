@@ -648,12 +648,14 @@ const API = {
 
     // 401 Unauthorized: Session invalid or expired
     if (res.status === 401) {
-      this.setToken(null);
-      this.setUser(null);
-      this.setStudent(null);
-      if (window.App && typeof window.App.navigate === 'function') {
-        window.App.user = null;
-        window.App.renderLoginPage();
+      if (!endpoint.includes('/auth/login')) {
+        this.setToken(null);
+        this.setUser(null);
+        this.setStudent(null);
+        if (window.App && typeof window.App.navigate === 'function') {
+          window.App.user = null;
+          window.App.renderLoginPage();
+        }
       }
       throw new Error(data.message || 'Invalid username or password.');
     }
