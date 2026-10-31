@@ -588,6 +588,17 @@ const API = {
       return { success: true };
     }
 
+    // 16. AI Assistant Query
+    if (path === '/ai-assistant/query' && method === 'POST') {
+      const q = (payload && payload.question) ? payload.question : '';
+      const user = this.getUser();
+      const student = this.getStudent();
+      return {
+        success: true,
+        data: this.generateAiResponse(q, user, student)
+      };
+    }
+
     return { success: true, data: null };
   },
 
@@ -682,6 +693,377 @@ const API = {
 
   delete(endpoint) {
     return this.request(endpoint, { method: 'DELETE' });
+  },
+
+  generateAiResponse(rawQuery, user, currentStudent) {
+    const q = (rawQuery || '').trim().toLowerCase();
+    const isStudent = user && user.role === 'student';
+    const student = currentStudent || this.getStudent() || (window.MockData && MockData.students ? MockData.students.find(s => s.user_id === user?.id || s.email === user?.email) : null) || (window.MockData && MockData.students ? MockData.students[0] : null) || {
+      name: user?.name || 'Resident Student',
+      reg_number: '231FA04001',
+      room_number: '205',
+      bed_label: 'Bed 1',
+      floor_number: 2,
+      monthly_fee: 7000,
+      joining_date: '2026-08-15',
+      parent_name: 'Venkatesh Rao',
+      parent_phone: '9848022338',
+      course: 'B.Tech - Computer Science & Engineering',
+      year: '2nd Year'
+    };
+
+    let answer = '';
+    let category = 'general';
+    let quickActions = [];
+
+    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayDay = DAYS[new Date().getDay()];
+
+    // 1. Greetings / Help
+    if (/\b(hi|hello|hey|namaste|greetings|who are you|help|what can you do)\b/i.test(q)) {
+      category = 'greeting';
+      if (isStudent) {
+        answer = `Hello **${student.name || 'Resident'}**! I am your **SRI RAM PG AI Hostel Assistant** 🤖.\n\n` +
+          `I am directly connected to your student profile, room details, and hostel services. You can ask me:\n` +
+          `• 💳 **Fee & Dues:** *"When is my next fee due?"* or *"Show my pending fee"*\n` +
+          `• 🏠 **Room & Roommates:** *"What is my room and bed number?"* or *"Who are my roommates?"*\n` +
+          `• 🍽️ **Mess & Meals:** *"What is today's menu?"* or *"What is for dinner?"*\n` +
+          `• 🛠️ **Complaints:** *"Wi-Fi is slow"* or *"Status of my complaints"*\n` +
+          `• 🎫 **Gate Pass & Rules:** *"How to apply for leave?"* or *"Curfew hours"*\n` +
+          `• 📞 **Contact:** *"What is the warden phone number?"*`;
+        quickActions = [
+          { label: 'Next Fee Due', link: '#fees' },
+          { label: "Today's Menu", link: '#mess' },
+          { label: 'My Room Details', link: '#hostel-structure' },
+          { label: 'Submit Complaint', link: '#complaints' }
+        ];
+      } else {
+        answer = `Hello **Warden ${user?.name || 'Saida'}**! I am your **SRI RAM PG AI Management Assistant** 🏢.\n\n` +
+          `I provide instant real-time intelligence for all hostel operations:\n` +
+          `• 🛏️ **Occupancy:** *"What is the current bed occupancy rate?"* or *"How many beds are vacant?"*\n` +
+          `• 💰 **Financials:** *"Give me a summary of hostel financials"* or *"How much fee is collected?"*\n` +
+          `• ⚠️ **Fee Defaulters:** *"Who has pending fee dues?"*\n` +
+          `• 🛠️ **Maintenance:** *"What complaints need attention?"*\n` +
+          `• 👥 **Residents:** *"How many students are enrolled?"*`;
+        quickActions = [
+          { label: 'Bed Matrix', link: '#hostel-structure' },
+          { label: 'Fee Dues', link: '#fees' },
+          { label: 'Complaints', link: '#complaints' },
+          { label: 'Payments', link: '#payments' }
+        ];
+      }
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 2. Parent / Profile Details
+    if (/\b(parent|parents|father|mother|guardian|emergency contact|my profile|my details|blood group)\b/i.test(q)) {
+      category = 'parent';
+      if (isStudent) {
+        answer = `📋 **Your Registered Profile & Parent Details:**\n\n` +
+          `• **Resident Name:** **${student.name}** (Reg: \`${student.reg_number || '-'}\`)\n` +
+          `• **Branch / Program:** ${student.course || 'B.Tech'} (${student.year || '1st Year'})\n` +
+          `• **Parent / Guardian:** **${student.parent_name || 'Venkatesh Rao'}**\n` +
+          `• **Parent Phone Number:** **+91 ${student.parent_phone || '9848022338'}**\n` +
+          `• **Emergency Contact:** **+91 ${student.emergency_contact || student.parent_phone || '9848022338'}**\n` +
+          `• **Permanent Address:** ${student.parent_address || student.address || 'Guntur, Andhra Pradesh'}\n\n` +
+          `Need to update any parent contact numbers or address? You can edit them in your profile.`;
+        quickActions = [{ label: 'Edit Student Profile', link: '#student-profile' }];
+      } else {
+        answer = `To inspect or update any student's parent and emergency details, open the **Students Directory**, click on the student, and update the Emergency & Parent Details card.`;
+        quickActions = [{ label: 'Open Student Directory', link: '#students' }];
+      }
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 3. Wi-Fi / Internet
+    if (/\b(wifi|wi-fi|internet|broadband|ssid|password|router|lan speed)\b/i.test(q)) {
+      category = 'wifi';
+      answer = `📶 **SRI RAM PG High-Speed Wi-Fi Details:**\n\n` +
+        `• **Network SSID:** \`SRI_RAM_PG_5G\` (High Speed) / \`SRI_RAM_PG_2.4G\` (Extended Range)\n` +
+        `• **Speed:** Dedicated 300 Mbps fiber optic with round-the-clock UPS battery backup.\n` +
+        `• **Access:** Enter your registered Student ID as credentials, or ask the Warden Desk for floor router authentication.\n` +
+        `• **Facing slow speed or connectivity issues?** Submit a maintenance ticket under 'Wi-Fi / Internet' and our network technician will reset your corridor access point.`;
+      quickActions = [{ label: 'Report Wi-Fi Issue', link: '#complaints' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 4. Laundry / Washing
+    if (/\b(laundry|washing|washing machine|ironing|clothes|dryer)\b/i.test(q)) {
+      category = 'laundry';
+      answer = `🧺 **Hostel Laundry & Washing Facilities:**\n\n` +
+        `• **Washing Machines:** Automatic washing machines are stationed on the **1st Floor** and **3rd Floor** utility balconies.\n` +
+        `• **Operational Hours:** 6:00 AM to 10:00 PM daily for all residents.\n` +
+        `• **Hostel Dhobi Service:** Door-to-door laundry pickup is available on **Tuesdays** and **Saturdays** (clothes returned washed and steam pressed within 48 hours).`;
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 5. Water / Hot Water / Drinking Water
+    if (/\b(hot water|cold water|drinking water|water dispenser|geyser|solar water|ro water)\b/i.test(q)) {
+      category = 'water';
+      answer = `💧 **Hostel Water Services & Timings:**\n\n` +
+        `• **Hot Water (Solar Geysers):** Supplied to all attached room bathrooms every morning from **5:30 AM to 9:30 AM**.\n` +
+        `• **Drinking Water:** Commercial multi-stage RO water purification dispensers (providing hot, normal, and chilled water) are located on every floor corridor.\n` +
+        `• **24/7 Water Supply:** Supported by dual overhead tanks and borehole backup.`;
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 6. Gym / Sports / Recreation
+    if (/\b(gym|gymnasium|workout|fitness|badminton|sports|games|recreation)\b/i.test(q)) {
+      category = 'gym';
+      answer = `🏋️ **Recreation & Fitness Facilities:**\n\n` +
+        `• **Hostel Gymnasium:** Ground floor fitness center equipped with treadmills, dumbbells, and multi-gym stations.\n` +
+        `• **Gym Timings:** Morning: **6:00 AM – 8:30 AM** | Evening: **5:30 PM – 8:30 PM**.\n` +
+        `• **Indoor Sports:** Table tennis, carrom boards, and chess in the recreation lounge.\n` +
+        `• **Outdoor:** Outdoor badminton court open till 9:30 PM.`;
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 7. Mess & Food
+    if (/\b(food|menu|mess|breakfast|lunch|dinner|meal|meals|snack|snacks|tea|chai|eat|curry|rice|roti|tiffin|canteen)\b/i.test(q)) {
+      category = 'mess';
+      const menuList = (window.MockData && MockData.messMenu) ? MockData.messMenu : [];
+      const todayMenu = menuList.find(m => m.day_of_week && m.day_of_week.toLowerCase() === todayDay.toLowerCase()) || menuList[0] || {
+        day_of_week: todayDay,
+        breakfast: 'Idli, Vada, Sambar, Coconut Chutney & Tea/Coffee',
+        breakfast_timing: '7:30 AM - 9:30 AM',
+        lunch: 'Steamed Rice, Dal Tadka, Paneer Butter Masala, Sambar, Curd & Papad',
+        lunch_timing: '12:30 PM - 2:30 PM',
+        dinner: 'Hot Chapatis, Veg Pulao, Mixed Veg Curry, Rasam & Gulab Jamun',
+        dinner_timing: '7:30 PM - 9:30 PM',
+        special_notes: 'Unlimited hygiene food prepared with fresh ingredients.'
+      };
+
+      answer = `🍽️ **Today's Sri Ram PG Mess Menu (${todayMenu.day_of_week || todayDay}):**\n\n` +
+        `• **Breakfast (${todayMenu.breakfast_timing || '7:30 AM - 9:30 AM'}):**\n  ${todayMenu.breakfast}\n\n` +
+        `• **Lunch (${todayMenu.lunch_timing || '12:30 PM - 2:30 PM'}):**\n  ${todayMenu.lunch}\n\n` +
+        `• **Evening Snacks (5:00 PM - 6:00 PM):**\n  Hot Masala Chai with Mirchi Bajji / Biscuits\n\n` +
+        `• **Dinner (${todayMenu.dinner_timing || '7:30 PM - 9:30 PM'}):**\n  ${todayMenu.dinner}\n\n` +
+        `• *Notice:* ${todayMenu.special_notes || 'Clean RO drinking water and unlimited hygiene dining provided.'}`;
+
+      quickActions = [
+        { label: 'View 7-Day Weekly Menu', link: '#mess' }
+      ];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 8. Room, Bed, Floor, Roommates
+    if (/\b(room|rooms|bed|beds|floor|floors|stay|staying|sharing|roommate|roommates)\b/i.test(q)) {
+      category = 'room';
+      if (isStudent) {
+        const allStudents = (window.MockData && MockData.students) ? MockData.students : [];
+        const roomMates = allStudents.filter(s => String(s.room_number) === String(student.room_number) && String(s.id) !== String(student.id));
+
+        answer = `🏠 **Your Room & Living Allocation:**\n\n` +
+          `• **Room Number:** **Room ${student.room_number || '205'}** (${student.room_type || '3-Sharing AC'})\n` +
+          `• **Bed Assignment:** **${student.bed_label || 'Bed 1'}**\n` +
+          `• **Floor:** **Floor ${student.floor_number || 2}**\n` +
+          `• **Monthly Fee:** ₹${Number(student.monthly_fee || 7000).toLocaleString('en-IN')}\n\n` +
+          (roomMates.length > 0
+            ? `👥 **Your Roommates in Room ${student.room_number}:**\n` + roomMates.map((rm, idx) => `  ${idx + 1}. **${rm.name}** (${rm.bed_label || 'Bed'} • ${rm.course || 'Vignan Univ'})`).join('\n')
+            : `👥 **Room Status:** All bed allocations in this room are active.`) +
+          `\n\nAmenities include attached western washroom, individual study desk, wardrobe with lock, and high-speed Wi-Fi access.`;
+        quickActions = [{ label: 'View Hostel Room Matrix', link: '#hostel-structure' }];
+      } else {
+        const stats = (window.MockData && MockData.stats) ? MockData.stats : { totalBeds: 250, occupiedBeds: 242, availableBeds: 8, occupancyRate: 96.8 };
+        answer = `🏢 **Hostel Bed Occupancy & Room Matrix:**\n\n` +
+          `• **Total Capacity:** **${stats.totalBeds || 250} Beds** across 50 rooms (5 Floors, 10 rooms per floor)\n` +
+          `• **Occupied Beds:** **${stats.occupiedBeds || 242} Beds** (${stats.occupancyRate || '96.8'}% Occupancy)\n` +
+          `• **Available Beds:** **${stats.availableBeds || 8} Beds Vacant** ready for immediate student admission\n` +
+          `• All rooms have 5 allocated beds with joining-date anchored billing.`;
+        quickActions = [
+          { label: 'Inspect Visual Room Matrix', link: '#hostel-structure' },
+          { label: 'Admit New Student', link: '#students' }
+        ];
+      }
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 9. Leave & Gate Pass
+    if (/\b(leave|leaves|gate pass|out pass|outpass|home|vacation|holiday|permission|night out)\b/i.test(q)) {
+      category = 'leave';
+      answer = `🎫 **Hostel Leave & Digital Gate Pass Instructions:**\n\n` +
+        `• **Leave Policy:** Any resident planning to travel home, stay out overnight, or take weekend leave must submit a digital leave request.\n` +
+        `• **How to Apply:**\n` +
+        `  1. Go to the **Leave Requests** tab.\n` +
+        `  2. Enter Departure Date/Time and Expected Return Date/Time.\n` +
+        `  3. Enter the reason and your parent's phone number.\n` +
+        `  4. The Warden office will approve your pass with a digital clearance badge.\n` +
+        `• **Important:** Show your digital pass to security personnel at the main gate when exiting and re-entering.`;
+      quickActions = [{ label: isStudent ? 'Apply For Gate Pass' : 'Review Leave Requests', link: '#leave-requests' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 10. Curfew & Hostel Rules
+    if (/\b(rule|rules|curfew|timing|timings|gate close|in time|visitor|visitors|guest|guests|night curfew|prohibited)\b/i.test(q)) {
+      category = 'rules';
+      answer = `📜 **SRI RAM PG Official Hostel Guidelines & Curfew:**\n\n` +
+        `• 🔒 **Night Curfew:** **10:00 PM Sharp**. The main security gate is locked and biometric attendance closes.\n` +
+        `• 👥 **Visitors & Parents:** Allowed from **9:00 AM to 6:00 PM** in the ground-floor visitor lounge only. No visitors are permitted inside student residential rooms.\n` +
+        `• 🤫 **Quiet Study Hours:** **11:00 PM to 6:00 AM** across all corridors and rooms.\n` +
+        `• 🚫 **Strictly Prohibited:** Alcohol, smoking, drugs, ragging, and unauthorized high-power appliances (heaters/immersion coils).\n` +
+        `• 🛡️ **Safety:** The hostel is protected by 24/7 CCTV surveillance and security guards.`;
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 11. Warden / Contact / Emergency / Address
+    if (/\b(contact|warden|phone|mobile|emergency|address|location|office|helpdesk|saida)\b/i.test(q)) {
+      category = 'contact';
+      answer = `📞 **SRI RAM PG Administration & Emergency Helpline:**\n\n` +
+        `• **Chief Hostel Warden (Saida):** **+91 98765 43210**\n` +
+        `• **Accounts & Billing Desk:** **+91 120 232 4000**\n` +
+        `• **Security & Main Gate:** Intercom Ext **101**\n` +
+        `• **Nearest Hospital / Medical:** Vignan Health Center (**+91 863 234 4700**)\n` +
+        `• **Hostel Address:** Opp. Vignan University Main Gate, Vadlamudi, Guntur, Andhra Pradesh - 522213`;
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 12. Complaints & Maintenance
+    if (/\b(complaint|complaints|issue|problem|repair|broken|leak|leaking|tap|fan|light|clean|cleaning|ac|plumb|plumbing|electric|switch)\b/i.test(q)) {
+      category = 'complaint';
+      if (isStudent) {
+        const allComplaints = (window.MockData && MockData.complaints) ? MockData.complaints : [];
+        const studentComps = allComplaints.filter(c => String(c.student_id) === String(student.id) || (student.name && c.student_name && c.student_name.toLowerCase() === student.name.toLowerCase()));
+        const openComps = studentComps.filter(c => c.status !== 'Resolved');
+
+        answer = `🛠️ **Maintenance & Complaints Helpdesk:**\n\n` +
+          (openComps.length > 0
+            ? `You have **${openComps.length} active ticket(s)** on record:\n` + openComps.map(c => `• **[#${c.id}] ${c.title || c.category}:** Status is **${c.status}** (${c.created_at || 'Recent'})`).join('\n') + '\n\n'
+            : `You have no pending maintenance complaints right now. Everything is running smoothly!\n\n`) +
+          `• **Need immediate repair?** (Wi-Fi, plumbing, electrical, cleaning)\n` +
+          `  Click **Submit Complaint** below. You can specify the problem and attach photos. The warden and maintenance staff resolve complaints within 24 hours.`;
+        quickActions = [{ label: 'Submit Maintenance Complaint', link: '#complaints' }];
+      } else {
+        const complaints = (window.MockData && MockData.complaints) ? MockData.complaints : [];
+        const pending = complaints.filter(c => c.status === 'Pending');
+        const inProgress = complaints.filter(c => c.status === 'In Progress');
+        const resolved = complaints.filter(c => c.status === 'Resolved');
+
+        answer = `🛠️ **Hostel Maintenance & Complaints Status:**\n\n` +
+          `• **Pending Review:** **${pending.length} tickets** requiring action\n` +
+          `• **In Progress:** **${inProgress.length} tickets** being attended to by technicians\n` +
+          `• **Resolved:** **${resolved.length} tickets** completed\n\n` +
+          (pending.length > 0
+            ? `Top pending complaints:\n` + pending.slice(0, 3).map(c => `• Room ${c.room_number || '-'}: **${c.title || c.category}** (${c.student_name || 'Resident'})`).join('\n')
+            : `No pending maintenance tickets.`);
+        quickActions = [{ label: 'Manage Complaints Desk', link: '#complaints' }];
+      }
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 13. Fees, Dues, Payment, Receipts, Defaulters
+    if (/\b(fee|fees|due|dues|pay|payment|paid|cost|charge|charges|rent|receipt|receipts|pending|bill|bills|money|balance|defaulter|defaulters|unpaid)\b/i.test(q)) {
+      category = 'fees';
+      if (isStudent) {
+        const allCycles = (window.MockData && MockData.feeCycles) ? MockData.feeCycles.filter(c => String(c.student_id) === String(student.id)) : [];
+        const pending = allCycles.find(c => c.status !== 'paid');
+        const lastPaid = allCycles.slice().reverse().find(c => c.status === 'paid');
+
+        if (pending) {
+          answer = `💳 **Fee Payment & Due Notice:**\n\n` +
+            `• **Pending Amount:** **₹${Number(pending.amount || student.monthly_fee || 7000).toLocaleString('en-IN')}**\n` +
+            `• **Billing Cycle:** ${pending.cycleStartDisplay || pending.start_date || 'Current Cycle'} to ${pending.cycleEndDisplay || pending.end_date || 'Current Cycle'}\n` +
+            `• **Due Date:** **${pending.dueDateDisplay || pending.due_date || student.next_due_date || '15-11-2026'}**\n` +
+            `• **Status:** ⚠️ **Pending Settlement**\n\n` +
+            `Please clear your monthly fee at the accounts desk or via UPI to keep your residency clearance active.`;
+        } else {
+          answer = `✅ **All Hostel Fees are Clear!**\n\n` +
+            `• All your fee cycles have been recorded as **PAID**.\n` +
+            `• **Monthly Fee:** ₹${Number(student.monthly_fee || 7000).toLocaleString('en-IN')}\n` +
+            `• **Next Billing Due:** **${student.next_due_date || '15-11-2026'}**\n` +
+            (lastPaid ? `• **Last Payment:** Receipt **${lastPaid.receipt_number || 'REC-OFFICIAL'}** for ₹${Number(lastPaid.amount || student.monthly_fee || 7000).toLocaleString('en-IN')} recorded successfully.\n\n` : '\n\n') +
+            `You can view and download stamped official receipts anytime.`;
+        }
+        quickActions = [
+          { label: 'View Fee History', link: '#fees' },
+          { label: 'View Receipts', link: '#payments' }
+        ];
+      } else {
+        const stats = (window.MockData && MockData.stats) ? MockData.stats : { feesCollected: 1694000, hostelExpenses: 485000, netIncome: 1209000, pendingDues: 84000 };
+        const feeCycles = (window.MockData && MockData.feeCycles) ? MockData.feeCycles : [];
+        const unpaid = feeCycles.filter(c => c.status !== 'paid');
+
+        answer = `💰 **Hostel Financial & Fee Collection Summary:**\n\n` +
+          `• **Total Fees Collected:** **₹${Number(stats.feesCollected || 1694000).toLocaleString('en-IN')}**\n` +
+          `• **Operational Expenses:** **₹${Number(stats.hostelExpenses || 485000).toLocaleString('en-IN')}**\n` +
+          `• **Net Operational Income:** **₹${Number(stats.netIncome || 1209000).toLocaleString('en-IN')}**\n` +
+          `• **Outstanding Pending Dues:** **₹${Number(stats.pendingDues || 84000).toLocaleString('en-IN')}** (${unpaid.length} pending cycle(s))\n\n` +
+          (unpaid.length > 0
+            ? `Top residents with pending fees:\n` + unpaid.slice(0, 4).map(c => `• ${c.student_name || 'Resident'} (Room ${c.room_number || '-'}): ₹${Number(c.amount || 7000).toLocaleString('en-IN')} (Due: ${c.dueDateDisplay || c.due_date || 'Overdue'})`).join('\n')
+            : `All active billing cycles are paid in full.`);
+        quickActions = [
+          { label: 'Fee Due Manager', link: '#fees' },
+          { label: 'Payments Ledger', link: '#payments' },
+          { label: 'Expenses Manager', link: '#expenses' }
+        ];
+      }
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 14. Financials / Income / Profit (Explicit Admin trigger)
+    if (/\b(financial|financials|revenue|profit|income|expense|expenses|audit|accounts)\b/i.test(q)) {
+      category = 'financials';
+      const stats = (window.MockData && MockData.stats) ? MockData.stats : { feesCollected: 1694000, hostelExpenses: 485000, netIncome: 1209000, pendingDues: 84000 };
+      answer = `📊 **Hostel Financial Ledger:**\n\n` +
+        `• **Gross Fee Revenue:** **₹${Number(stats.feesCollected || 1694000).toLocaleString('en-IN')}**\n` +
+        `• **Hostel Expenses:** **₹${Number(stats.hostelExpenses || 485000).toLocaleString('en-IN')}** (Mess groceries, electricity, maintenance & staff salaries)\n` +
+        `• **Net Operating Profit:** **₹${Number(stats.netIncome || 1209000).toLocaleString('en-IN')}**\n` +
+        `• **Pending Uncollected Dues:** **₹${Number(stats.pendingDues || 84000).toLocaleString('en-IN')}**`;
+      quickActions = [
+        { label: 'View Payments Ledger', link: '#payments' },
+        { label: 'Manage Expenses', link: '#expenses' }
+      ];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 15. Student Roster / Admissions (Admin)
+    if (/\b(students|student|resident|residents|admissions|how many students|enrolled|vignan)\b/i.test(q)) {
+      category = 'students';
+      const studentsList = (window.MockData && MockData.students) ? MockData.students : [];
+      answer = `👥 **Student Resident Directory:**\n\n` +
+        `• **Total Active Residents:** **${studentsList.length} Students** enrolled\n` +
+        `• **Affiliated Institution:** Vignan's Foundation for Science, Technology & Research (Deemed to be University)\n` +
+        `• **Programs:** B.Tech (CSE, ECE, Mech, Civil, Biotech, IT), M.Tech, MCA & MBA\n` +
+        `• Every student has an allocated bed and joining-date anchored fee billing cycle.`;
+      quickActions = [
+        { label: 'View Student Directory', link: '#students' },
+        { label: 'Admit New Resident', link: '#students' }
+      ];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 16. Smart Fallback for any other query
+    category = 'general';
+    if (isStudent) {
+      answer = `I am your **SRI RAM PG AI Hostel Assistant**! Here is what I can assist you with right now:\n\n` +
+        `• 💳 **Fee Information:** Ask *"When is my next fee due?"* or *"Show my receipts"*\n` +
+        `• 🍽️ **Mess & Food:** Ask *"What is today's menu?"* or *"What are meal timings?"*\n` +
+        `• 🏠 **Room & Living:** Ask *"What is my room number?"* or *"Who are my roommates?"*\n` +
+        `• 🛠️ **Maintenance:** Ask *"Wi-Fi problem"*, *"Tap leaking"*, or *"How to raise a complaint"*\n` +
+        `• 🎫 **Gate Pass & Rules:** Ask *"How to apply for leave?"* or *"What is the curfew time?"*\n` +
+        `• 📞 **Warden Contact:** Ask *"What is the warden phone number?"*`;
+      quickActions = [
+        { label: 'Next Fee Due', link: '#fees' },
+        { label: "Today's Menu", link: '#mess' },
+        { label: 'My Room', link: '#hostel-structure' },
+        { label: 'Submit Complaint', link: '#complaints' }
+      ];
+    } else {
+      answer = `Hello Warden! I am your **Hostel Management AI Assistant**.\n\n` +
+        `You can ask me questions such as:\n` +
+        `• *"What is the current bed occupancy rate?"*\n` +
+        `• *"Give me a summary of hostel financials"*\n` +
+        `• *"Who has pending fee dues?"*\n` +
+        `• *"What complaints need attention?"*\n` +
+        `• *"How many students are currently residing?"*`;
+      quickActions = [
+        { label: 'Room Matrix', link: '#hostel-structure' },
+        { label: 'Fee Dues', link: '#fees' },
+        { label: 'Complaints', link: '#complaints' },
+        { label: 'Payments', link: '#payments' }
+      ];
+    }
+
+    return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
   }
 };
 

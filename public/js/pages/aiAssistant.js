@@ -11,15 +11,18 @@ const AiAssistantModal = {
 
     const suggestedPrompts = isStudent ? [
       'When is my next fee due?',
-      'What is today\'s menu?',
-      'What is the status of my complaints?',
+      "What is today's menu?",
       'What is my room and bed number?',
-      'What are the hostel curfew hours?'
+      'Who are my roommates?',
+      'What are the curfew hours?',
+      'What is the warden phone number?',
+      'Wi-Fi is not working'
     ] : [
-      'What complaints need attention?',
       'What is the current bed occupancy rate?',
       'Give me a summary of hostel financials',
-      'How much fee is pending this month?'
+      'Who has pending fee dues?',
+      'What complaints need attention?',
+      'How many students are enrolled?'
     ];
 
     const content = `
@@ -107,17 +110,29 @@ const AiAssistantModal = {
       // Loading bubble
       const loadingId = this.appendLoading();
 
-      const res = await API.post('/ai-assistant/query', { question: query });
+      let res = null;
+      try {
+        res = await API.post('/ai-assistant/query', { question: query });
+      } catch (postErr) {
+        console.warn('[AI Assistant API post error, using local engine]:', postErr);
+      }
 
       this.removeLoading(loadingId);
 
-      if (res.success && res.data) {
-        this.appendMessage('assistant', res.data.answer, res.data.quickActions);
+      if (res && res.success && res.data && res.data.answer) {
+        this.appendMessage('assistant', res.data.answer, res.data.quickActions || []);
+      } else if (typeof API !== 'undefined' && typeof API.generateAiResponse === 'function') {
+        const localAns = API.generateAiResponse(query, API.getUser(), API.getStudent());
+        this.appendMessage('assistant', localAns.answer, localAns.quickActions || []);
       } else {
-        this.appendMessage('assistant', 'Sorry, I could not process your query at this time.');
+        this.appendMessage('assistant', 'I am your Sri Ram PG AI Assistant. You can ask me questions about fees, room allocations, mess food, or complaints.');
       }
     } catch (err) {
-      this.appendMessage('assistant', 'Error connecting to AI service: ' + err.message);
+      console.error('AI assistant runtime error:', err);
+      const fallback = (typeof API !== 'undefined' && typeof API.generateAiResponse === 'function')
+        ? API.generateAiResponse(query, API.getUser(), API.getStudent())
+        : { answer: 'I am here to help! Ask me about your fees, room and bed allocation, today\'s mess menu, or complaints.', quickActions: [] };
+      this.appendMessage('assistant', fallback.answer, fallback.quickActions || []);
     } finally {
       if (sendBtn) sendBtn.disabled = false;
       Utils.renderIcons();
