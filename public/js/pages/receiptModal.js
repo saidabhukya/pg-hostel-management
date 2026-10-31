@@ -147,17 +147,33 @@ const ReceiptModal = {
             </div>
           </div>
 
-          <!-- Signature & Stamp Section -->
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:2rem;padding-top:1rem;border-top:1px solid #e2e8f0;font-size:0.75rem;color:#64748b;">
-            <div>
-              <p>1. Computer-generated official receipt; physically verified by Accounts.</p>
-              <p>2. Keep this receipt safely for semester end residency clearance.</p>
-              <p style="margin-top:4px;">Received by: <strong>${p.recorded_by_name || 'Accounts Desk'}</strong></p>
+          <!-- Signature & Official Green PAID Stamp Section -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2rem;padding-top:1.25rem;border-top:1px solid #e2e8f0;font-size:0.75rem;color:#64748b;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:180px;">
+              <p style="margin:0 0 3px 0;">1. Computer-generated official digital receipt; verified by Accounts.</p>
+              <p style="margin:0 0 3px 0;">2. Keep this receipt safely for semester-end residency clearance.</p>
+              <p style="margin:4px 0 0 0;">Received by: <strong style="color:#0f172a;">${p.recorded_by_name || 'Accounts Desk'}</strong></p>
             </div>
-            <div style="text-align:center;">
-              <div style="border-bottom:1px solid #0f172a;width:160px;margin-bottom:0.25rem;"></div>
-              <strong style="color:#0f172a;">Chief Hostel Warden</strong><br/>
-              Authorized Signature & Seal
+
+            <!-- Green Official PAID Stamp -->
+            <div style="display:flex;align-items:center;justify-content:center;transform:rotate(-7deg);margin:0.25rem 0.5rem;">
+              <div style="border:2.5px solid #16a34a;border-radius:10px;padding:6px 14px;background:#f0fdf4;box-shadow:0 0 0 2px rgba(22,163,74,0.2) inset;text-align:center;min-width:130px;">
+                <div style="font-size:0.6rem;font-weight:800;letter-spacing:1px;color:#15803d;text-transform:uppercase;">SRI RAM PG HOSTEL</div>
+                <div style="font-size:1.35rem;font-weight:900;letter-spacing:3px;color:#16a34a;line-height:1.15;margin:1px 0;">PAID</div>
+                <div style="font-size:0.58rem;font-weight:700;letter-spacing:0.8px;color:#15803d;border-top:1px dashed #86efac;padding-top:2px;">OFFICIAL ACCOUNTS SEAL</div>
+              </div>
+            </div>
+
+            <!-- Authorized Signature of Saida -->
+            <div style="text-align:center;min-width:170px;">
+              <div style="height:52px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:3px;">
+                <img src="${(typeof window !== 'undefined' && window.WARDEN_SIGNATURE_DATA) ? window.WARDEN_SIGNATURE_DATA : './assets/images/signature.png'}" 
+                     alt="Chief Warden Signature" 
+                     style="max-height:50px;max-width:145px;object-fit:contain;display:block;" />
+              </div>
+              <div style="border-bottom:1.5px solid #0f172a;width:160px;margin:0 auto 0.25rem auto;"></div>
+              <strong style="color:#0f172a;font-size:0.8rem;">Chief Hostel Warden</strong><br/>
+              <span style="color:#64748b;font-size:0.7rem;">Authorized Signature & Seal</span>
             </div>
           </div>
         </div>
@@ -334,15 +350,62 @@ const ReceiptModal = {
     doc.setFontSize(9);
     doc.text(`Notice: Next Billing Cycle Due on ${p.nextDueDateDisplay || '15-11-2026'}. Monthly fee: ₹${Number(p.amount || 7000).toLocaleString('en-IN')}.`, 20, finalY + 9);
 
-    // Signatures
+    // Official Green PAID Stamp (Vector & Text)
+    const stampX = 22;
+    const stampY = finalY + 22;
+    const stampW = 56;
+    const stampH = 24;
+
+    // Green outer rounded border with pale green fill
+    doc.setDrawColor(22, 163, 74); // #16a34a
+    doc.setLineWidth(1.2);
+    doc.setFillColor(240, 253, 244); // #f0fdf4
+    doc.roundedRect(stampX, stampY, stampW, stampH, 2.5, 2.5, 'FD');
+
+    // Green inner border
+    doc.setLineWidth(0.35);
+    doc.roundedRect(stampX + 1.2, stampY + 1.2, stampW - 2.4, stampH - 2.4, 1.8, 1.8, 'D');
+
+    // Stamp text
+    doc.setTextColor(21, 128, 61); // #15803d
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('SRI RAM PG HOSTEL', stampX + (stampW / 2), stampY + 5.5, { align: 'center' });
+
+    doc.setTextColor(22, 163, 74); // vivid green #16a34a
+    doc.setFontSize(13);
+    doc.text('PAID', stampX + (stampW / 2), stampY + 13.5, { align: 'center' });
+
+    // Inner dashed divider
+    doc.setDrawColor(134, 239, 172);
+    doc.setLineWidth(0.3);
+    doc.line(stampX + 5, stampY + 16, stampX + stampW - 5, stampY + 16);
+
+    doc.setTextColor(21, 128, 61);
+    doc.setFontSize(5.8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OFFICIAL ACCOUNTS SEAL', stampX + (stampW / 2), stampY + 20.5, { align: 'center' });
+
+    // Authorized Chief Warden Signature (Saida)
+    const sigData = (typeof window !== 'undefined' && window.WARDEN_SIGNATURE_DATA) ? window.WARDEN_SIGNATURE_DATA : null;
+    if (sigData) {
+      try {
+        doc.addImage(sigData, 'PNG', 138, finalY + 18, 44, 22);
+      } catch (err) {
+        console.warn('PDF signature render fallback:', err);
+      }
+    }
+
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text('Authorized Hostel Accounts Seal', 140, finalY + 45);
-    doc.line(135, finalY + 42, 185, finalY + 42);
-
-    doc.text('Hostel Chief Warden', 20, finalY + 45);
-    doc.line(18, finalY + 42, 60, finalY + 42);
+    doc.line(132, finalY + 42, 185, finalY + 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Chief Hostel Warden', 158, finalY + 46, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Authorized Signature & Seal', 158, finalY + 50, { align: 'center' });
 
     return doc;
   },
