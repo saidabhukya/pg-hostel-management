@@ -239,27 +239,167 @@ router.post('/query', authenticateToken, async (req, res) => {
           `There are currently **${pendingCount?.total || 0} Pending** and **${inProgressCount?.total || 0} In Progress** maintenance complaints awaiting resolution.`;
         quickActions = [{ label: 'Manage Complaints', link: '#complaints' }];
       }
-      // 4. Students Count
-      else if (/\b(student|students|resident|residents|enrolled)\b/i.test(q)) {
-        category = 'students';
-        const countRow = await db.getOne("SELECT COUNT(*) AS total FROM students WHERE status = 'active'");
-        answer = `👥 **Student Resident Directory:**\n\n` +
-          `• Currently **${countRow?.total || 0} active students** residing in the hostel.\n` +
-          `• All residents have joining-date anchored billing cycles.`;
-        quickActions = [{ label: 'View Student Directory', link: '#students' }];
+      // 4. Student Search by Name, Registration Number, or Room Allocation
+      const explicitRoomMatch = q.match(/\b(?:room|in room|staying in)\s*#?\s*([1-5][0-1][0-9])\b/i) ||
+        (q.trim().match(/^([1-5][0-1][0-9])$/) ? [null, q.trim()] : null);
+
+      if (explicitRoomMatch && explicitRoomMatch[1]) {
+        const targetRoom = explicitRoomMatch[1];
+        const roomStudents = await db.query(
+          "SELECT * FROM students WHERE room_number = ? AND status = 'active'",
+          [targetRoom]
+        );
+        const flr = targetRoom.charAt(0);
+        category = 'room_search';
+        answer = `🏢 **Room ${targetRoom} Resident & Bed Allocation (Floor ${flr}):**\n\n` +
+          `• **Hostel Unit:** Room ${targetRoom} · 5-Bed Sharing · Attached Washroom\n` +
+          `• **Occupancy Status:** **${roomStudents.length} / 5 Beds Occupied** (${5 - roomStudents.length} Available)\n\n` +
+          (roomStudents.length > 0
+            ? `👥 **Current Residents in Room ${targetRoom}:**\n\n` + roomStudents.map((s, idx) => 
+                `${idx + 1}. **${s.name}** (Reg: \`${s.reg_number || 'N/A'}\`)\n` +
+                `   • **Bed:** ${s.bed_label || 'Bed'} | **Course:** ${s.course || 'B.Tech'} (${s.year || '1st Year'})\n` +
+                `   • **Contact:** 📞 ${s.phone || '-'} | **Parent:** ${s.parent_name || '-'} (+91 ${s.parent_phone || '-'})
+` +
+                `   • **Fee Status:** ${s.fee_status === 'paid' ? '🟢 Paid & Cleared' : '🔴 Pending Due'}`
+              ).join('\n\n')
+            : `• *No students currently assigned to Room ${targetRoom}. All 5 beds are vacant and ready for admission.*`);
+        quickActions = [
+          { label: 'View Room Matrix', link: '#hostel-structure' },
+          { label: 'Admit Student', link: '#students' }
+        ];
       }
       else {
-        answer = `Hello Warden! I am your **AI Hostel Management Assistant** 🏢.\n\n` +
-          `You can ask me questions such as:\n` +
-          `• *"What is the current bed occupancy rate?"*\n` +
-          `• *"What is the financial breakdown of income vs expenses?"*\n` +
-          `• *"How much fee is pending this month?"*\n` +
-          `• *"What complaints require immediate attention?"*`;
-        quickActions = [
-          { label: 'Room Matrix', link: '#hostel-structure' },
-          { label: 'Fee Dues', link: '#fees' },
-          { label: 'Complaints', link: '#complaints' }
-        ];
+        // Check student lookup in db
+        const qNorm = q.toLowerCase();
+        const cleanAlphaNumQ = qNorm.replace(/[^a-z0-9]/g, '');
+        const hasSearchWord = /\b(search|find|lookup|who is|details of|info of|record of|profile of|reg|registration|student|resident)\b/i.test(qNorm);
+
+        const nameQuery = qNorm
+          .replace(/\b(search|find|lookup|who is|show me|details of|info of|give me|check|get|profile of|record of|where is|tell me about)\b/gi, ' ')
+          .replace(/\b(student|resident|details|info|record|profile|registration number|reg no|reg number|reg|admission|hostel|room)\b/gi, ' ')
+          .replace(/[^a-z0-9\s]/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const isCommonHostelWord = /^(wifi|wi-fi|internet|laundry|washing|geyser|gym|food|menu|mess|breakfast|lunch|dinner|curfew|timing|rule|rules|warden|saida|fee|fees|due|dues|rent|complaint|complaints|repair|maintenance|leave|gate pass|contact|helpline|occupancy|financials|matrix)$/i.test(nameQuery);
+
+        let matched = [];
+        if (cleanAlphaNumQ.length >= 3) {
+          matched = await db.query(
+            "SELECT * FROM students WHERE REPLACE(REPLACE(LOWER(reg_number), '-', ''), ' ', '') LIKE ? AND status = 'active'",
+            [`%${cleanAlphaNumQ}%`]
+          );
+        }
+        if (matched.length === 0 && nameQuery.length >= 2 && !isCommonHostelWord) {
+          matched = await db.query(
+            "SELECT * FROM students WHERE LOWER(name) LIKE ? AND status = 'active'",
+            [`%${nameQuery}%`]
+          );
+        }
+
+        if (matched.length === 1) {
+          category = 'student_search';
+          const s = matched[0];
+          const cycles = await db.query(
+            'SELECT * FROM fee_cycles WHERE student_id = ? ORDER BY cycle_number DESC',
+            [s.id]
+          );
+          const payments = await db.query(
+            'SELECT * FROM payments WHERE student_id = ? ORDER BY id DESC',
+            [s.id]
+          );
+          const pending = cycles.find(c => c.status !== 'paid');
+          const lastPayment = payments.length > 0 ? payments[0] : null;
+
+          let feeText = '';
+          if (pending) {
+            feeText = `• **Fee Status:** 🔴 **PENDING DUE: ₹${Number(pending.amount - (pending.paid_amount || 0)).toLocaleString('en-IN')}** (Due: ${formatDateDisplay(pending.due_date)})\n` +
+              `• **Billing Cycle:** ${formatDateDisplay(pending.start_date)} to ${formatDateDisplay(pending.end_date)}`;
+          } else if (s.fee_status === 'paid' || lastPayment) {
+            feeText = `• **Fee Status:** 🟢 **PAID & CLEARED**\n` +
+              (lastPayment ? `• **Latest Receipt:** \`${lastPayment.receipt_number || 'REC-PAID'}\` — ₹${Number(lastPayment.amount).toLocaleString('en-IN')} via ${lastPayment.payment_method || 'UPI'} on ${formatDateDisplay(lastPayment.payment_date)}\n` : '') +
+              `• **Next Billing Due:** 15-11-2026`;
+          } else {
+            feeText = `• **Fee Status:** ⚠️ Pending verification`;
+          }
+
+          answer = `👤 **Student Record Found — ${s.name}:**\n\n` +
+            `• **Full Name:** **${s.name}**\n` +
+            `• **Registration No:** \`${s.reg_number || 'N/A'}\`\n` +
+            `• **Institution:** ${s.college || 'Vignan University, Vadlamudi'}\n` +
+            `• **Branch & Year:** ${s.course || 'B.Tech'} (${s.year || '1st Year'})\n` +
+            `• **Hostel Allocation:** **Room ${s.room_number || '-'} · ${s.bed_label || '-'}** (Floor ${s.floor_number || 1})\n` +
+            `• **Student WhatsApp:** 📞 **${s.phone || '-'}**\n` +
+            `• **Email:** ✉️ ${s.email || '-'}\n` +
+            `• **Date of Admission:** 📅 ${formatDateDisplay(s.joining_date)}\n` +
+            `• **Monthly Fee:** ₹${Number(s.monthly_fee || 7000).toLocaleString('en-IN')}\n\n` +
+            `💳 **Fee & Payment History:**\n${feeText}\n\n` +
+            `👨‍👩‍👦 **Emergency & Parent Details:**\n` +
+            `• **Parent / Guardian:** **${s.parent_name || 'RAJU'}**\n` +
+            `• **Parent Phone:** 📞 **+91 ${s.parent_phone || '9390922890'}**\n` +
+            `• **Home Address:** 🏠 ${s.parent_address || s.address || 'Guntur, Andhra Pradesh'}`;
+
+          quickActions = [
+            { label: 'View Profile', link: '#students' },
+            { label: `Room ${s.room_number}`, link: '#hostel-structure' },
+            { label: 'Fee Records', link: '#fees' }
+          ];
+          const cleanParentPh = String(s.parent_phone || '').replace(/[^0-9]/g, '').slice(-10);
+          if (cleanParentPh.length === 10) {
+            quickActions.push({
+              label: 'WhatsApp Parent',
+              link: `https://wa.me/91${cleanParentPh}?text=${encodeURIComponent(`Hello ${s.parent_name || 'Parent'}, regarding your ward ${s.name} (Room ${s.room_number}, Sri Ram PG Hostel Vadlamudi).`)}`
+            });
+          }
+        } else if (matched.length > 1) {
+          category = 'student_search';
+          answer = `🔍 **Found ${matched.length} Matching Students:**\n\n` +
+            matched.map((s, idx) => 
+              `${idx + 1}. **${s.name}** (Reg: \`${s.reg_number || 'N/A'}\`)
+` +
+              `   • Room **${s.room_number}** (${s.bed_label}) • ${s.course || 'B.Tech'}
+` +
+              `   • Status: ${s.fee_status === 'paid' ? '🟢 Paid' : '🔴 Due'} • Parent: ${s.parent_name || '-'} (+91 ${s.parent_phone || '-'})
+`
+            ).join('\n') +
+            `\n💡 *Tip: Type the student's exact registration number to view complete records, parent details, and payment receipts.*`;
+          quickActions = [
+            { label: 'Open Student Directory', link: '#students' },
+            { label: 'Bed Matrix', link: '#hostel-structure' }
+          ];
+        } else if (hasSearchWord && (cleanAlphaNumQ.length >= 4 || qNorm.includes('student'))) {
+          category = 'student_search';
+          answer = `🔍 **Student Search:** No student found matching *"**${question.trim()}**"*.\n\n` +
+            `• Please check the spelling or enter the exact **Registration Number** (e.g. \`23030-EE-067\` or \`2024ST001\`).\n` +
+            `• You can also search by **Room Number** (e.g. *"Room 407"* or *"Room 205"*).\n` +
+            `• To browse the complete list of residents, open the **Students Directory**.`;
+          quickActions = [
+            { label: 'Search All Students', link: '#students' },
+            { label: 'View Bed Matrix', link: '#hostel-structure' }
+          ];
+        } else if (/\b(student|students|resident|residents|enrolled)\b/i.test(q)) {
+          category = 'students';
+          const countRow = await db.getOne("SELECT COUNT(*) AS total FROM students WHERE status = 'active'");
+          answer = `👥 **Student Resident Directory:**\n\n` +
+            `• Currently **${countRow?.total || 0} active students** residing in the hostel.\n` +
+            `• All residents have joining-date anchored billing cycles.`;
+          quickActions = [{ label: 'View Student Directory', link: '#students' }];
+        } else {
+          answer = `Hello Warden! I am your **AI Hostel Management Assistant** 🏢.\n\n` +
+            `You can ask me questions such as:\n` +
+            `• *"Search Aravind"* or *"Registration 23030-EE-067"*\n` +
+            `• *"Who is in room 407?"*\n` +
+            `• *"What is the current bed occupancy rate?"*\n` +
+            `• *"What is the financial breakdown of income vs expenses?"*\n` +
+            `• *"How much fee is pending this month?"*\n` +
+            `• *"What complaints require immediate attention?"*`;
+          quickActions = [
+            { label: 'Student Search', link: '#students' },
+            { label: 'Room Matrix', link: '#hostel-structure' },
+            { label: 'Fee Dues', link: '#fees' },
+            { label: 'Complaints', link: '#complaints' }
+          ];
+        }
       }
     }
 

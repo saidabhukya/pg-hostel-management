@@ -740,12 +740,14 @@ const API = {
       } else {
         answer = `Hello **Warden ${user?.name || 'Saida'}**! I am your **SRI RAM PG AI Management Assistant** 🏢.\n\n` +
           `I provide instant real-time intelligence for all hostel operations:\n` +
+          `• 🔍 **Student Search:** *"Search Aravind"*, *"Reg 23030-EE-067"*, or *"Who is in room 407?"*\n` +
           `• 🛏️ **Occupancy:** *"What is the current bed occupancy rate?"* or *"How many beds are vacant?"*\n` +
           `• 💰 **Financials:** *"Give me a summary of hostel financials"* or *"How much fee is collected?"*\n` +
           `• ⚠️ **Fee Defaulters:** *"Who has pending fee dues?"*\n` +
           `• 🛠️ **Maintenance:** *"What complaints need attention?"*\n` +
           `• 👥 **Residents:** *"How many students are enrolled?"*`;
         quickActions = [
+          { label: 'Student Search', link: '#students' },
           { label: 'Bed Matrix', link: '#hostel-structure' },
           { label: 'Fee Dues', link: '#fees' },
           { label: 'Complaints', link: '#complaints' },
@@ -753,6 +755,221 @@ const API = {
         ];
       }
       return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 1.5 Student Search by Name, Registration Number, or Room Allocation
+    const allStudentsList = (window.MockData && MockData.students && MockData.students.length > 0)
+      ? MockData.students
+      : [];
+
+    // Check if query is an explicit room inquiry (e.g. "room 407", "who is in room 407", "room 205 students")
+    const explicitRoomMatch = q.match(/\b(?:room|in room|staying in)\s*#?\s*([1-5][0-1][0-9])\b/i) ||
+      (q.trim().match(/^([1-5][0-1][0-9])$/) ? [null, q.trim()] : null);
+
+    if (explicitRoomMatch && explicitRoomMatch[1]) {
+      const targetRoom = explicitRoomMatch[1];
+      const roomResidents = allStudentsList.filter(s => String(s.room_number) === String(targetRoom));
+      const flr = targetRoom.charAt(0);
+      category = 'room_search';
+      answer = `🏢 **Room ${targetRoom} Resident & Bed Allocation (Floor ${flr}):**\n\n` +
+        `• **Hostel Unit:** Room ${targetRoom} · 5-Bed Sharing · Attached Washroom\n` +
+        `• **Occupancy Status:** **${roomResidents.length} / 5 Beds Occupied** (${5 - roomResidents.length} Available)\n\n` +
+        (roomResidents.length > 0
+          ? `👥 **Current Residents in Room ${targetRoom}:**\n\n` + roomResidents.map((s, idx) => 
+              `${idx + 1}. **${s.name}** (Reg: \`${s.reg_number || 'N/A'}\`)\n` +
+              `   • **Bed:** ${s.bed_label || 'Bed'} | **Course:** ${s.course || 'B.Tech'} (${s.year || '1st Year'})\n` +
+              `   • **Contact:** 📞 ${s.phone || '-'} | **Parent:** ${s.parent_name || '-'} (+91 ${s.parent_phone || '-'})
+` +
+              `   • **Fee Status:** ${s.fee_status === 'paid' ? '🟢 Paid & Cleared' : '🔴 Pending Due'}`
+            ).join('\n\n')
+          : `• *No students currently assigned to Room ${targetRoom}. All 5 beds are vacant and ready for admission.*`);
+
+      quickActions = [
+        { label: 'View Room Matrix', link: '#hostel-structure' },
+        { label: 'Admit Student', link: '#students' }
+      ];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // Check if query has search intent, registration number, or student name
+    const qNorm = q.toLowerCase();
+    const cleanAlphaNumQ = qNorm.replace(/[^a-z0-9]/g, '');
+    const hasSearchWord = /\b(search|find|lookup|who is|details of|info of|record of|profile of|reg|registration|student|resident)\b/i.test(qNorm);
+
+    // Candidate match search
+    let matchedStudents = [];
+
+    // A. Check Registration Number Match (Exact or substring)
+    if (cleanAlphaNumQ.length >= 3) {
+      matchedStudents = allStudentsList.filter(s => {
+        if (!s.reg_number) return false;
+        const sRegNorm = s.reg_number.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return sRegNorm && (cleanAlphaNumQ.includes(sRegNorm) || (sRegNorm.length >= 5 && sRegNorm.includes(cleanAlphaNumQ)));
+      });
+    }
+
+    // B. If no reg number match, check by Student Name
+    if (matchedStudents.length === 0) {
+      // Strip common query filler words
+      const nameQuery = qNorm
+        .replace(/\b(search|find|lookup|who is|show me|details of|info of|give me|check|get|profile of|record of|where is|tell me about)\b/gi, ' ')
+        .replace(/\b(student|resident|details|info|record|profile|registration number|reg no|reg number|reg|admission|hostel|room)\b/gi, ' ')
+        .replace(/[^a-z0-9\s]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Only search by name if nameQuery is not empty and is not a common hostel command keyword
+      const isCommonHostelWord = /^(wifi|wi-fi|internet|laundry|washing|geyser|gym|food|menu|mess|breakfast|lunch|dinner|curfew|timing|rule|rules|warden|saida|fee|fees|due|dues|rent|complaint|complaints|repair|maintenance|leave|gate pass|contact|helpline|occupancy|financials|matrix)$/i.test(nameQuery);
+
+      if (nameQuery && nameQuery.length >= 2 && !isCommonHostelWord) {
+        // 1. Exact full name match
+        matchedStudents = allStudentsList.filter(s => s.name && s.name.toLowerCase().trim() === nameQuery);
+
+        // 2. Starts with or first name exact match or token matching
+        if (matchedStudents.length === 0) {
+          matchedStudents = allStudentsList.filter(s => {
+            if (!s.name) return false;
+            const sLower = s.name.toLowerCase().trim();
+            const sTokens = sLower.split(/\s+/);
+            const qTokens = nameQuery.split(/\s+/);
+            if (sTokens[0] === qTokens[0]) return true;
+            return qTokens.every(t => sTokens.some(st => st === t || st.startsWith(t)));
+          });
+        }
+      }
+    }
+
+    // If matches found OR if explicit search was requested for student/reg number
+    if (matchedStudents.length > 0 || (hasSearchWord && (cleanAlphaNumQ.length >= 4 || qNorm.includes('student')))) {
+      category = 'student_search';
+
+      if (matchedStudents.length === 1) {
+        const s = matchedStudents[0];
+        const studentCycles = (window.MockData && MockData.feeCycles)
+          ? MockData.feeCycles.filter(c => String(c.student_id) === String(s.id) || (s.reg_number && c.reg_number === s.reg_number))
+          : [];
+        const studentPayments = (window.MockData && MockData.payments)
+          ? MockData.payments.filter(p => String(p.student_id) === String(s.id) || (s.reg_number && p.reg_number === s.reg_number))
+          : [];
+        const studentComplaints = (window.MockData && MockData.complaints)
+          ? MockData.complaints.filter(c => String(c.student_id) === String(s.id) || (c.student_name && c.student_name.toLowerCase() === s.name.toLowerCase()))
+          : [];
+
+        const pendingCycle = studentCycles.find(c => c.status !== 'paid');
+        const latestPayment = studentPayments.length > 0 ? studentPayments[studentPayments.length - 1] : null;
+
+        let feeSection = '';
+        if (pendingCycle) {
+          feeSection = `• **Fee Status:** 🔴 **PENDING DUE: ₹${Number(pendingCycle.amount - (pendingCycle.paid_amount || 0)).toLocaleString('en-IN')}** (Due: ${pendingCycle.due_date || '-'})
+` +
+            `• **Billing Cycle:** ${pendingCycle.start_date} to ${pendingCycle.end_date}`;
+        } else if (s.fee_status === 'paid' || latestPayment) {
+          feeSection = `• **Fee Status:** 🟢 **PAID & CLEARED**
+` +
+            (latestPayment ? `• **Latest Receipt:** \`${latestPayment.receipt_number || 'REC-PAID'}\` — ₹${Number(latestPayment.amount).toLocaleString('en-IN')} via ${latestPayment.payment_method || 'UPI'} on ${latestPayment.payment_date || s.joining_date}
+` : '') +
+            `• **Next Billing Due:** 15-11-2026`;
+        } else {
+          feeSection = `• **Fee Status:** ⚠️ Pending verification`;
+        }
+
+        let complaintSection = '• **Complaints:** ✅ No pending maintenance complaints.';
+        if (studentComplaints.length > 0) {
+          complaintSection = `• **Complaints (${studentComplaints.length}):**
+` +
+            studentComplaints.map(c => `  - *${c.title}* [Status: **${c.status}**]`).join('
+');
+        }
+
+        answer = `👤 **Student Record Found — ${s.name}:**
+
+` +
+          `• **Full Name:** **${s.name}**
+` +
+          `• **Registration No:** \`${s.reg_number || 'N/A'}\`
+` +
+          `• **Institution:** ${s.college || 'Vignan University, Vadlamudi'}
+` +
+          `• **Branch & Year:** ${s.course || 'B.Tech'} (${s.year || '1st Year'})
+` +
+          `• **Hostel Allocation:** **Room ${s.room_number || '-'} · ${s.bed_label || '-'}** (Floor ${s.floor_number || Math.floor((parseInt(s.room_number) || 100) / 100)})
+` +
+          `• **Student WhatsApp:** 📞 **${s.phone || '-'}**
+` +
+          `• **Email:** ✉️ ${s.email || '-'}
+` +
+          `• **Date of Admission:** 📅 ${s.joining_date || '2026-10-31'}
+` +
+          `• **Monthly Fee:** ₹${Number(s.monthly_fee || 7000).toLocaleString('en-IN')}
+
+` +
+          `💳 **Fee & Payment History:**
+${feeSection}
+
+` +
+          `👨‍👩‍👦 **Emergency & Parent Details:**
+` +
+          `• **Parent / Guardian:** **${s.parent_name || 'RAJU'}**
+` +
+          `• **Parent Phone:** 📞 **+91 ${s.parent_phone || '9390922890'}**
+` +
+          `• **Home Address:** 🏠 ${s.parent_address || s.address || 'Guntur, Andhra Pradesh'}
+
+` +
+          `🛠️ **Maintenance & Room Status:**
+${complaintSection}`;
+
+        quickActions = [
+          { label: 'View Profile', link: '#students' },
+          { label: `Room ${s.room_number}`, link: '#hostel-structure' },
+          { label: 'Fee Records', link: '#fees' }
+        ];
+
+        const cleanParentPh = String(s.parent_phone || '').replace(/[^0-9]/g, '').slice(-10);
+        if (cleanParentPh.length === 10) {
+          quickActions.push({
+            label: 'WhatsApp Parent',
+            link: `https://wa.me/91${cleanParentPh}?text=${encodeURIComponent(`Hello ${s.parent_name || 'Parent'}, regarding your ward ${s.name} (Room ${s.room_number}, Sri Ram PG Hostel Vadlamudi).`)}`
+          });
+        }
+        if (latestPayment || s.fee_status === 'paid') {
+          quickActions.push({ label: 'Receipts', link: '#payments' });
+        }
+
+        return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+      } else if (matchedStudents.length > 1) {
+        answer = `🔍 **Found ${matchedStudents.length} Matching Students:**
+
+` +
+          matchedStudents.map((s, idx) => 
+            `${idx + 1}. **${s.name}** (Reg: \`${s.reg_number || 'N/A'}\`)
+` +
+            `   • Room **${s.room_number}** (${s.bed_label}) • ${s.course || 'B.Tech'}
+` +
+            `   • Status: ${s.fee_status === 'paid' ? '🟢 Paid' : '🔴 Due'} • Parent: ${s.parent_name || '-'} (+91 ${s.parent_phone || '-'})
+`
+          ).join('
+') +
+          `
+💡 *Tip: Type the student's exact registration number (e.g. \`${matchedStudents[0].reg_number}\`) to view complete records, parent details, and payment receipts.*`;
+
+        quickActions = [
+          { label: 'Open Student Directory', link: '#students' },
+          { label: 'Bed Matrix', link: '#hostel-structure' }
+        ];
+        return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+      } else {
+        answer = `🔍 **Student Search:** No student found matching *"**${rawQuery.trim()}**"*.\n\n` +
+          `• Please check the spelling or enter the exact **Registration Number** (e.g. \`23030-EE-067\` or \`2024ST001\`).\n` +
+          `• You can also search by **Room Number** (e.g. *"Room 407"* or *"Room 205"*).\n` +
+          `• To browse the complete list of residents, open the **Students Directory**.`;
+
+        quickActions = [
+          { label: 'Search All Students', link: '#students' },
+          { label: 'View Bed Matrix', link: '#hostel-structure' }
+        ];
+        return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+      }
     }
 
     // 2. Parent / Profile Details

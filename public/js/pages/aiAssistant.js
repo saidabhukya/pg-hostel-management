@@ -18,11 +18,11 @@ const AiAssistantModal = {
       'What is the warden phone number?',
       'Wi-Fi is not working'
     ] : [
-      'What is the current bed occupancy rate?',
-      'Give me a summary of hostel financials',
+      'Search Aravind',
+      'Reg 23030-EE-067',
+      'Who is in room 407?',
       'Who has pending fee dues?',
-      'What complaints need attention?',
-      'How many students are enrolled?'
+      'Bed occupancy rate'
     ];
 
     const content = `
@@ -61,7 +61,7 @@ const AiAssistantModal = {
             type="text" 
             id="ai-user-input" 
             class="form-control" 
-            placeholder="Type your hostel query here (e.g. When is my next fee due?)..." 
+            placeholder="Ask anything (e.g. Search Aravind, Reg 23030-EE-067, Room 407, Fee dues)..." 
             autocomplete="off"
             required 
           />
@@ -166,7 +166,7 @@ const AiAssistantModal = {
           ${quickActions && quickActions.length > 0 ? `
             <div style="display:flex;gap:0.4rem;margin-top:0.75rem;flex-wrap:wrap;">
               ${quickActions.map(a => `
-                <button class="btn btn-sm btn-secondary" style="font-size:0.72rem;padding:0.25rem 0.5rem;" onclick="Modal.close(); App.navigate('${a.link.replace('#', '')}')">
+                <button class="btn btn-sm btn-secondary" style="font-size:0.72rem;padding:0.25rem 0.5rem;" onclick="${a.link.startsWith('http') ? `window.open('${a.link}', '_blank')` : `Modal.close(); App.navigate('${a.link.replace('#', '')}')`}">
                   ${a.label} →
                 </button>
               `).join('')}

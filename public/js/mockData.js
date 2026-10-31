@@ -6,11 +6,11 @@
  * When a student is removed/vacated, their bed automatically and immediately becomes Available.
  */
 (function() {
-  const STORAGE_KEY = 'sri_ram_pg_live_store_v11';
+  const STORAGE_KEY = 'sri_ram_pg_live_store_v12';
 
   // Purge any older demo stores
   try {
-    ['sri_ram_pg_clean_store_v1', 'sri_ram_pg_clean_store_v2', 'sri_ram_pg_clean_store_v3', 'sri_ram_pg_clean_store_v4', 'sri_ram_pg_live_store_v1'].forEach(k => {
+    ['sri_ram_pg_clean_store_v1', 'sri_ram_pg_clean_store_v2', 'sri_ram_pg_clean_store_v3', 'sri_ram_pg_clean_store_v4', 'sri_ram_pg_live_store_v1', 'sri_ram_pg_live_store_v11'].forEach(k => {
       localStorage.removeItem(k);
     });
   } catch (e) {}
@@ -602,15 +602,81 @@
       status: 'pending'
     });
 
+    // 4. Aravind (Room 407, Bed-E) - Paid (Matches Official Receipt REC-202610-0172)
+    targetStore.students.push({
+      id: 4,
+      reg_number: '23030-EE-067',
+      name: 'Aravind',
+      email: 'aravind.23030ee067@vignan.ac.in',
+      phone: '+91 8096871141',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Electrical & Electronics Engineering (EEE)',
+      year: '2nd Year',
+      gender: 'Male',
+      parent_name: 'RAJU',
+      parent_phone: '9390922890',
+      address: 'Opp. Vignan University, Vadlamudi, Guntur',
+      photo_url: './assets/images/default-student.png',
+      joining_date: '2026-10-31',
+      monthly_fee: 7000,
+      fee_status: 'paid',
+      room_number: '407',
+      floor_number: 4,
+      bed_label: 'Bed-E',
+      password: 'student123'
+    });
+    targetStore.feeCycles.push({
+      id: 5,
+      student_id: 4,
+      student_name: 'Aravind',
+      reg_number: '23030-EE-067',
+      room_number: '407',
+      bed_label: 'Bed-E',
+      phone: '+91 8096871141',
+      parent_phone: '9390922890',
+      cycle_number: 1,
+      start_date: '2026-10-31',
+      end_date: '2026-11-29',
+      due_date: '2026-11-15',
+      amount: 7000,
+      paid_amount: 7000,
+      status: 'paid'
+    });
+    targetStore.payments.push({
+      id: 3,
+      student_id: 4,
+      fee_cycle_id: 5,
+      receipt_number: 'REC-202610-0172',
+      amount: 7000,
+      payment_date: '2026-10-31',
+      cycle_start_date: '2026-10-31',
+      cycle_end_date: '2026-11-29',
+      student_name: 'Aravind',
+      reg_number: '23030-EE-067',
+      room_number: '407',
+      bed_label: 'Bed-E',
+      student_phone: '+91 8096871141',
+      phone: '+91 8096871141',
+      parent_phone: '9390922890',
+      parent_name: 'RAJU',
+      college: 'Vignan University, Vadlamudi',
+      course: 'B.Tech Electrical & Electronics Engineering (EEE)',
+      payment_method: 'UPI',
+      transaction_id: '7000',
+      status: 'PAID',
+      notes: 'Monthly Hostel Room Charges'
+    });
+
     const remainingSlots = allBedSlots.filter(s => 
-      !(s.room_number === '205' && (s.bed_label === 'Bed-A' || s.bed_label === 'Bed-B' || s.bed_label === 'Bed-C'))
+      !(s.room_number === '205' && (s.bed_label === 'Bed-A' || s.bed_label === 'Bed-B' || s.bed_label === 'Bed-C')) &&
+      !(s.room_number === '407' && s.bed_label === 'Bed-E')
     );
 
-    let receiptNum = 3;
-    let cycleCounter = 5;
+    let receiptNum = 4;
+    let cycleCounter = 6;
 
     for (let i = 0; i < 180; i++) {
-      const sId = i + 4;
+      const sId = i + 5;
       const bed = remainingSlots[i];
       const fn = FIRST_NAMES[i % FIRST_NAMES.length];
       const ln = LAST_NAMES[(i * 3) % LAST_NAMES.length];
