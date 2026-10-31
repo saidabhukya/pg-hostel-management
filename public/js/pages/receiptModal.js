@@ -47,9 +47,13 @@ const ReceiptModal = {
             </div>
           </div>
           <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem;border:none;box-shadow:0 2px 5px rgba(37,211,102,0.3);padding:0.5rem 0.9rem;border-radius:6px;cursor:pointer;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student', event)">
+            <button class="btn btn-sm" style="background:#25d366;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:0.4rem;border:none;box-shadow:0 2px 5px rgba(37,211,102,0.3);padding:0.5rem 0.9rem;border-radius:6px;cursor:pointer;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'student', event)" title="Share PDF receipt directly to Student WhatsApp">
               <i data-lucide="message-circle" style="width:16px;height:16px;"></i>
               <span>Send PDF to Student WhatsApp</span>
+            </button>
+            <button class="btn btn-sm btn-primary" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 0.9rem;border-radius:6px;cursor:pointer;" onclick="ReceiptModal.downloadPDF()" title="Download Official PDF Receipt">
+              <i data-lucide="download" style="width:15px;height:15px;"></i>
+              <span>Download PDF</span>
             </button>
             ${(p.parent_phone || p.parentPhone) ? `
               <button class="btn btn-sm btn-secondary" style="font-size:0.8rem;padding:0.45rem 0.75rem;" onclick="ReceiptModal.sendWhatsApp(${p.id}, 'parent', event)" title="Send PDF receipt to Parent (+91 ${p.parent_phone || p.parentPhone})">
@@ -503,7 +507,6 @@ Opp. Vignan University, Vadlamudi
         if (btn) btn.disabled = false;
       }, 1500);
     }
-  }
   }
 };
 
