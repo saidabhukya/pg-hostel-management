@@ -21,14 +21,22 @@ const Sidebar = {
         { id: 'expenses', label: 'Hostel Expenses', icon: 'wallet' },
         { id: 'reports', label: 'Reports & Analytics', icon: 'bar-chart-3' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
-        { id: 'leave-requests', label: 'Leave Requests', icon: 'calendar-days' },
+        { id: 'leave-requests', label: 'Leave Requests', icon: 'calendar-days', hasBadge: true, badgeType: 'leave' },
         { id: 'settings', label: 'Hostel Settings', icon: 'settings' }
       ];
 
       navItemsHtml = adminNav.map(item => `
         <a href="#${item.id}" class="nav-item ${currentRoute === item.id ? 'active' : ''}" onclick="Sidebar.handleNavClick('${item.id}', event)">
           <span class="nav-item-icon"><i data-lucide="${item.icon}"></i></span>
-          <span>${item.label}</span>
+          <span style="display:flex;align-items:center;justify-content:space-between;flex:1;">
+            <span>${item.label}</span>
+            ${item.hasBadge ? `
+              <span style="display:inline-flex;align-items:center;gap:4px;">
+                <span id="sidebar-leave-badge" style="display:none;background:#ef4444;color:#fff;font-size:0.68rem;font-weight:700;padding:1px 6px;border-radius:10px;line-height:1.2;"></span>
+                <span id="sidebar-leave-dot" style="display:none;width:8px;height:8px;background:#ef4444;border-radius:50%;"></span>
+              </span>
+            ` : ''}
+          </span>
         </a>
       `).join('');
     } else {
@@ -36,6 +44,7 @@ const Sidebar = {
       const studentNav = [
         { id: 'student-dashboard', label: 'My Dashboard', icon: 'home' },
         { id: 'student-profile', label: 'My Profile & Bed', icon: 'user' },
+        { id: 'student-notifications', label: 'Notifications', icon: 'bell', hasBadge: true, badgeType: 'student-notif' },
         { id: 'student-fees', label: 'Fee Dues & Cycles', icon: 'credit-card' },
         { id: 'student-payments', label: 'Payment Receipts', icon: 'receipt' },
         { id: 'complaints', label: 'Submit Complaint', icon: 'alert-triangle' },
@@ -48,7 +57,15 @@ const Sidebar = {
       navItemsHtml = studentNav.map(item => `
         <a href="#${item.id}" class="nav-item ${currentRoute === item.id ? 'active' : ''}" onclick="Sidebar.handleNavClick('${item.id}', event)">
           <span class="nav-item-icon"><i data-lucide="${item.icon}"></i></span>
-          <span>${item.label}</span>
+          <span style="display:flex;align-items:center;justify-content:space-between;flex:1;">
+            <span>${item.label}</span>
+            ${item.hasBadge ? `
+              <span style="display:inline-flex;align-items:center;gap:4px;">
+                <span id="sidebar-stu-notif-badge" style="display:none;background:#ef4444;color:#fff;font-size:0.68rem;font-weight:700;padding:1px 6px;border-radius:10px;line-height:1.2;"></span>
+                <span id="sidebar-stu-notif-dot" style="display:none;width:8px;height:8px;background:#ef4444;border-radius:50%;"></span>
+              </span>
+            ` : ''}
+          </span>
         </a>
       `).join('');
     }

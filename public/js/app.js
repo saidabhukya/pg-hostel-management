@@ -211,6 +211,12 @@ const App = {
           await LeaveRequestsPage.afterRender();
           break;
 
+        case 'notifications':
+        case 'student-notifications':
+          pageContainer.innerHTML = await NotificationsPage.render();
+          await NotificationsPage.afterRender();
+          break;
+
         case 'admin-profile':
         case 'profile':
         case 'settings':

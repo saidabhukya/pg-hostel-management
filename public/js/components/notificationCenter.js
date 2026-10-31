@@ -10,6 +10,7 @@
 const NotificationCenter = {
   notifications: [],
   unreadCount: 0,
+  leaveUnreadCount: 0,
   _refreshTimer: null,
   _isOpen: false,
 
@@ -20,6 +21,7 @@ const NotificationCenter = {
 
   _startAutoRefresh() {
     clearInterval(this._refreshTimer);
+    // Real-time polling every 5 seconds for instant notification arrival
     this._refreshTimer = setInterval(async () => {
       await this.fetchNotifications();
       // If popover is open, re-render it with fresh data
@@ -27,14 +29,15 @@ const NotificationCenter = {
         const container = document.getElementById('notification-popover-container');
         if (container) this._renderInto(container);
       }
-    }, 60000); // every 60 s
+    }, 5000);
   },
 
   async fetchNotifications() {
     try {
       const res = await API.get('/notifications');
       this.notifications = res.data || [];
-      this.unreadCount = res.unreadCount || 0;
+      this.unreadCount = Number(res.unreadCount || 0);
+      this.leaveUnreadCount = Number(res.leaveUnreadCount || 0);
       this._updateBadge();
     } catch (e) {
       // Quiet fail when unauthenticated
@@ -51,7 +54,30 @@ const NotificationCenter = {
       countEl.style.display = hasUnread ? 'inline-flex' : 'none';
     }
     if (dot) {
-      dot.style.display = (hasUnread && !countEl) ? 'block' : 'none';
+      dot.style.display = hasUnread ? 'block' : 'none';
+    }
+
+    // Sidebar Leave Requests (Admin Portal Red Dot & Count)
+    const leaveBadge = document.getElementById('sidebar-leave-badge');
+    const leaveDot = document.getElementById('sidebar-leave-dot');
+    const leaveCount = Number(this.leaveUnreadCount || 0);
+    if (leaveBadge) {
+      leaveBadge.textContent = leaveCount > 99 ? '99+' : String(leaveCount);
+      leaveBadge.style.display = leaveCount > 0 ? 'inline-block' : 'none';
+    }
+    if (leaveDot) {
+      leaveDot.style.display = leaveCount > 0 ? 'inline-block' : 'none';
+    }
+
+    // Sidebar Notifications (Student Portal Red Dot & Count)
+    const stuNotifBadge = document.getElementById('sidebar-stu-notif-badge');
+    const stuNotifDot = document.getElementById('sidebar-stu-notif-dot');
+    if (stuNotifBadge) {
+      stuNotifBadge.textContent = this.unreadCount > 99 ? '99+' : String(this.unreadCount);
+      stuNotifBadge.style.display = hasUnread ? 'inline-block' : 'none';
+    }
+    if (stuNotifDot) {
+      stuNotifDot.style.display = hasUnread ? 'inline-block' : 'none';
     }
   },
 
@@ -200,6 +226,9 @@ const NotificationCenter = {
       if (item && !item.is_read) {
         item.is_read = 1;
         this.unreadCount = Math.max(0, this.unreadCount - 1);
+        if (item.type === 'leave') {
+          this.leaveUnreadCount = Math.max(0, this.leaveUnreadCount - 1);
+        }
         this._updateBadge();
       }
 
@@ -227,6 +256,7 @@ const NotificationCenter = {
       await API.put('/notifications/read-all');
       this.notifications.forEach(n => n.is_read = 1);
       this.unreadCount = 0;
+      this.leaveUnreadCount = 0;
       this._updateBadge();
       const container = document.getElementById('notification-popover-container');
       if (container) this._renderInto(container);

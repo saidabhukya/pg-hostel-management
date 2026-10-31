@@ -235,29 +235,23 @@
     return [
       {
         id: 1,
-        title: 'Maintenance Ticket Filed: Bathroom tap leaking on Floor 1',
-        message: 'Plumbing issue reported in Room 101 (Sai Teja).',
-        type: 'complaint',
-        is_read: 0,
-        link: '#complaints',
-        created_at: new Date(now.getTime() - 2 * 3600000).toISOString()
+        recipient_role: 'admin',
+        title: 'System Notice: Sri Ram PG Online Ready',
+        message: 'Hostel management portal and real-time operations initialized.',
+        type: 'system',
+        is_read: 1,
+        link: '#dashboard',
+        created_at: new Date(now.getTime() - 86400000).toISOString()
       },
       {
         id: 2,
-        title: 'Hostel Notice: Sunday Special Mess Menu',
-        message: 'Hyderabadi Chicken Biryani & Paneer Butter Masala active for dinner.',
-        type: 'announcement',
-        is_read: 0,
-        link: '#mess',
-        created_at: new Date(now.getTime() - 6 * 3600000).toISOString()
-      },
-      {
-        id: 3,
-        title: 'Monthly Fee Schedule Active',
-        message: 'Billing cycle fee records generated for all registered residents.',
-        type: 'fee_due',
+        recipient_role: 'student',
+        student_id: 4,
+        title: 'Welcome to Sri Ram PG',
+        message: 'Welcome to your resident dashboard. You can view room details, mess menu, and apply for leave.',
+        type: 'system',
         is_read: 1,
-        link: '#fees',
+        link: '#student-dashboard',
         created_at: new Date(now.getTime() - 86400000).toISOString()
       }
     ];
@@ -790,25 +784,20 @@
         student_name: 'Ravi Kumar',
         reg_number: '2024ST001',
         room_number: '205',
+        leave_reason: 'Family Function',
+        reason: 'Family Function',
         start_date: '2026-11-01',
+        return_date: '2026-11-04',
         end_date: '2026-11-04',
-        reason: 'Attending cousin sister wedding at native village',
-        parent_consent: true,
+        leaving_time: '05:00 PM',
+        arrival_time: '08:00 PM',
+        emergency_contact: '+91 98765 00001',
+        additional_message: 'Attending cousin sister wedding at native village',
         status: 'Approved',
-        applied_at: '2026-10-25'
-      },
-      {
-        id: 2,
-        student_id: 2,
-        student_name: 'Amit Sharma',
-        reg_number: '2024ST002',
-        room_number: '205',
-        start_date: '2026-11-05',
-        end_date: '2026-11-07',
-        reason: 'Diwali festive family gathering',
-        parent_consent: true,
-        status: 'Pending',
-        applied_at: '2026-10-27'
+        admin_response: 'Approved by Warden. Gate pass issued.',
+        admin_remarks: 'Approved by Warden. Gate pass issued.',
+        created_at: '2026-10-25T10:00:00.000Z',
+        updated_at: '2026-10-25T14:30:00.000Z'
       }
     ];
   }
@@ -2380,39 +2369,52 @@
       if (!Array.isArray(store.leaveRequests)) store.leaveRequests = [];
       const lId = store.leaveRequests.length ? Math.max(...store.leaveRequests.map(l => Number(l.id) || 0)) + 1 : 1;
       const today = new Date().toISOString().slice(0, 10);
+      const sDate = data.start_date || data.startDate || today;
+      const rDate = data.return_date || data.returnDate || data.end_date || data.endDate || today;
+      const reasonVal = data.leave_reason || data.leaveReason || data.reason || 'Going Home';
+      const nowISO = new Date().toISOString();
+
       const newLeave = {
         id: lId,
-        student_id: Number(data.student_id) || 1,
-        student_name: data.student_name || 'Resident Student',
-        student_phone: data.student_phone || data.emergencyContact || '',
-        reg_number: data.reg_number || '',
-        room_number: data.room_number || '',
-        bed_label: data.bed_label || '',
-        start_date: data.startDate || today,
-        end_date: data.endDate || today,
-        startDateDisplay: formatDisplayDate(data.startDate || today),
-        endDateDisplay: formatDisplayDate(data.endDate || today),
-        reason: data.reason || 'Personal / Outstation Leave',
-        emergency_contact: data.emergencyContact || data.parent_phone || '',
+        student_id: Number(data.student_id || data.studentId) || 4,
+        student_name: data.student_name || data.studentName || 'Aravind',
+        student_phone: data.student_phone || data.studentPhone || data.emergency_contact || data.emergencyContact || '+91 8096871141',
+        reg_number: data.reg_number || data.regNumber || '23030-EE-067',
+        room_number: data.room_number || data.roomNumber || '407',
+        bed_label: data.bed_label || data.bedLabel || 'Bed-E',
+        leave_reason: reasonVal,
+        reason: reasonVal,
+        start_date: sDate,
+        return_date: rDate,
+        end_date: rDate,
+        startDateDisplay: formatDisplayDate(sDate),
+        endDateDisplay: formatDisplayDate(rDate),
+        leaving_time: data.leaving_time || data.leavingTime || '05:00 PM',
+        arrival_time: data.arrival_time || data.arrivalTime || '08:00 PM',
+        emergency_contact: data.emergency_contact || data.emergencyContact || data.parent_phone || '9390922890',
+        additional_message: data.additional_message || data.additionalMessage || '',
         status: 'Pending',
+        admin_response: '',
         admin_remarks: '',
-        created_at: new Date().toISOString()
+        created_at: nowISO,
+        updated_at: nowISO
       };
       store.leaveRequests.unshift(newLeave);
 
-      // Add notification for leave application
+      // Add unread notification for Admin / Warden
       if (!Array.isArray(store.notifications)) store.notifications = [];
       const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
       store.notifications.unshift({
         id: notifId,
+        recipient_role: 'admin',
         student_id: newLeave.student_id,
-        reg_number: newLeave.reg_number,
-        title: `Leave Application Submitted`,
-        message: `Leave applied for ${newLeave.startDateDisplay} to ${newLeave.endDateDisplay}. Awaiting warden approval.`,
+        related_request_id: newLeave.id,
+        title: `New Leave Request: ${newLeave.student_name}`,
+        message: `${newLeave.student_name} (Room ${newLeave.room_number}) requested leave for "${newLeave.leave_reason}" from ${newLeave.startDateDisplay} (${newLeave.leaving_time}) to ${newLeave.endDateDisplay} (${newLeave.arrival_time}).`,
         type: 'leave',
         is_read: 0,
         link: '#leave-requests',
-        created_at: new Date().toISOString()
+        created_at: nowISO
       });
 
       saveStore();
@@ -2424,22 +2426,44 @@
       if (Array.isArray(store.leaveRequests)) {
         const item = store.leaveRequests.find(l => Number(l.id) === lId);
         if (item) {
+          const nowISO = new Date().toISOString();
           item.status = status;
-          if (remarks !== undefined) item.admin_remarks = remarks;
+          item.admin_response = remarks || (status === 'Approved' ? 'Approved by Warden. Gate pass issued.' : 'Leave request declined.');
+          item.admin_remarks = item.admin_response;
+          item.updated_at = nowISO;
 
-          // Notification for the student
+          // Automatically mark admin notification for this request as read
+          if (Array.isArray(store.notifications)) {
+            const adminNotif = store.notifications.find(n => n.recipient_role === 'admin' && Number(n.related_request_id) === lId);
+            if (adminNotif) {
+              adminNotif.is_read = 1;
+              adminNotif.read_at = nowISO;
+            }
+          }
+
+          // Send notification to the respective student
           if (!Array.isArray(store.notifications)) store.notifications = [];
           const notifId = store.notifications.length ? Math.max(...store.notifications.map(n => Number(n.id) || 0)) + 1 : 1;
+          const notifTitle = status === 'Approved' 
+            ? 'Your leave request has been APPROVED by the Warden.' 
+            : 'Your leave request has been REJECTED by the Warden.';
+          const notifMsg = status === 'Approved'
+            ? `Your leave request for ${item.startDateDisplay} to ${item.endDateDisplay} has been APPROVED.${remarks ? ' Warden note: ' + remarks : ''}`
+            : `Your leave request for ${item.startDateDisplay} to ${item.endDateDisplay} has been REJECTED.${remarks ? ' Reason: ' + remarks : ''}`;
+
           store.notifications.unshift({
             id: notifId,
+            recipient_role: 'student',
+            recipient_id: item.student_id,
             student_id: item.student_id,
-            reg_number: item.reg_number,
-            title: `Leave Request ${status}`,
-            message: `Your leave application from ${item.startDateDisplay} to ${item.endDateDisplay} has been ${status.toLowerCase()}.${remarks ? ' Warden remarks: ' + remarks : ''}`,
+            user_id: item.student_id,
+            related_request_id: item.id,
+            title: notifTitle,
+            message: notifMsg,
             type: 'leave',
             is_read: 0,
             link: '#leave-requests',
-            created_at: new Date().toISOString()
+            created_at: nowISO
           });
 
           saveStore();

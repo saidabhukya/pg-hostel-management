@@ -533,15 +533,35 @@ const API = {
     // 11. Leave Requests
     if (path === '/leave-requests') {
       if (method === 'POST') {
-        const lr = MockData.addLeaveRequest(payload);
-        return { success: true, message: 'Leave application submitted', data: lr };
+        const student = this.getStudent();
+        const payloadWithStudent = {
+          student_id: student?.id || payload.student_id || payload.studentId || 4,
+          student_name: student?.name || payload.student_name || payload.studentName || 'Aravind',
+          reg_number: student?.reg_number || payload.reg_number || payload.regNumber || '23030-EE-067',
+          room_number: student?.room_number || payload.room_number || payload.roomNumber || '407',
+          bed_label: student?.bed_label || payload.bed_label || 'Bed-E',
+          student_phone: student?.phone || payload.student_phone || '+91 8096871141',
+          emergency_contact: payload.emergency_contact || payload.emergencyContact || student?.parent_phone || '9390922890',
+          ...payload
+        };
+        const lr = MockData.addLeaveRequest(payloadWithStudent);
+        return { success: true, message: 'Leave application submitted successfully. Request status is Pending.', data: lr };
       }
-      return { success: true, data: MockData.leaveRequests };
+      const user = this.getUser();
+      let allLeaves = MockData.leaveRequests || [];
+      if (user && user.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          allLeaves = allLeaves.filter(l => Number(l.student_id) === Number(student.id) || (student.reg_number && l.reg_number === student.reg_number));
+        }
+      }
+      return { success: true, data: allLeaves };
     }
     if (path.startsWith('/leave-requests/') && path.endsWith('/status') && method === 'PUT') {
       const lrId = path.split('/')[2];
-      MockData.updateLeaveRequestStatus(lrId, payload.status, payload.remarks);
-      return { success: true, message: 'Leave status updated' };
+      const remarks = payload.rejection_reason || payload.admin_response || payload.remarks || '';
+      MockData.updateLeaveRequestStatus(lrId, payload.status, remarks);
+      return { success: true, message: `Leave request has been ${payload.status}. Respective student notified.` };
     }
 
     // 12. Mess
@@ -570,20 +590,53 @@ const API = {
 
     // 15. Notifications
     if (path === '/notifications') {
-      const notifs = MockData.notifications || [];
-      return { success: true, data: notifs, unreadCount: notifs.filter(n => !n.is_read).length };
+      const allNotifs = MockData.notifications || [];
+      const user = this.getUser();
+      const student = this.getStudent();
+      let notifs = [];
+      if (user && user.role === 'admin') {
+        notifs = allNotifs.filter(n => n.recipient_role === 'admin' || !n.recipient_role);
+      } else if (user) {
+        notifs = allNotifs.filter(n => 
+          n.recipient_role === 'student' && 
+          (Number(n.recipient_id) === Number(student?.id) || Number(n.student_id) === Number(student?.id) || (student?.reg_number && n.reg_number === student.reg_number))
+        );
+      }
+      const unreadCount = notifs.filter(n => !n.is_read).length;
+      const leaveUnreadCount = notifs.filter(n => !n.is_read && n.type === 'leave').length;
+      return { success: true, data: notifs, unreadCount, leaveUnreadCount };
     }
     if (path.startsWith('/notifications/') && path.endsWith('/read') && method === 'PUT') {
       const nId = path.split('/')[2];
       if (MockData.notifications) {
         const item = MockData.notifications.find(n => String(n.id) === String(nId));
-        if (item) item.is_read = 1;
+        if (item) {
+          item.is_read = 1;
+          item.read_at = new Date().toISOString();
+        }
       }
       return { success: true };
     }
     if (path === '/notifications/read-all' && method === 'PUT') {
+      const user = this.getUser();
+      const student = this.getStudent();
+      const nowISO = new Date().toISOString();
       if (MockData.notifications) {
-        MockData.notifications.forEach(n => { n.is_read = 1; });
+        if (user && user.role === 'admin') {
+          MockData.notifications.forEach(n => {
+            if (n.recipient_role === 'admin' || !n.recipient_role) {
+              n.is_read = 1;
+              n.read_at = nowISO;
+            }
+          });
+        } else if (user) {
+          MockData.notifications.forEach(n => {
+            if (n.recipient_role === 'student' && (Number(n.recipient_id) === Number(student?.id) || Number(n.student_id) === Number(student?.id))) {
+              n.is_read = 1;
+              n.read_at = nowISO;
+            }
+          });
+        }
       }
       return { success: true };
     }

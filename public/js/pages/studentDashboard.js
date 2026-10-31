@@ -164,6 +164,40 @@ const StudentDashboard = {
           </div>
         </div>
       </div>
+
+      <!-- TERTIARY SPLIT: Leave Applications & Recent Notifications -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(460px, 1fr));gap:1.5rem;margin-top:1.5rem;">
+        <!-- Leave Applications & Gate Passes -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i data-lucide="calendar-days" style="color:var(--primary-red);"></i>
+              My Leave Applications & Gate Passes
+            </h3>
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn btn-sm btn-secondary" onclick="App.navigate('leave-requests')">View History</button>
+              <button class="btn btn-sm btn-primary" onclick="LeaveRequestsPage.openApplyModal()">+ Apply Leave</button>
+            </div>
+          </div>
+          <div id="stu-leaves-container">
+            <p style="color:var(--text-muted);font-size:0.85rem;">Loading leave applications...</p>
+          </div>
+        </div>
+
+        <!-- Student Notifications & Alerts -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i data-lucide="bell" style="color:var(--primary-red);"></i>
+              Recent Notifications & Alerts
+            </h3>
+            <button class="btn btn-sm btn-secondary" onclick="App.navigate('student-notifications')">View All Alerts</button>
+          </div>
+          <div id="stu-notifs-container">
+            <p style="color:var(--text-muted);font-size:0.85rem;">Loading notifications...</p>
+          </div>
+        </div>
+      </div>
     `;
   },
 
@@ -358,6 +392,36 @@ const StudentDashboard = {
         }
       }
 
+      // 5. Leave Applications
+      try {
+        const leaveRes = await API.get('/leave-requests');
+        let leaves = (leaveRes && leaveRes.success && Array.isArray(leaveRes.data)) ? leaveRes.data : [];
+        if (leaves.length === 0 && typeof MockData !== 'undefined' && MockData.leaveRequests) {
+          leaves = MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student.id));
+        }
+        this._renderLeaves(leaves);
+      } catch(le) {
+        let leaves = (typeof MockData !== 'undefined' && MockData.leaveRequests)
+          ? MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student.id))
+          : [];
+        this._renderLeaves(leaves);
+      }
+
+      // 6. Student Notifications
+      try {
+        const notifRes = await API.get('/notifications');
+        let notifs = (notifRes && notifRes.success && Array.isArray(notifRes.data)) ? notifRes.data : [];
+        if (notifs.length === 0 && typeof NotificationCenter !== 'undefined' && NotificationCenter.notifications) {
+          notifs = NotificationCenter.notifications;
+        }
+        this._renderNotifs(notifs);
+      } catch(ne) {
+        let notifs = (typeof NotificationCenter !== 'undefined' && NotificationCenter.notifications)
+          ? NotificationCenter.notifications
+          : [];
+        this._renderNotifs(notifs);
+      }
+
       Utils.renderIcons();
     } catch (e) {
       console.warn('[StudentDashboard] Online load failed, loading local dataset:', e.message);
@@ -446,6 +510,118 @@ const StudentDashboard = {
           `).join('');
         }
       }
+
+      // 4. Leave fallback
+      const leaves = (typeof MockData !== 'undefined' && MockData.leaveRequests)
+        ? MockData.leaveRequests.filter(l => Number(l.student_id) === Number(student.id))
+        : [];
+      this._renderLeaves(leaves);
+
+      // 5. Notifications fallback
+      const notifs = (typeof NotificationCenter !== 'undefined' && NotificationCenter.notifications)
+        ? NotificationCenter.notifications
+        : [];
+      this._renderNotifs(notifs);
+
+      Utils.renderIcons();
+    }
+  },
+
+  _renderLeaves(leaves) {
+    const container = document.getElementById('stu-leaves-container');
+    if (!container) return;
+
+    if (!leaves || leaves.length === 0) {
+      container.innerHTML = `
+        <div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">
+          <i data-lucide="calendar-check" style="width:32px;height:32px;margin-bottom:0.5rem;opacity:0.5;display:block;margin-left:auto;margin-right:auto;"></i>
+          <p style="margin:0;font-weight:600;">No Leave Applications Yet</p>
+          <p style="margin:0.25rem 0 0.75rem;font-size:0.75rem;">Apply for weekend leave, vacation, or medical emergencies.</p>
+          <button class="btn btn-sm btn-primary" onclick="LeaveRequestsPage.openApplyModal()">+ Apply For Leave</button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        ${leaves.slice(0, 3).map(l => {
+          const status = (l.status || 'Pending').toLowerCase();
+          const badgeClass = status === 'approved' ? 'badge-success' : status === 'rejected' ? 'badge-danger' : 'badge-warning';
+          const sDate = l.startDateDisplay || (typeof Utils !== 'undefined' ? Utils.formatDate(l.start_date) : l.start_date);
+          const eDate = l.endDateDisplay || (typeof Utils !== 'undefined' ? Utils.formatDate(l.end_date || l.return_date) : (l.end_date || l.return_date));
+
+          return `
+            <div style="padding:0.85rem 1rem;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:4px solid ${status === 'approved' ? 'var(--status-success)' : status === 'rejected' ? 'var(--primary-red)' : 'var(--status-warning)'};">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.35rem;">
+                <span style="font-weight:700;font-size:0.9rem;color:var(--text-primary);">${Utils.escapeHTML(l.reason || l.leave_reason || 'Leave')}</span>
+                <span class="badge ${badgeClass}">${l.status || 'Pending'}</span>
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">
+                <i data-lucide="calendar" style="width:12px;height:12px;vertical-align:middle;"></i>
+                ${sDate} (${l.leaving_time || '08:00 AM'}) → ${eDate} (${l.arrival_time || '08:00 PM'})
+              </div>
+              ${l.admin_remarks || l.admin_response ? `
+                <div style="margin-top:0.4rem;padding:0.35rem 0.6rem;background:var(--bg-card);border-radius:4px;font-size:0.75rem;color:var(--text-primary);">
+                  <strong>Warden Note:</strong> ${Utils.escapeHTML(l.admin_remarks || l.admin_response)}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
+        <div style="text-align:right;margin-top:0.25rem;">
+          <button class="btn btn-sm btn-secondary" onclick="App.navigate('leave-requests')">
+            <span>View All Leave History</span>
+            <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  _renderNotifs(notifs) {
+    const container = document.getElementById('stu-notifs-container');
+    if (!container) return;
+
+    if (!notifs || notifs.length === 0) {
+      container.innerHTML = `
+        <div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">
+          <i data-lucide="bell-off" style="width:32px;height:32px;margin-bottom:0.5rem;opacity:0.5;display:block;margin-left:auto;margin-right:auto;"></i>
+          <p style="margin:0;font-weight:600;">You're All Caught Up!</p>
+          <p style="margin:0.25rem 0 0;font-size:0.75rem;">No recent notifications for your account.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:0.6rem;">
+        ${notifs.slice(0, 3).map(n => {
+          const isUnread = !n.is_read;
+          const timeAgo = typeof NotificationCenter !== 'undefined' ? NotificationCenter._timeAgo(n.created_at) : 'Recent';
+
+          return `
+            <div style="padding:0.8rem 1rem;background:var(--bg-secondary);border-radius:var(--radius-md);${isUnread ? 'border-left:4px solid var(--primary-red);background:rgba(239,68,68,0.03);' : ''};cursor:pointer;" onclick="NotificationCenter.handleClick(${n.id}, '${(n.link || '').replace(/'/g, "\\'")}')">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                <div style="font-weight:${isUnread ? '800' : '600'};font-size:0.88rem;color:var(--text-primary);">${Utils.escapeHTML(n.title)}</div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:0.72rem;color:var(--text-muted);">${timeAgo}</span>
+                  ${isUnread ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--primary-red);"></span>' : ''}
+                </div>
+              </div>
+              <p style="margin:0.25rem 0 0;font-size:0.78rem;color:var(--text-secondary);">${Utils.escapeHTML(n.message)}</p>
+            </div>
+          `;
+        }).join('')}
+        <div style="text-align:right;margin-top:0.25rem;">
+          <button class="btn btn-sm btn-secondary" onclick="App.navigate('student-notifications')">
+            <span>View All Alerts</span>
+            <i data-lucide="arrow-right" style="width:12px;height:12px;"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
       Utils.renderIcons();
     }
