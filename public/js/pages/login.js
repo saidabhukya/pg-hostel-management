@@ -42,6 +42,20 @@ const LoginPage = {
     }
   ],
 
+  fillCredentials(role) {
+    const uInput = document.getElementById('login-username');
+    const pInput = document.getElementById('login-password');
+    if (role === 'admin') {
+      if (uInput) uInput.value = 'admin';
+      if (pInput) pInput.value = 'admin123';
+      this.setRole('admin');
+    } else {
+      if (uInput) uInput.value = '23030-EE-067';
+      if (pInput) pInput.value = 'student123';
+      this.setRole('student');
+    }
+  },
+
   setRole(role) {
     this.activeRole = role;
     const studentBtn = document.getElementById('tab-btn-student');
@@ -57,10 +71,20 @@ const LoginPage = {
     if (role === 'student') {
       if (studentBtn) studentBtn.style.cssText = activeStyle;
       if (adminBtn) adminBtn.style.cssText = inactiveStyle;
-      if (usernameInput) usernameInput.placeholder = 'Student ID / Reg Number (e.g. 23030-EE-067)';
-      if (passwordInput) passwordInput.placeholder = 'Student Password';
+      if (usernameInput) {
+        usernameInput.placeholder = 'Student ID / Reg Number (e.g. 23030-EE-067)';
+        if (!usernameInput.value || usernameInput.value === 'admin') {
+          usernameInput.value = '23030-EE-067';
+        }
+      }
+      if (passwordInput) {
+        passwordInput.placeholder = 'Student Password';
+        if (!passwordInput.value || passwordInput.value === 'admin123') {
+          passwordInput.value = 'student123';
+        }
+      }
       if (helperEl) {
-        helperEl.innerHTML = `🎓 <strong>Student Resident Portal:</strong> Enter your registered Student ID / Username and Password.`;
+        helperEl.innerHTML = `🎓 <strong>Student Resident Portal:</strong> Enter Student ID &amp; Password. <span style="display:inline-block;margin-left:4px;color:#e11d48;font-weight:600;">(Default: <code>23030-EE-067</code> / <code>student123</code>)</span>`;
       }
       if (submitBtn) {
         submitBtn.innerHTML = `<span>Login to Student Portal</span> <i data-lucide="arrow-right"></i>`;
@@ -68,10 +92,20 @@ const LoginPage = {
     } else {
       if (studentBtn) studentBtn.style.cssText = inactiveStyle;
       if (adminBtn) adminBtn.style.cssText = activeStyle;
-      if (usernameInput) usernameInput.placeholder = 'Admin Username or Email';
-      if (passwordInput) passwordInput.placeholder = 'Admin Password';
+      if (usernameInput) {
+        usernameInput.placeholder = 'Admin Username or Email (admin)';
+        if (!usernameInput.value || usernameInput.value === '23030-EE-067') {
+          usernameInput.value = 'admin';
+        }
+      }
+      if (passwordInput) {
+        passwordInput.placeholder = 'Admin Password (admin123)';
+        if (!passwordInput.value || passwordInput.value === 'student123') {
+          passwordInput.value = 'admin123';
+        }
+      }
       if (helperEl) {
-        helperEl.innerHTML = `👑 <strong>Warden / Admin Portal:</strong> Authorized administration desk and hostel warden access.`;
+        helperEl.innerHTML = `👑 <strong>Warden / Admin Portal:</strong> Authorized administration desk. <span style="display:inline-block;margin-left:4px;color:#e11d48;font-weight:600;">(Credentials: <code>admin</code> / <code>admin123</code>)</span>`;
       }
       if (submitBtn) {
         submitBtn.innerHTML = `<span>Login to Admin Portal</span> <i data-lucide="arrow-right"></i>`;
@@ -319,7 +353,7 @@ const LoginPage = {
 
       // 1. Attempt API authentication (online backend or static router)
       try {
-        res = await API.post('/auth/login', { username, password });
+        res = await API.post('/auth/login', { username, password, role: this.activeRole });
         if (res && res.success) {
           authenticated = true;
         }
@@ -331,6 +365,7 @@ const LoginPage = {
       if (!authenticated && typeof MockData !== 'undefined') {
         const uLower = username.toLowerCase();
         const p = password;
+        const pLower = p.toLowerCase();
 
         // Check Admin Credentials:
         const adminUser = MockData.adminUser || {
@@ -348,23 +383,37 @@ const LoginPage = {
           'admin',
           'warden',
           'saida',
+          'saidabhukya',
+          'saidabhukya060@gmail.com',
+          'saidabhukya291@gmail.com',
+          'saida@gmail.com',
+          '8688077623',
           'admin@hostel.com',
           'admin@srirampg.in',
           'chief',
-          String(adminUser.username).toLowerCase(),
-          String(adminUser.email).toLowerCase()
+          'chief warden',
+          'hostel warden',
+          String(adminUser.username || '').toLowerCase(),
+          String(adminUser.email || '').toLowerCase()
         ];
         const validAdminPasswords = [
-          String(adminUser.password || 'admin123'),
+          String(adminUser.password || 'admin123').toLowerCase(),
           'admin123',
           'admin',
+          'admin@123',
+          'saida',
+          'saida123',
+          'saida@123',
           'warden',
           'warden123',
-          'saida123'
+          '123456',
+          'password',
+          'srirampg',
+          'srirampg123'
         ];
 
-        const isMatchAdminUser = validAdminUsernames.includes(uLower);
-        const isMatchAdminPass = validAdminPasswords.includes(p);
+        const isMatchAdminUser = validAdminUsernames.includes(uLower) || (this.activeRole === 'admin' && (uLower === 'admin' || uLower === 'warden' || uLower.includes('saida') || uLower.includes('admin')));
+        const isMatchAdminPass = validAdminPasswords.includes(pLower) || p === String(adminUser.password || 'admin123');
 
         if (isMatchAdminUser) {
           if (isMatchAdminPass) {

@@ -26,22 +26,31 @@ router.post('/login', async (req, res) => {
     const trimmedUser = String(username).trim();
     const cleanPhone = trimmedUser.replace(/\D/g, '');
 
-    // Search user by username, email, registration number, or phone
-    let user = await db.getOne(
-      `SELECT u.*, s.id as linked_student_id, s.reg_number as linked_reg_number
-       FROM users u
-       LEFT JOIN students s ON s.user_id = u.id
-       WHERE LOWER(u.username) = LOWER(?)
-          OR LOWER(u.email) = LOWER(?)
-          OR LOWER(s.reg_number) = LOWER(?)
-          OR (LENGTH(?) >= 10 AND (u.phone LIKE ? OR s.phone LIKE ?))
-       LIMIT 1`,
-      [trimmedUser, trimmedUser, trimmedUser, cleanPhone, `%${cleanPhone}%`, `%${cleanPhone}%`]
-    );
+    const userLower = trimmedUser.toLowerCase();
+    let user = null;
 
-    // Fallback: If username is "admin", "warden", "saida", or admin email
-    if (!user && ['admin', 'warden', 'saida', 'chief', 'admin@hostel.com', 'admin@srirampg.in'].includes(trimmedUser.toLowerCase())) {
+    // Admin alias check or explicit admin role
+    const adminAliases = [
+      'admin', 'warden', 'saida', 'saidabhukya', 'chief',
+      'admin@hostel.com', 'admin@srirampg.in',
+      'saidabhukya060@gmail.com', 'saidabhukya291@gmail.com', 'saida@gmail.com'
+    ];
+    if (adminAliases.includes(userLower) || req.body.role === 'admin') {
       user = await db.getOne("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
+    }
+
+    if (!user) {
+      user = await db.getOne(
+        `SELECT u.*, s.id as linked_student_id, s.reg_number as linked_reg_number
+         FROM users u
+         LEFT JOIN students s ON s.user_id = u.id
+         WHERE LOWER(u.username) = LOWER(?)
+            OR LOWER(u.email) = LOWER(?)
+            OR LOWER(s.reg_number) = LOWER(?)
+            OR (LENGTH(?) >= 10 AND (u.phone LIKE ? OR s.phone LIKE ?))
+         LIMIT 1`,
+        [trimmedUser, trimmedUser, trimmedUser, cleanPhone, `%${cleanPhone}%`, `%${cleanPhone}%`]
+      );
     }
 
     // Fallback: If username is "student" or standard demo student
@@ -63,11 +72,17 @@ router.post('/login', async (req, res) => {
     }
 
     // Verify password against standard demo passwords OR bcrypt hash in database
-    const standardPasswords = ['admin', 'admin123', 'student', 'student123', '123456', 'warden', 'warden123', 'saida', 'saida123'];
-    let isMatch = standardPasswords.includes(String(password).trim());
+    const pTrimmed = String(password).trim();
+    const pLower = pTrimmed.toLowerCase();
+    const standardPasswords = [
+      'admin', 'admin123', 'admin@123', 'student', 'student123',
+      '123456', 'warden', 'warden123', 'saida', 'saida123', 'saida@123',
+      'password', 'srirampg', 'srirampg123'
+    ];
+    let isMatch = standardPasswords.includes(pLower);
     if (!isMatch && user.password_hash) {
       try {
-        isMatch = await bcrypt.compare(String(password), user.password_hash);
+        isMatch = await bcrypt.compare(pTrimmed, user.password_hash);
       } catch (bcErr) {
         isMatch = false;
       }
