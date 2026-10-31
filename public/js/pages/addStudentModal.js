@@ -194,15 +194,72 @@ const AddStudentModal = {
               <label class="form-label required">Course / Degree</label>
               <select id="as-course" class="form-control" onchange="AddStudentModal.onCourseChange(this.value)" required>
                 <option value="" disabled selected>-- Select Course / Degree --</option>
-                <option value="B.Tech Computer Science and Engineering (CSE)">B.Tech Computer Science and Engineering (CSE)</option>
-                <option value="B.Tech Information Technology (IT)">B.Tech Information Technology (IT)</option>
-                <option value="B.Tech Artificial Intelligence & ML (AI&ML)">B.Tech Artificial Intelligence & ML (AI&ML)</option>
-                <option value="B.Tech Electronics & Communication (ECE)">B.Tech Electronics & Communication (ECE)</option>
-                <option value="B.Tech Mechanical Engineering (ME)">B.Tech Mechanical Engineering (ME)</option>
-                <option value="B.Pharm / M.Pharm">B.Pharm / M.Pharm</option>
-                <option value="MBA / MCA">MBA / MCA</option>
+                <optgroup label="B.Tech - Computer Science & Information Technology">
+                  <option value="B.Tech Computer Science and Engineering (CSE)">B.Tech Computer Science and Engineering (CSE)</option>
+                  <option value="B.Tech CSE - Artificial Intelligence & ML (AI&ML)">B.Tech CSE - Artificial Intelligence & ML (AI&ML)</option>
+                  <option value="B.Tech CSE - Data Science (DS)">B.Tech CSE - Data Science (DS)</option>
+                  <option value="B.Tech CSE - Cyber Security (CS)">B.Tech CSE - Cyber Security (CS)</option>
+                  <option value="B.Tech CSE - Computer Science & Business Systems (CSBS)">B.Tech CSE - Computer Science & Business Systems (CSBS)</option>
+                  <option value="B.Tech CSE - Internet of Things (IoT)">B.Tech CSE - Internet of Things (IoT)</option>
+                  <option value="B.Tech Information Technology (IT)">B.Tech Information Technology (IT)</option>
+                </optgroup>
+                <optgroup label="B.Tech - Circuit & Core Engineering">
+                  <option value="B.Tech Electronics & Communication Engineering (ECE)">B.Tech Electronics & Communication Engineering (ECE)</option>
+                  <option value="B.Tech Electrical & Electronics Engineering (EEE)">B.Tech Electrical & Electronics Engineering (EEE)</option>
+                  <option value="B.Tech Mechanical Engineering (ME)">B.Tech Mechanical Engineering (ME)</option>
+                  <option value="B.Tech Civil Engineering (CE)">B.Tech Civil Engineering (CE)</option>
+                  <option value="B.Tech Chemical Engineering">B.Tech Chemical Engineering</option>
+                  <option value="B.Tech Robotics & Automation (RA)">B.Tech Robotics & Automation (RA)</option>
+                  <option value="B.Tech Textile Technology (TT)">B.Tech Textile Technology (TT)</option>
+                </optgroup>
+                <optgroup label="B.Tech - Bio & Applied Sciences">
+                  <option value="B.Tech Biotechnology (BT)">B.Tech Biotechnology (BT)</option>
+                  <option value="B.Tech Bioinformatics (BI)">B.Tech Bioinformatics (BI)</option>
+                  <option value="B.Tech Biomedical Engineering (BME)">B.Tech Biomedical Engineering (BME)</option>
+                  <option value="B.Tech Food Technology (FT)">B.Tech Food Technology (FT)</option>
+                  <option value="B.Tech Agricultural Engineering (AGE)">B.Tech Agricultural Engineering (AGE)</option>
+                </optgroup>
+                <optgroup label="Postgraduate Engineering (M.Tech)">
+                  <option value="M.Tech Computer Science & Engineering (CSE)">M.Tech Computer Science & Engineering (CSE)</option>
+                  <option value="M.Tech Artificial Intelligence & Data Science">M.Tech Artificial Intelligence & Data Science</option>
+                  <option value="M.Tech VLSI Design & Embedded Systems">M.Tech VLSI Design & Embedded Systems</option>
+                  <option value="M.Tech Power Electronics & Drives">M.Tech Power Electronics & Drives</option>
+                  <option value="M.Tech Machine Design">M.Tech Machine Design</option>
+                  <option value="M.Tech Structural Engineering">M.Tech Structural Engineering</option>
+                  <option value="M.Tech Biotechnology">M.Tech Biotechnology</option>
+                  <option value="M.Tech Food Processing Technology">M.Tech Food Processing Technology</option>
+                </optgroup>
+                <optgroup label="Pharmacy">
+                  <option value="B.Pharm (Bachelor of Pharmacy)">B.Pharm (Bachelor of Pharmacy)</option>
+                  <option value="Pharm.D (Doctor of Pharmacy)">Pharm.D (Doctor of Pharmacy)</option>
+                  <option value="M.Pharm Pharmaceutics">M.Pharm Pharmaceutics</option>
+                  <option value="M.Pharm Pharmacology">M.Pharm Pharmacology</option>
+                </optgroup>
+                <optgroup label="Management & Business (DoMS)">
+                  <option value="BBA (Bachelor of Business Administration)">BBA (Bachelor of Business Administration)</option>
+                  <option value="BBA - Business Analytics">BBA - Business Analytics</option>
+                  <option value="B.Com (Hons)">B.Com (Hons)</option>
+                  <option value="MBA (Master of Business Administration)">MBA (Master of Business Administration)</option>
+                  <option value="MBA - Business Analytics">MBA - Business Analytics</option>
+                </optgroup>
+                <optgroup label="Computer Applications & Sciences">
+                  <option value="BCA (Bachelor of Computer Applications)">BCA (Bachelor of Computer Applications)</option>
+                  <option value="MCA (Master of Computer Applications)">MCA (Master of Computer Applications)</option>
+                  <option value="B.Sc (Hons) Agriculture">B.Sc (Hons) Agriculture</option>
+                  <option value="B.Sc Data Science">B.Sc Data Science</option>
+                  <option value="B.Sc (Maths, Stats, Computer Science - MSCS)">B.Sc (Maths, Stats, Computer Science - MSCS)</option>
+                  <option value="M.Sc Data Science">M.Sc Data Science</option>
+                  <option value="M.Sc Chemistry / Organic Chemistry">M.Sc Chemistry / Organic Chemistry</option>
+                </optgroup>
+                <optgroup label="Law">
+                  <option value="BA LLB (Hons)">BA LLB (Hons)</option>
+                  <option value="BBA LLB (Hons)">BBA LLB (Hons)</option>
+                </optgroup>
                 <option value="Other">Other Program</option>
               </select>
+              <div id="as-course-other-wrap" style="display:none;margin-top:0.5rem;">
+                <input type="text" id="as-course-other" class="form-control" placeholder="Enter Full Course / Degree Name" />
+              </div>
             </div>
 
             <div class="form-group">
@@ -455,7 +512,10 @@ const AddStudentModal = {
     if (otherWrap) otherWrap.style.display = val === 'Other' ? 'block' : 'none';
   },
 
-  onCourseChange(val) {},
+  onCourseChange(val) {
+    const otherWrap = document.getElementById('as-course-other-wrap');
+    if (otherWrap) otherWrap.style.display = val === 'Other' ? 'block' : 'none';
+  },
   updateCyclePreview() {},
 
   previewPhoto(input) {
@@ -510,7 +570,10 @@ const AddStudentModal = {
     if (college === 'Other') {
       college = document.getElementById('as-college-other')?.value.trim() || 'Other College';
     }
-    const course = document.getElementById('as-course')?.value;
+    let course = document.getElementById('as-course')?.value;
+    if (course === 'Other') {
+      course = document.getElementById('as-course-other')?.value.trim() || 'Other Program';
+    }
     const year = document.getElementById('as-year')?.value;
     const gender = document.getElementById('as-gender')?.value;
     const parentName = document.getElementById('as-parentName')?.value.trim();
@@ -545,13 +608,23 @@ const AddStudentModal = {
       fd.append('course', course);
       fd.append('year', year);
       fd.append('gender', gender);
-      fd.append('parentName', parentName);
-      fd.append('parentPhone', parentPhone);
-      if (motherName) fd.append('motherName', motherName);
-      if (motherPhone) fd.append('motherPhone', motherPhone);
-      fd.append('address', address);
+      fd.append('parentName', parentName || '');
+      fd.append('parent_name', parentName || '');
+      fd.append('parentPhone', parentPhone || '');
+      fd.append('parent_phone', parentPhone || '');
+      if (motherName) {
+        fd.append('motherName', motherName);
+        fd.append('mother_name', motherName);
+      }
+      if (motherPhone) {
+        fd.append('motherPhone', motherPhone);
+        fd.append('mother_phone', motherPhone);
+      }
+      fd.append('address', address || '');
       fd.append('joiningDate', joiningDate);
+      fd.append('joining_date', joiningDate);
       fd.append('monthlyFee', monthlyFee);
+      fd.append('monthly_fee', monthlyFee);
       fd.append('bedId', bedId);
 
       const bedObj = this.allAvailableBeds.find(b => String(b.bed_id) === String(bedId));

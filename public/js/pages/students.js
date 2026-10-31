@@ -553,32 +553,79 @@ const StudentsPage = {
 
               <div class="form-group">
                 <label class="form-label">Course / Degree</label>
-                <input type="text" id="es-course" class="form-control" value="${Utils.escapeHTML(s.course || '')}" />
+                <input type="text" id="es-course" list="es-course-options" class="form-control" value="${Utils.escapeHTML(s.course || '')}" placeholder="Select or type Course / Degree" />
+                <datalist id="es-course-options">
+                  <option value="B.Tech Computer Science and Engineering (CSE)"></option>
+                  <option value="B.Tech CSE - Artificial Intelligence & ML (AI&ML)"></option>
+                  <option value="B.Tech CSE - Data Science (DS)"></option>
+                  <option value="B.Tech CSE - Cyber Security (CS)"></option>
+                  <option value="B.Tech CSE - Computer Science & Business Systems (CSBS)"></option>
+                  <option value="B.Tech CSE - Internet of Things (IoT)"></option>
+                  <option value="B.Tech Information Technology (IT)"></option>
+                  <option value="B.Tech Electronics & Communication Engineering (ECE)"></option>
+                  <option value="B.Tech Electrical & Electronics Engineering (EEE)"></option>
+                  <option value="B.Tech Mechanical Engineering (ME)"></option>
+                  <option value="B.Tech Civil Engineering (CE)"></option>
+                  <option value="B.Tech Chemical Engineering"></option>
+                  <option value="B.Tech Robotics & Automation (RA)"></option>
+                  <option value="B.Tech Textile Technology (TT)"></option>
+                  <option value="B.Tech Biotechnology (BT)"></option>
+                  <option value="B.Tech Bioinformatics (BI)"></option>
+                  <option value="B.Tech Biomedical Engineering (BME)"></option>
+                  <option value="B.Tech Food Technology (FT)"></option>
+                  <option value="B.Tech Agricultural Engineering (AGE)"></option>
+                  <option value="M.Tech Computer Science & Engineering (CSE)"></option>
+                  <option value="M.Tech Artificial Intelligence & Data Science"></option>
+                  <option value="M.Tech VLSI Design & Embedded Systems"></option>
+                  <option value="M.Tech Power Electronics & Drives"></option>
+                  <option value="M.Tech Machine Design"></option>
+                  <option value="M.Tech Structural Engineering"></option>
+                  <option value="M.Tech Biotechnology"></option>
+                  <option value="M.Tech Food Processing Technology"></option>
+                  <option value="B.Pharm (Bachelor of Pharmacy)"></option>
+                  <option value="Pharm.D (Doctor of Pharmacy)"></option>
+                  <option value="M.Pharm Pharmaceutics"></option>
+                  <option value="M.Pharm Pharmacology"></option>
+                  <option value="BBA (Bachelor of Business Administration)"></option>
+                  <option value="BBA - Business Analytics"></option>
+                  <option value="B.Com (Hons)"></option>
+                  <option value="MBA (Master of Business Administration)"></option>
+                  <option value="MBA - Business Analytics"></option>
+                  <option value="BCA (Bachelor of Computer Applications)"></option>
+                  <option value="MCA (Master of Computer Applications)"></option>
+                  <option value="B.Sc (Hons) Agriculture"></option>
+                  <option value="B.Sc Data Science"></option>
+                  <option value="B.Sc (Maths, Stats, Computer Science - MSCS)"></option>
+                  <option value="M.Sc Data Science"></option>
+                  <option value="M.Sc Chemistry / Organic Chemistry"></option>
+                  <option value="BA LLB (Hons)"></option>
+                  <option value="BBA LLB (Hons)"></option>
+                </datalist>
               </div>
 
               <div class="form-group">
                 <label class="form-label">Father / Guardian Name</label>
-                <input type="text" id="es-parentName" class="form-control" value="${Utils.escapeHTML(s.parent_name || '')}" />
+                <input type="text" id="es-parentName" class="form-control" value="${Utils.escapeHTML((s.parent_name && s.parent_name !== 'undefined') ? s.parent_name : '')}" placeholder="Father or Guardian Name" />
               </div>
 
               <div class="form-group">
                 <label class="form-label">Father / Guardian Phone</label>
-                <input type="tel" id="es-parentPhone" class="form-control" value="${Utils.escapeHTML(s.parent_phone || '')}" />
+                <input type="tel" id="es-parentPhone" class="form-control" value="${Utils.escapeHTML((s.parent_phone && s.parent_phone !== 'undefined') ? s.parent_phone : '')}" placeholder="e.g. +91 98765 00000" />
               </div>
 
               <div class="form-group">
                 <label class="form-label">Mother Name</label>
-                <input type="text" id="es-motherName" class="form-control" value="${Utils.escapeHTML(s.mother_name || '')}" />
+                <input type="text" id="es-motherName" class="form-control" value="${Utils.escapeHTML((s.mother_name && s.mother_name !== 'undefined') ? s.mother_name : '')}" placeholder="Mother Name" />
               </div>
 
               <div class="form-group">
                 <label class="form-label">Mother Phone</label>
-                <input type="tel" id="es-motherPhone" class="form-control" value="${Utils.escapeHTML(s.mother_phone || '')}" />
+                <input type="tel" id="es-motherPhone" class="form-control" value="${Utils.escapeHTML((s.mother_phone && s.mother_phone !== 'undefined') ? s.mother_phone : '')}" placeholder="Mother Phone" />
               </div>
 
               <div class="form-group col-span-2">
                 <label class="form-label">Permanent Address</label>
-                <input type="text" id="es-address" class="form-control" value="${Utils.escapeHTML(s.address || '')}" />
+                <input type="text" id="es-address" class="form-control" value="${Utils.escapeHTML((s.address && s.address !== 'undefined') ? s.address : '')}" placeholder="House no, street, city, state, pin code" />
               </div>
             </div>
 
@@ -640,13 +687,18 @@ const StudentsPage = {
       fd.append('phone', phone);
       fd.append('email', email);
       fd.append('monthlyFee', monthlyFee);
-      if (college) fd.append('college', college);
-      if (course) fd.append('course', course);
-      if (parentName) fd.append('parentName', parentName);
-      if (parentPhone) fd.append('parentPhone', parentPhone);
-      if (motherName) fd.append('motherName', motherName);
-      if (motherPhone) fd.append('motherPhone', motherPhone);
-      if (address) fd.append('address', address);
+      fd.append('monthly_fee', monthlyFee);
+      fd.append('college', college || '');
+      fd.append('course', course || '');
+      fd.append('parentName', parentName || '');
+      fd.append('parent_name', parentName || '');
+      fd.append('parentPhone', parentPhone || '');
+      fd.append('parent_phone', parentPhone || '');
+      fd.append('motherName', motherName || '');
+      fd.append('mother_name', motherName || '');
+      fd.append('motherPhone', motherPhone || '');
+      fd.append('mother_phone', motherPhone || '');
+      fd.append('address', address || '');
 
       if (photoInput && photoInput.files && photoInput.files[0]) {
         fd.append('photo', photoInput.files[0]);
@@ -657,7 +709,12 @@ const StudentsPage = {
       if (res.success) {
         Toast.success(res.message || 'Student information updated successfully!');
         Modal.close();
-        this.loadStudents();
+        if (typeof this.loadStudents === 'function') {
+          this.loadStudents();
+        }
+        if (typeof StudentProfile !== 'undefined' && StudentProfile.currentStudentId == studentId) {
+          StudentProfile.open(studentId);
+        }
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to update student.');

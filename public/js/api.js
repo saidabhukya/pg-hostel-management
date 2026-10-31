@@ -340,6 +340,18 @@ const API = {
       return { success: true, message: 'Fee status updated successfully!' };
     }
 
+    if (path.startsWith('/students/') && !path.includes('/fee-status') && !path.includes('/photo') && !path.includes('/reset-password') && method === 'PUT') {
+      const studentId = path.split('/')[2];
+      const updated = MockData.updateStudent(studentId, payload);
+      return { success: true, message: 'Student details updated successfully!', data: updated };
+    }
+
+    if (path.startsWith('/students/') && path.endsWith('/photo') && method === 'POST') {
+      const studentId = path.split('/')[2];
+      const updated = MockData.updateStudent(studentId, payload);
+      return { success: true, message: 'Student photo updated successfully!', data: updated, photoUrl: updated?.photo_url };
+    }
+
     // 4. Hostel Structure
     if (path === '/rooms/structure') {
       return { success: true, data: MockData.structure };

@@ -827,6 +827,17 @@
       if (!s.password) {
         s.password = s.reg_number;
       }
+      if (!s.parent_name || s.parent_name === 'undefined') {
+        s.parent_name = 'Parent / Guardian';
+      }
+      if (!s.parent_phone || s.parent_phone === 'undefined') {
+        s.parent_phone = s.phone || '+91 98765 00000';
+      }
+      if (!s.address || s.address === 'undefined') {
+        s.address = 'Near Vignan University, Vadlamudi, Guntur - 522213';
+      }
+      if (s.mother_name === 'undefined') s.mother_name = '';
+      if (s.mother_phone === 'undefined') s.mother_phone = '';
       activeStudentMap.set(s.id, s);
     });
 
@@ -1656,6 +1667,12 @@
         photoUrl = data.photo;
       }
 
+      const pName = (data.parentName || data.parent_name || '').trim();
+      const pPhone = (data.parentPhone || data.parent_phone || '').trim();
+      const mName = (data.motherName || data.mother_name || '').trim();
+      const mPhone = (data.motherPhone || data.mother_phone || '').trim();
+      const sAddress = (data.address || '').trim();
+
       const newStudent = {
         id: studentId,
         reg_number: data.regNumber || data.reg_number || `REG${Date.now().toString().slice(-4)}`,
@@ -1663,7 +1680,14 @@
         email: data.email,
         phone: data.phone,
         college: data.college || 'VIGNAN UNIVERSITY',
-        course: data.course || 'B.Tech - Artificial Intelligence & Machine Learning (AI & ML)',
+        course: data.course || 'B.Tech Computer Science and Engineering (CSE)',
+        year: data.year || '1st Year',
+        gender: data.gender || 'Male',
+        parent_name: pName || 'Parent / Guardian',
+        parent_phone: pPhone || data.phone || '+91 98765 00000',
+        mother_name: mName || '',
+        mother_phone: mPhone || '',
+        address: sAddress || 'Near College Campus, Guntur - 522002',
         joining_date: data.joiningDate || data.joining_date || new Date().toISOString().slice(0, 10),
         monthly_fee: Number(data.monthlyFee || data.monthly_fee || 7000),
         room_number: roomNumber,
@@ -1732,8 +1756,8 @@
           course: newStudent.course,
           student_phone: newStudent.phone,
           student_email: newStudent.email,
-          parent_name: 'Parent / Guardian',
-          parent_phone: '+91 98765 00000',
+          parent_name: newStudent.parent_name || 'Parent / Guardian',
+          parent_phone: newStudent.parent_phone || '+91 98765 00000',
           amount: newStudent.monthly_fee,
           payment_method: data.paymentMethod || data.payment_method || 'Cash / Desk',
           transaction_id: `TXN${Date.now()}`,
@@ -1757,6 +1781,66 @@
       store.payments = store.payments.filter(p => Number(p.student_id) !== idNum);
       sanitizeStore();
       saveStore();
+    },
+
+    updateStudent(studentId, data = {}) {
+      const idNum = Number(studentId);
+      const student = store.students.find(s => s.id === idNum);
+      if (!student) throw new Error('Student not found.');
+
+      if (data.name !== undefined) student.name = String(data.name).trim();
+      if (data.phone !== undefined) student.phone = String(data.phone).trim();
+      if (data.email !== undefined) student.email = String(data.email).trim();
+      if (data.college !== undefined) student.college = String(data.college).trim();
+      if (data.course !== undefined) student.course = String(data.course).trim();
+      if (data.year !== undefined) student.year = String(data.year).trim();
+      if (data.gender !== undefined) student.gender = String(data.gender).trim();
+
+      const pName = data.parentName !== undefined ? data.parentName : data.parent_name;
+      if (pName !== undefined) student.parent_name = String(pName).trim();
+
+      const pPhone = data.parentPhone !== undefined ? data.parentPhone : data.parent_phone;
+      if (pPhone !== undefined) student.parent_phone = String(pPhone).trim();
+
+      const mName = data.motherName !== undefined ? data.motherName : data.mother_name;
+      if (mName !== undefined) student.mother_name = String(mName).trim();
+
+      const mPhone = data.motherPhone !== undefined ? data.motherPhone : data.mother_phone;
+      if (mPhone !== undefined) student.mother_phone = String(mPhone).trim();
+
+      if (data.address !== undefined) student.address = String(data.address).trim();
+
+      if (data.monthlyFee !== undefined || data.monthly_fee !== undefined) {
+        student.monthly_fee = Number(data.monthlyFee || data.monthly_fee);
+      }
+
+      if (data.photo_url) student.photo_url = data.photo_url;
+      if (data.photo && typeof data.photo === 'string' && data.photo.startsWith('data:image')) {
+        student.photo_url = data.photo;
+      }
+
+      // Synchronize linked fee cycles
+      (store.feeCycles || []).forEach(c => {
+        if (Number(c.student_id) === idNum) {
+          if (student.name) c.student_name = student.name;
+          if (student.college) c.college = student.college;
+          if (student.course) c.course = student.course;
+        }
+      });
+
+      // Synchronize linked payments
+      (store.payments || []).forEach(p => {
+        if (Number(p.student_id) === idNum) {
+          if (student.name) p.student_name = student.name;
+          if (student.parent_name) p.parent_name = student.parent_name;
+          if (student.parent_phone) p.parent_phone = student.parent_phone;
+          if (student.college) p.college = student.college;
+          if (student.course) p.course = student.course;
+        }
+      });
+
+      saveStore();
+      return student;
     },
 
     updateStudentFeeStatus(studentId, feeStatus, paymentData = {}) {

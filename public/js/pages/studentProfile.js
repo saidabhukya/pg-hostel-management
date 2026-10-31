@@ -174,14 +174,14 @@ const StudentProfile = {
               <div class="card" style="padding:1rem;">
                 <h4 style="font-size:0.82rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;margin-bottom:0.75rem;">Emergency & Parent Details</h4>
                 <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                  <div><span style="color:var(--text-muted);">Parent / Guardian:</span> <strong>${Utils.escapeHTML(profile.parent_name)}</strong></div>
-                  <div><span style="color:var(--text-muted);">Parent Phone:</span> <strong>${profile.parent_phone}</strong></div>
-                  ${profile.mother_name ? `<div><span style="color:var(--text-muted);">Mother Name:</span> <strong>${Utils.escapeHTML(profile.mother_name)}</strong></div>` : ''}
-                  ${profile.mother_phone ? `<div><span style="color:var(--text-muted);">Mother Phone:</span> <strong>${profile.mother_phone}</strong></div>` : ''}
-                  <div><span style="color:var(--text-muted);">Student Phone:</span> <strong>${profile.phone}</strong></div>
-                  <div><span style="color:var(--text-muted);">College Email:</span> <strong>${profile.email}</strong></div>
-                  <div><span style="color:var(--text-muted);">Portal Username:</span> <code>${profile.username || profile.reg_number}</code></div>
-                  <div><span style="color:var(--text-muted);">Permanent Address:</span> <span>${Utils.escapeHTML(profile.address)}</span></div>
+                  <div><span style="color:var(--text-muted);">Parent / Guardian:</span> <strong>${Utils.escapeHTML(profile.parent_name && profile.parent_name !== 'undefined' ? profile.parent_name : 'Parent / Guardian')}</strong></div>
+                  <div><span style="color:var(--text-muted);">Parent Phone:</span> <strong>${Utils.escapeHTML(profile.parent_phone && profile.parent_phone !== 'undefined' ? profile.parent_phone : (profile.phone || '—'))}</strong></div>
+                  ${(profile.mother_name && profile.mother_name !== 'undefined') ? `<div><span style="color:var(--text-muted);">Mother Name:</span> <strong>${Utils.escapeHTML(profile.mother_name)}</strong></div>` : ''}
+                  ${(profile.mother_phone && profile.mother_phone !== 'undefined') ? `<div><span style="color:var(--text-muted);">Mother Phone:</span> <strong>${Utils.escapeHTML(profile.mother_phone)}</strong></div>` : ''}
+                  <div><span style="color:var(--text-muted);">Student Phone:</span> <strong>${Utils.escapeHTML(profile.phone && profile.phone !== 'undefined' ? profile.phone : '—')}</strong></div>
+                  <div><span style="color:var(--text-muted);">College Email:</span> <strong>${Utils.escapeHTML(profile.email && profile.email !== 'undefined' ? profile.email : '—')}</strong></div>
+                  <div><span style="color:var(--text-muted);">Portal Username:</span> <code>${Utils.escapeHTML(profile.username || profile.reg_number || '—')}</code></div>
+                  <div><span style="color:var(--text-muted);">Permanent Address:</span> <span>${Utils.escapeHTML(profile.address && profile.address !== 'undefined' ? profile.address : 'Near Vignan University, Vadlamudi, Guntur')}</span></div>
                 </div>
               </div>
             </div>
