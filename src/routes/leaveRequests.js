@@ -255,6 +255,5 @@ router.put('/:id/status', authenticateToken, requireAdmin, async (req, res) => {
     });
   }
 });
-});
 
 module.exports = router;

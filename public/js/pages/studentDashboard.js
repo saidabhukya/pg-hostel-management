@@ -624,10 +624,6 @@ const StudentDashboard = {
       </div>
     `;
   }
-
-      Utils.renderIcons();
-    }
-  }
 };
 
 window.StudentDashboard = StudentDashboard;

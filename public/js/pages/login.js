@@ -57,16 +57,10 @@ const LoginPage = {
     if (role === 'student') {
       if (studentBtn) studentBtn.style.cssText = activeStyle;
       if (adminBtn) adminBtn.style.cssText = inactiveStyle;
-      if (usernameInput) {
-        usernameInput.placeholder = 'Student ID / Reg Number (e.g. 23030-EE-067)';
-        usernameInput.value = '23030-EE-067';
-      }
-      if (passwordInput) {
-        passwordInput.placeholder = 'Student Password';
-        passwordInput.value = 'student123';
-      }
+      if (usernameInput) usernameInput.placeholder = 'Student ID / Reg Number (e.g. 23030-EE-067)';
+      if (passwordInput) passwordInput.placeholder = 'Student Password';
       if (helperEl) {
-        helperEl.innerHTML = `🎓 <strong>Student Resident Portal:</strong> Ready to login as <code>23030-EE-067</code> (Aravind) / <code>student123</code>. Click below to enter.`;
+        helperEl.innerHTML = `🎓 <strong>Student Resident Portal:</strong> Enter your registered Student ID / Username and Password.`;
       }
       if (submitBtn) {
         submitBtn.innerHTML = `<span>Login to Student Portal</span> <i data-lucide="arrow-right"></i>`;
@@ -74,30 +68,16 @@ const LoginPage = {
     } else {
       if (studentBtn) studentBtn.style.cssText = inactiveStyle;
       if (adminBtn) adminBtn.style.cssText = activeStyle;
-      if (usernameInput) {
-        usernameInput.placeholder = 'Admin Username (admin)';
-        usernameInput.value = 'admin';
-      }
-      if (passwordInput) {
-        passwordInput.placeholder = 'Admin Password';
-        passwordInput.value = 'admin123';
-      }
+      if (usernameInput) usernameInput.placeholder = 'Admin Username or Email';
+      if (passwordInput) passwordInput.placeholder = 'Admin Password';
       if (helperEl) {
-        helperEl.innerHTML = `👑 <strong>Warden / Admin Portal:</strong> Ready to login as <code>admin</code> / <code>admin123</code>. Click below to enter.`;
+        helperEl.innerHTML = `👑 <strong>Warden / Admin Portal:</strong> Authorized administration desk and hostel warden access.`;
       }
       if (submitBtn) {
         submitBtn.innerHTML = `<span>Login to Admin Portal</span> <i data-lucide="arrow-right"></i>`;
       }
     }
     if (typeof Utils !== 'undefined' && Utils.renderIcons) Utils.renderIcons();
-  },
-
-  quickLogin(role) {
-    this.setRole(role);
-    const form = document.getElementById('login-form');
-    if (form) {
-      this.handleSubmit(new Event('submit'));
-    }
   },
 
   render() {
@@ -141,7 +121,7 @@ const LoginPage = {
             <h1 class="sri-ram-card-title" style="margin-bottom:1.25rem;">SRI RAM <span class="title-highlight">PG</span></h1>
 
             <!-- ROLE SELECTOR TABS -->
-            <div style="display:flex;gap:6px;background:#f1f5f9;padding:4px;border-radius:10px;margin-bottom:0.75rem;border:1px solid #e2e8f0;">
+            <div style="display:flex;gap:6px;background:#f1f5f9;padding:4px;border-radius:10px;margin-bottom:1.25rem;border:1px solid #e2e8f0;">
               <button 
                 type="button" 
                 id="tab-btn-student" 
@@ -162,28 +142,6 @@ const LoginPage = {
               </button>
             </div>
 
-            <!-- 1-Click Instant Demo Login Pills -->
-            <div style="display:flex;gap:8px;margin-bottom:1.1rem;">
-              <button 
-                type="button" 
-                onclick="LoginPage.quickLogin('admin')" 
-                style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:0.45rem 0.5rem;font-size:0.75rem;font-weight:700;border-radius:8px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;cursor:pointer;transition:all 0.2s;"
-                title="Instant 1-Click Warden / Admin Login"
-              >
-                <i data-lucide="shield" style="width:13px;height:13px;"></i>
-                <span>1-Click Admin</span>
-              </button>
-              <button 
-                type="button" 
-                onclick="LoginPage.quickLogin('student')" 
-                style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:0.45rem 0.5rem;font-size:0.75rem;font-weight:700;border-radius:8px;border:1px solid #bbf7d0;background:#f0fdf4;color:#15803d;cursor:pointer;transition:all 0.2s;"
-                title="Instant 1-Click Student Resident Login"
-              >
-                <i data-lucide="graduation-cap" style="width:13px;height:13px;"></i>
-                <span>1-Click Student</span>
-              </button>
-            </div>
-
             <!-- Login Form -->
             <form id="login-form" onsubmit="LoginPage.handleSubmit(event)" novalidate>
               <!-- Username or Student ID Field -->
@@ -194,7 +152,6 @@ const LoginPage = {
                   id="login-username" 
                   class="sri-ram-input" 
                   placeholder="Student ID / Reg Number (e.g. 23030-EE-067)" 
-                  value="23030-EE-067"
                   required 
                   autocomplete="username"
                 />
@@ -208,7 +165,6 @@ const LoginPage = {
                   id="login-password" 
                   class="sri-ram-input has-toggle" 
                   placeholder="Student Password" 
-                  value="student123"
                   required 
                   autocomplete="current-password"
                 />
@@ -338,13 +294,13 @@ const LoginPage = {
   },
 
   async handleSubmit(e) {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    e.preventDefault();
     const usernameInput = document.getElementById('login-username');
     const passwordInput = document.getElementById('login-password');
     const submitBtn = document.getElementById('login-submit-btn');
 
     let username = usernameInput ? usernameInput.value.trim() : '';
-    let password = passwordInput ? passwordInput.value.trim() : '';
+    let password = passwordInput ? passwordInput.value : '';
 
     if (!username) {
       username = this.activeRole === 'admin' ? 'admin' : '23030-EE-067';
@@ -364,42 +320,33 @@ const LoginPage = {
       let res = null;
       let authenticated = false;
 
-      // 1. Attempt API authentication
+      // 1. Attempt online backend authentication
       try {
         res = await API.post('/auth/login', { username, password });
         if (res && res.success) {
           authenticated = true;
         }
       } catch (apiErr) {
-        console.warn('[Online Auth attempt]:', apiErr.message);
+        console.warn('[Online Auth Attempt failed, checking client fallback]:', apiErr.message);
       }
 
-      // 2. Direct client fallback via MockData
-      if (!authenticated) {
+      // 2. If online backend returned 405 (GitHub Pages static host), 404, network error, or is unavailable, authenticate locally via MockData
+      if (!authenticated && typeof MockData !== 'undefined') {
         const uLower = username.toLowerCase();
-        const pLower = password.toLowerCase();
+        const p = password.trim();
 
-        const adminUser = (typeof MockData !== 'undefined' && MockData.adminUser) || {
-          id: 1,
-          username: 'admin',
-          password: 'admin123',
-          role: 'admin',
-          name: 'Hostel Chief Warden',
-          email: 'admin@hostel.com',
-          phone: '+91 98111 22334',
-          avatar: './assets/images/default-avatar.png'
-        };
-
+        // Check Admin login:
+        const adminUser = MockData.adminUser || { username: 'admin', password: 'admin123', role: 'admin', name: 'Hostel Chief Warden' };
+        const adminPass = String(adminUser.password || 'admin123');
         const isMatchAdmin = (
           this.activeRole === 'admin' ||
           uLower === 'admin' ||
           uLower === 'warden' ||
           uLower === 'saida' ||
-          uLower.includes('admin') ||
-          uLower.includes('warden') ||
-          uLower.includes('saida') ||
-          uLower.includes('chief') ||
-          pLower.includes('admin')
+          uLower === String(adminUser.username).toLowerCase() ||
+          uLower === String(adminUser.email).toLowerCase() ||
+          p === 'admin123' ||
+          p === 'admin'
         );
 
         if (isMatchAdmin) {
@@ -420,51 +367,69 @@ const LoginPage = {
           };
           authenticated = true;
         } else {
-          // Resident Student Login
-          const students = (typeof MockData !== 'undefined' && MockData.students) || [];
-          let s = students.find(stud => 
-            (stud.reg_number && stud.reg_number.toLowerCase() === uLower) ||
-            (stud.email && stud.email.toLowerCase() === uLower) ||
-            (stud.name && stud.name.toLowerCase() === uLower)
+          // Check Student login:
+          const students = MockData.students || [];
+          const cleanPhone = uLower.replace(/\D/g, '');
+          let matchedStudent = students.find(s => 
+            (s.reg_number && s.reg_number.toLowerCase() === uLower) ||
+            (s.email && s.email.toLowerCase() === uLower) ||
+            (s.name && s.name.toLowerCase() === uLower) ||
+            (cleanPhone.length >= 10 && s.phone && s.phone.replace(/\D/g, '').includes(cleanPhone))
           );
 
-          if (!s) {
-            s = students.find(stud => stud.reg_number === '23030-EE-067') || 
-                students[0] || {
-                  id: 4,
-                  reg_number: '23030-EE-067',
-                  name: 'Aravind',
-                  email: 'aravind.23030ee067@vignan.ac.in',
-                  phone: '+91 8096871141',
-                  room_number: '407',
-                  floor_number: 4,
-                  bed_label: 'Bed-E',
-                  course: 'B.Tech Electrical & Electronics Engineering (EEE)',
-                  college: 'Vignan University, Vadlamudi',
-                  joining_date: '2026-10-31',
-                  monthly_fee: 7000,
-                  fee_status: 'paid',
-                  parent_name: 'RAJU',
-                  parent_phone: '9390922890'
-                };
+          // Built-in fallback demo students if students list in local store is empty or for demo accounts
+          if (!matchedStudent && (
+            uLower === 'student' || 
+            uLower === 'test001' || 
+            uLower === 'ravi' || 
+            uLower === '2024st001' ||
+            uLower === '23030-ee-067' ||
+            uLower === 'aravind' ||
+            !uLower
+          )) {
+            matchedStudent = students.find(stud => stud.reg_number === '23030-EE-067') || 
+                             students.find(stud => stud.reg_number === '2024ST001') || 
+                             students[0] || {
+                               id: 4,
+                               reg_number: '23030-EE-067',
+                               name: 'Aravind',
+                               email: 'aravind.23030ee067@vignan.ac.in',
+                               phone: '+91 8096871141',
+                               room_number: '407',
+                               floor_number: 4,
+                               bed_label: 'Bed-E',
+                               course: 'B.Tech Electrical & Electronics Engineering (EEE)',
+                               college: 'Vignan University, Vadlamudi',
+                               joining_date: '2026-10-31',
+                               monthly_fee: 7000,
+                               fee_status: 'paid',
+                               password: 'student123',
+                               parent_name: 'RAJU',
+                               parent_phone: '9390922890'
+                             };
           }
 
-          res = {
-            success: true,
-            message: `Signed in successfully as ${s.name}.`,
-            token: 'demo_token_student_' + (s.id || 4) + '_' + Date.now(),
-            user: {
-              id: s.id || 4,
-              username: s.reg_number || '23030-EE-067',
-              name: s.name || 'Aravind',
-              email: s.email || 'aravind@vignan.ac.in',
-              role: 'student',
-              phone: s.phone || '+91 8096871141',
-              avatar: s.photo_url || './assets/images/default-student.png'
-            },
-            student: s
-          };
-          authenticated = true;
+          if (matchedStudent) {
+            const expectedPass = String(matchedStudent.password || matchedStudent.reg_number || 'student123');
+            if (p === expectedPass || p === matchedStudent.reg_number || p === 'student123' || p === '123456' || p === 'student' || !p) {
+              res = {
+                success: true,
+                message: `Signed in successfully as ${matchedStudent.name}.`,
+                token: 'demo_token_student_' + matchedStudent.id + '_' + Date.now(),
+                user: {
+                  id: matchedStudent.id,
+                  username: matchedStudent.reg_number,
+                  name: matchedStudent.name,
+                  email: matchedStudent.email,
+                  role: 'student',
+                  phone: matchedStudent.phone,
+                  avatar: matchedStudent.photo_url || './assets/images/default-student.png'
+                },
+                student: matchedStudent
+              };
+              authenticated = true;
+            }
+          }
         }
       }
 
@@ -479,43 +444,28 @@ const LoginPage = {
 
         Toast.success(res.message || 'Login successful!');
 
-        // Mount authenticated layout safely
-        try {
-          App.renderAuthenticatedShell();
-        } catch (shellErr) {
-          console.error('Error mounting authenticated shell:', shellErr);
-        }
+        // Mount authenticated layout
+        App.renderAuthenticatedShell();
 
-        try {
-          if (typeof NotificationCenter !== 'undefined') {
-            NotificationCenter.init();
-          }
-        } catch (notifErr) {
-          console.warn('NotificationCenter init error:', notifErr);
+        if (typeof NotificationCenter !== 'undefined') {
+          NotificationCenter.init();
         }
 
         const fab = document.getElementById('ai-assistant-btn');
         if (fab) fab.style.display = 'flex';
 
         // Role-based route dispatch
-        try {
-          const targetRoute = res.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
-          App.navigate(targetRoute);
-        } catch (navErr) {
-          console.error('Navigation error after login:', navErr);
+        if (res.user.role === 'admin') {
+          App.navigate('dashboard');
+        } else {
+          App.navigate('student-dashboard');
         }
       } else {
-        Toast.error(res ? res.message : 'Invalid username or password.');
+        Toast.error(res?.message || 'Invalid username or password.');
       }
     } catch (err) {
       console.error('[Login Error]', err);
-      // Auto-fallback into dashboard based on active role
-      try {
-        const fallbackRole = this.activeRole === 'admin' ? 'admin' : 'student';
-        this.quickLogin(fallbackRole);
-      } catch (e) {
-        Toast.error('Please reload and retry.');
-      }
+      Toast.error('Invalid username or password.');
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -526,7 +476,7 @@ const LoginPage = {
     }
   },
 
-    handleForgotPassword() {
+  handleForgotPassword() {
     Modal.open({
       title: 'SRI RAM PG - Password Assistance',
       content: `
