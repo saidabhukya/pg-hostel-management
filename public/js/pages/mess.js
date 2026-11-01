@@ -28,9 +28,21 @@ const MessPage = {
         </div>
         <div class="page-actions" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
           ${isAdmin ? `
-            <button class="btn btn-primary" onclick="MessPage.openCustomBroadcastModal()">
+            <button class="btn btn-primary" onclick="MessPage.openAddItemModal()">
+              <i data-lucide="plus-circle" style="width:14px;height:14px;"></i>
+              <span>Add Menu Item</span>
+            </button>
+            <button class="btn btn-secondary" onclick="MessPage.openDeleteItemModal()">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              <span>Delete Menu Item</span>
+            </button>
+            <button class="btn btn-secondary" onclick="MessPage.saveCurrentMenu()">
+              <i data-lucide="save" style="width:14px;height:14px;"></i>
+              <span>Save Menu</span>
+            </button>
+            <button class="btn btn-secondary" onclick="MessPage.openCustomBroadcastModal()">
               <i data-lucide="bell-ring" style="width:14px;height:14px;"></i>
-              <span>Send Food Call-Out</span>
+              <span>Call-Out Alert</span>
             </button>
           ` : ''}
           <button class="btn btn-secondary" onclick="MessPage.openFeedbackModal()">
@@ -139,7 +151,13 @@ const MessPage = {
 
   getWeeklyHtml(weeklyMenu, todayDay, isAdmin) {
     if (!Array.isArray(weeklyMenu) || weeklyMenu.length === 0) {
-      return `<p style="padding:1rem;color:var(--text-muted);">Weekly menu routine loading...</p>`;
+      return `
+        <div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--text-muted);">
+          <i data-lucide="utensils-crossed" style="width:48px;height:48px;color:var(--primary-red);margin-bottom:0.75rem;display:inline-block;"></i>
+          <h3 style="color:var(--text-primary);font-size:1.1rem;margin-bottom:0.35rem;">No menu available.</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);">The hostel food menu is currently being updated by the mess manager.</p>
+        </div>
+      `;
     }
 
     return weeklyMenu.map(m => {
@@ -316,6 +334,176 @@ const MessPage = {
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to update menu.');
+    }
+  },
+
+  openAddItemModal() {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    Modal.open({
+      title: 'Add Menu Item',
+      content: `
+        <form onsubmit="MessPage.submitAddItem(event)">
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Select Day</label>
+            <select id="add-mess-day" class="form-control" required>
+              ${days.map(d => `<option value="${d}">${d}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Select Meal Session</label>
+            <select id="add-mess-meal" class="form-control" required>
+              <option value="breakfast">🍳 Break Fast</option>
+              <option value="lunch">🍲 Lunch</option>
+              <option value="snacks">☕ Snacks</option>
+              <option value="dinner">🍽️ Dinner</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label class="form-label required">Item Name / Description</label>
+            <input type="text" id="add-mess-item" class="form-control" placeholder="e.g. Masala Dosa, Paneer Butter Masala, Gulab Jamun" required />
+            <small style="color:var(--text-muted);font-size:0.75rem;margin-top:2px;">This item will be appended to the selected day and meal.</small>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add to Menu</button>
+          </div>
+        </form>
+      `,
+      maxWidth: '480px'
+    });
+    Utils.renderIcons();
+  },
+
+  async submitAddItem(e) {
+    e.preventDefault();
+    const day = document.getElementById('add-mess-day')?.value;
+    const meal = document.getElementById('add-mess-meal')?.value;
+    const item = document.getElementById('add-mess-item')?.value.trim();
+    if (!day || !meal || !item) {
+      Toast.error('Please fill in all fields.');
+      return;
+    }
+
+    try {
+      const res = await API.post('/mess/item', { day, meal, item });
+      if (res.success) {
+        Toast.success(res.message || `Added "${item}" to ${day} ${meal}!`);
+        Modal.close();
+        await this.loadMenu();
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Failed to add item to menu.');
+    }
+  },
+
+  openDeleteItemModal() {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    Modal.open({
+      title: 'Delete Menu Item',
+      content: `
+        <form onsubmit="MessPage.submitDeleteItem(event)">
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Select Day</label>
+            <select id="del-mess-day" class="form-control" required onchange="MessPage.updateDeleteItemPreview()">
+              ${days.map(d => `<option value="${d}">${d}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Select Meal Session</label>
+            <select id="del-mess-meal" class="form-control" required onchange="MessPage.updateDeleteItemPreview()">
+              <option value="breakfast">🍳 Break Fast</option>
+              <option value="lunch">🍲 Lunch</option>
+              <option value="snacks">☕ Snacks</option>
+              <option value="dinner">🍽️ Dinner</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label">Current Menu For This Meal:</label>
+            <div id="del-mess-current-preview" style="background:var(--bg-secondary);padding:0.75rem;border-radius:var(--radius-sm);font-size:0.85rem;color:var(--text-secondary);min-height:40px;">
+              Loading...
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label class="form-label">Specific Item to Remove (Leave blank to clear entire meal)</label>
+            <input type="text" id="del-mess-item" class="form-control" placeholder="e.g. Vada or Gulab Jamun" />
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+            <button type="submit" class="btn btn-danger">Delete Item</button>
+          </div>
+        </form>
+      `,
+      maxWidth: '480px'
+    });
+    setTimeout(() => MessPage.updateDeleteItemPreview(), 50);
+    Utils.renderIcons();
+  },
+
+  updateDeleteItemPreview() {
+    const day = document.getElementById('del-mess-day')?.value;
+    const meal = document.getElementById('del-mess-meal')?.value;
+    const previewEl = document.getElementById('del-mess-current-preview');
+    if (!previewEl || !this.currentData) return;
+
+    const weekly = this.currentData.weeklyMenu || [];
+    const item = weekly.find(m => (m.day_of_week || m.day || '').toLowerCase() === String(day).toLowerCase());
+    if (item && meal && item[meal]) {
+      previewEl.innerText = item[meal];
+    } else {
+      previewEl.innerText = '(No items configured)';
+    }
+  },
+
+  async submitDeleteItem(e) {
+    e.preventDefault();
+    const day = document.getElementById('del-mess-day')?.value;
+    const meal = document.getElementById('del-mess-meal')?.value;
+    const item = document.getElementById('del-mess-item')?.value.trim();
+
+    try {
+      const res = await API.delete('/mess/item', { day, meal, item });
+      if (res.success) {
+        Toast.success(res.message || `Menu item updated!`);
+        Modal.close();
+        await this.loadMenu();
+      }
+    } catch (err) {
+      Toast.error(err.message || 'Failed to delete menu item.');
+    }
+  },
+
+  async saveCurrentMenu() {
+    try {
+      if (this.currentData && this.currentData.weeklyMenu) {
+        const res = await API.post('/mess/save', { weeklyMenu: this.currentData.weeklyMenu });
+        if (res.success) {
+          Toast.success('Hostel dining menu saved permanently!');
+        }
+      } else {
+        Toast.success('Hostel mess schedule is up to date.');
+      }
+    } catch (err) {
+      Toast.error('Failed to save menu: ' + err.message);
+    }
+  },
+
+  async resetDefaultMenu() {
+    if (!confirm('Reset menu back to official Vignan Vihar 7-Day food routine?')) return;
+    try {
+      const res = await API.post('/mess/reset');
+      if (res.success) {
+        Toast.success('Menu restored to default routine!');
+        await this.loadMenu();
+      }
+    } catch (err) {
+      Toast.error('Failed to reset menu.');
     }
   },
 

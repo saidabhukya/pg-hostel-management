@@ -173,12 +173,13 @@ const StudentsPage = {
       }
 
       if (students.length === 0) {
+        const isFiltered = Boolean(this.currentFilters.search || this.currentFilters.floor || this.currentFilters.feeStatus);
         tbody.innerHTML = `
           <tr>
             <td colspan="7" style="text-align:center;padding:3rem 1rem;">
               <i data-lucide="users" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
-              <p style="font-weight:700;color:var(--text-primary);font-size:1rem;">No Students Found</p>
-              <p style="font-size:0.84rem;color:var(--text-muted);margin-top:0.25rem;">Try adjusting your search criteria or add a new student resident.</p>
+              <p style="font-weight:700;color:var(--text-primary);font-size:1.1rem;">${isFiltered ? 'No students match your filter criteria' : 'No students added yet.'}</p>
+              <p style="font-size:0.84rem;color:var(--text-muted);margin-top:0.25rem;">${isFiltered ? 'Try clearing your search filters to see all enrolled students.' : 'Click Add Student below to enroll the first resident student.'}</p>
               <button class="btn btn-primary btn-sm" onclick="AddStudentModal.open()" style="margin-top:1rem;">
                 <i data-lucide="user-plus" style="width:14px;height:14px;"></i> Add Student
               </button>
@@ -329,11 +330,13 @@ const StudentsPage = {
         }
 
         if (list.length === 0) {
+          const isFiltered = Boolean(this.currentFilters.search || this.currentFilters.floor || this.currentFilters.feeStatus);
           tbody.innerHTML = `
             <tr>
               <td colspan="7" style="text-align:center;padding:3rem 1rem;">
                 <i data-lucide="users" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
-                <p style="font-weight:700;color:var(--text-primary);font-size:1rem;">No Students Found</p>
+                <p style="font-weight:700;color:var(--text-primary);font-size:1.1rem;">${isFiltered ? 'No students match your filter criteria' : 'No students added yet.'}</p>
+                <p style="font-size:0.84rem;color:var(--text-muted);margin-top:0.25rem;">${isFiltered ? 'Try clearing your search filters to see all enrolled students.' : 'Click Add Student below to enroll the first resident student.'}</p>
                 <button class="btn btn-primary btn-sm" onclick="AddStudentModal.open()" style="margin-top:1rem;">
                   <i data-lucide="user-plus" style="width:14px;height:14px;"></i> Add Student
                 </button>

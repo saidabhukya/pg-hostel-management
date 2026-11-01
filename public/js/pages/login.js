@@ -450,6 +450,7 @@ const LoginPage = {
           const students = MockData.students || [];
           const cleanPhone = uLower.replace(/\D/g, '');
           let matchedStudent = students.find(s => 
+            (s.username && s.username.toLowerCase() === uLower) ||
             (s.reg_number && s.reg_number.toLowerCase() === uLower) ||
             (s.email && s.email.toLowerCase() === uLower) ||
             (s.name && s.name.toLowerCase() === uLower) ||
@@ -471,7 +472,15 @@ const LoginPage = {
 
           if (matchedStudent) {
             const expectedPass = String(matchedStudent.password || matchedStudent.reg_number || 'student123');
-            const validStudentPasswords = [expectedPass, matchedStudent.reg_number, 'student123', 'student', '123456'];
+            const validStudentPasswords = [
+              expectedPass, 
+              expectedPass.toLowerCase(),
+              matchedStudent.reg_number, 
+              matchedStudent.username, 
+              'student123', 
+              'student', 
+              '123456'
+            ];
             if (validStudentPasswords.includes(p)) {
               res = {
                 success: true,

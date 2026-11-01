@@ -22,6 +22,7 @@ pnpm-debug.log*
 uploads/
 temp/
 tmp/
+scratch/
 
 # OS files
 .DS_Store

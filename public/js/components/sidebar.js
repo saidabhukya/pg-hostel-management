@@ -3,7 +3,10 @@
  */
 const Sidebar = {
   render(user, currentRoute = 'dashboard') {
-    const isAdmin = user.role === 'admin';
+    if (!user && typeof API !== 'undefined') user = API.getUser();
+    if (!user && typeof App !== 'undefined' && App.user) user = App.user;
+    user = user || { name: 'Hostel Chief Warden', role: 'admin', username: 'admin' };
+    const isAdmin = user && (String(user.role || '').toLowerCase() === 'admin' || user.username === 'admin');
 
     let navItemsHtml = '';
 
@@ -102,11 +105,11 @@ const Sidebar = {
         <div class="sidebar-footer">
           <div class="user-snippet" style="cursor:pointer;" onclick="Sidebar.handleNavClick('${isAdmin ? 'settings' : 'student-profile'}', event)" title="${isAdmin ? 'Hostel Settings' : 'Student Profile'}">
             <div class="user-avatar">
-              ${user.name ? user.name.charAt(0) : 'U'}
+              ${user && user.name ? user.name.charAt(0) : 'U'}
             </div>
             <div class="user-info">
-              <span class="user-name">${user.name || 'User'}</span>
-              <span class="user-role-badge">${user.role === 'admin' ? 'Chief Warden' : 'Resident Student'}</span>
+              <span class="user-name">${(user && user.name) || 'User'}</span>
+              <span class="user-role-badge">${isAdmin ? 'Chief Warden' : 'Resident Student'}</span>
             </div>
           </div>
         </div>
@@ -123,7 +126,14 @@ const Sidebar = {
       }
       return;
     }
-    App.navigate(routeId);
+    if (typeof App !== 'undefined') {
+      if (!App.user && typeof API !== 'undefined') {
+        App.user = API.getUser();
+      }
+      if (typeof App.navigate === 'function') {
+        App.navigate(routeId);
+      }
+    }
   },
 
   toggleMobile() {

@@ -39,8 +39,12 @@ const Utils = {
    * Render Lucide icons in newly created DOM
    */
   renderIcons() {
-    if (window.lucide && typeof window.lucide.createIcons === 'function') {
-      window.lucide.createIcons();
+    try {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    } catch (e) {
+      console.warn('Lucide icon rendering warning:', e);
     }
   },
 

@@ -17,51 +17,49 @@ const App = {
       // 2. Check token and session
       const token = typeof API !== 'undefined' ? API.getToken() : null;
       if (token) {
+        let authenticatedUser = null;
+        let authenticatedStudent = null;
+
         try {
           const res = await API.get('/auth/me');
           if (res && res.success && res.user) {
-            this.user = res.user;
-            API.setUser(res.user);
-            if (res.student) API.setStudent(res.student);
-            
-            this.renderAuthenticatedShell();
-            
-            // Route to URL hash or default
-            let initialRoute = window.location.hash ? window.location.hash.substring(1) : '';
-            if (!initialRoute || initialRoute === 'login' || initialRoute === 'logout') {
-              initialRoute = this.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
-            }
-            this.navigate(initialRoute);
-            
-            // Initialize notifications
-            if (typeof NotificationCenter !== 'undefined') {
-              NotificationCenter.init();
-            }
-            
-            // Show AI FAB
-            const fab = document.getElementById('ai-assistant-btn');
-            if (fab) fab.style.display = 'flex';
-            
-            return;
+            authenticatedUser = res.user;
+            authenticatedStudent = res.student || null;
           }
         } catch (err) {
           console.warn('Session online verification failed:', err.message);
-          const cachedUser = typeof API !== 'undefined' ? API.getUser() : null;
-          if (cachedUser) {
-            this.user = cachedUser;
-            this.renderAuthenticatedShell();
-            let initialRoute = window.location.hash ? window.location.hash.substring(1) : '';
-            if (!initialRoute || initialRoute === 'login' || initialRoute === 'logout') {
-              initialRoute = this.user.role === 'admin' ? 'dashboard' : 'student-dashboard';
-            }
-            this.navigate(initialRoute);
-            if (typeof NotificationCenter !== 'undefined') {
-              NotificationCenter.init();
-            }
-            const fab = document.getElementById('ai-assistant-btn');
-            if (fab) fab.style.display = 'flex';
-            return;
+        }
+
+        if (!authenticatedUser && typeof API !== 'undefined') {
+          authenticatedUser = API.getUser();
+          authenticatedStudent = API.getStudent();
+        }
+
+        if (authenticatedUser) {
+          this.user = authenticatedUser;
+          API.setUser(authenticatedUser);
+          if (authenticatedStudent) API.setStudent(authenticatedStudent);
+          
+          this.renderAuthenticatedShell();
+          
+          const isAdmin = this.user && (String(this.user.role || '').toLowerCase() === 'admin' || this.user.username === 'admin');
+          let initialRoute = window.location.hash ? window.location.hash.substring(1) : '';
+          if (!initialRoute || initialRoute === 'login' || initialRoute === 'logout') {
+            initialRoute = isAdmin ? 'dashboard' : 'student-dashboard';
           }
+          this.navigate(initialRoute);
+          
+          // Initialize notifications
+          if (typeof NotificationCenter !== 'undefined') {
+            NotificationCenter.init();
+          }
+          
+          // Show AI FAB
+          const fab = document.getElementById('ai-assistant-btn');
+          if (fab) fab.style.display = 'flex';
+          
+          return;
+        } else {
           if (typeof API !== 'undefined') API.setToken(null);
         }
       }
@@ -92,6 +90,9 @@ const App = {
   renderAuthenticatedShell() {
     if (typeof LoginPage !== 'undefined' && typeof LoginPage.cleanup === 'function') {
       LoginPage.cleanup();
+    }
+    if (!this.user && typeof API !== 'undefined') {
+      this.user = API.getUser();
     }
     const root = document.getElementById('app-root');
     if (!root || !this.user) return;
@@ -124,6 +125,9 @@ const App = {
   },
 
   async navigate(routeId) {
+    if (!this.user && typeof API !== 'undefined') {
+      this.user = API.getUser();
+    }
     if (!this.user) {
       this.renderLoginPage();
       return;
@@ -135,6 +139,8 @@ const App = {
     this._isNavigating = true;
     this._navSequence = (this._navSequence || 0) + 1;
     const currentSeq = this._navSequence;
+
+    const isAdmin = this.user && (String(this.user.role || '').toLowerCase() === 'admin' || this.user.username === 'admin');
 
     try {
       this.currentRoute = routeId;
@@ -163,20 +169,20 @@ const App = {
         switch (routeId) {
           // Admin Routes
           case 'dashboard':
-            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            if (!isAdmin) return this.navigate('student-dashboard');
             pageHtml = await AdminDashboard.render();
             activePageModule = AdminDashboard;
             break;
 
           case 'students':
-            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            if (!isAdmin) return this.navigate('student-dashboard');
             pageHtml = await StudentsPage.render();
             activePageModule = StudentsPage;
             break;
 
           case 'hostel-structure':
           case 'beds':
-            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            if (!isAdmin) return this.navigate('student-dashboard');
             pageHtml = await HostelStructurePage.render();
             activePageModule = HostelStructurePage;
             break;
@@ -204,7 +210,7 @@ const App = {
             break;
 
           case 'visitors':
-            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            if (!isAdmin) return this.navigate('student-dashboard');
             pageHtml = await VisitorsPage.render();
             activePageModule = VisitorsPage;
             break;
@@ -215,13 +221,13 @@ const App = {
             break;
 
           case 'expenses':
-            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            if (!isAdmin) return this.navigate('student-dashboard');
             pageHtml = await ExpensesPage.render();
             activePageModule = ExpensesPage;
             break;
 
           case 'reports':
-            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            if (!isAdmin) return this.navigate('student-dashboard');
             pageHtml = await ReportsPage.render();
             activePageModule = ReportsPage;
             break;
@@ -261,8 +267,8 @@ const App = {
             activePageModule = StudentDashboard;
             break;
 
-          case 'student-profile':
-            const student = API.getStudent();
+          case 'student-profile': {
+            const student = (typeof API !== 'undefined') ? API.getStudent() : null;
             if (student) {
               pageHtml = await StudentDashboard.render();
               activePageModule = StudentDashboard;
@@ -274,9 +280,10 @@ const App = {
               activePageModule = StudentDashboard;
             }
             break;
+          }
 
           default:
-            if (this.user.role === 'admin') {
+            if (isAdmin) {
               pageHtml = await AdminDashboard.render();
               activePageModule = AdminDashboard;
             } else {
@@ -288,7 +295,11 @@ const App = {
 
         if (pageHtml) {
           pageContainer.innerHTML = pageHtml;
-          Utils.renderIcons();
+          try {
+            Utils.renderIcons();
+          } catch (iconErr) {
+            console.warn('[Lucide renderIcons warning]:', iconErr);
+          }
         }
 
         // Safely invoke afterRender - never destroy rendered page on secondary afterRender warnings
@@ -314,7 +325,9 @@ const App = {
         `;
       }
 
-      Utils.renderIcons();
+      try {
+        Utils.renderIcons();
+      } catch (e) {}
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       this._isNavigating = false;
@@ -322,13 +335,33 @@ const App = {
   },
 
   toggleAiAssistant() {
-    AiAssistantModal.open();
+    try {
+      if (typeof AiAssistantModal !== 'undefined' && typeof AiAssistantModal.open === 'function') {
+        AiAssistantModal.open();
+      } else {
+        console.warn('[App] AiAssistantModal is not available.');
+      }
+    } catch (err) {
+      // AI Assistant failure must NEVER crash the Admin Portal
+      console.error('[App] AI Assistant failed to open:', err);
+    }
   },
 
   logout() {
-    API.setToken(null);
-    API.setUser(null);
-    API.setStudent(null);
+    if (typeof API !== 'undefined') {
+      API.setToken(null);
+      API.setUser(null);
+      API.setStudent(null);
+    } else {
+      // Fallback: clear session storage manually if API is not available
+      try {
+        localStorage.removeItem('pg_hostel_token');
+        localStorage.removeItem('pg_hostel_user');
+        localStorage.removeItem('pg_hostel_student');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('userRole');
+      } catch(e) {}
+    }
     this.user = null;
     Toast.info('You have been signed out.');
     window.location.hash = '';

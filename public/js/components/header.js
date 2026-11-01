@@ -5,7 +5,9 @@ const Header = {
   render(user) {
     const isDark = Utils.getTheme() === 'dark';
 
-    const isAdmin = user && user.role === 'admin';
+    if (!user && typeof API !== 'undefined') user = API.getUser();
+    if (!user && typeof App !== 'undefined' && App.user) user = App.user;
+    const isAdmin = user && (String(user.role || '').toLowerCase() === 'admin' || user.username === 'admin');
 
     return `
       <header class="top-header">
@@ -72,13 +74,13 @@ const Header = {
                 style="width:34px;height:34px;font-size:0.8rem;border:none;cursor:pointer;overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;"
                 title="View Profile"
               >
-                ${user.avatar && user.avatar !== '/assets/images/default-avatar.png' && user.avatar !== '/assets/images/default-student.png' ? `
-                  <img src="${user.avatar}" alt="${Utils.escapeHTML(user.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user.name ? user.name.charAt(0).toUpperCase() : 'U'}';" />
-                ` : (user.name ? user.name.charAt(0).toUpperCase() : 'U')}
+                ${user && user.avatar && user.avatar !== '/assets/images/default-avatar.png' && user.avatar !== '/assets/images/default-student.png' ? `
+                  <img src="${user.avatar}" alt="${Utils.escapeHTML((user && user.name) || 'User')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerText='${user && user.name ? user.name.charAt(0).toUpperCase() : 'U'}';" />
+                ` : (user && user.name ? user.name.charAt(0).toUpperCase() : 'U')}
               </button>
               <div style="display:none;flex-direction:column;line-height:1.2;" class="d-md-flex">
-                <span style="font-size:0.82rem;font-weight:700;color:var(--text-primary);">${user.name || 'User'}</span>
-                <span style="font-size:0.68rem;color:var(--primary-red);font-weight:600;text-transform:uppercase;">${user.role}</span>
+                <span style="font-size:0.82rem;font-weight:700;color:var(--text-primary);">${(user && user.name) || 'User'}</span>
+                <span style="font-size:0.68rem;color:var(--primary-red);font-weight:600;text-transform:uppercase;">${(user && user.role) || 'Admin'}</span>
               </div>
             </div>
             <button class="header-btn" onclick="App.logout()" title="Logout" style="margin-left:0.25rem;">

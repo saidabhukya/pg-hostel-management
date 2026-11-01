@@ -806,6 +806,16 @@
   function saveStore() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      // Synchronize with unified data storage keys
+      if (store.students) localStorage.setItem('pg_students', JSON.stringify(store.students));
+      if (store.feeCycles) localStorage.setItem('pg_fees', JSON.stringify(store.feeCycles));
+      if (store.messMenu) localStorage.setItem('pg_menu', JSON.stringify(store.messMenu));
+      if (store.complaints) localStorage.setItem('pg_complaints', JSON.stringify(store.complaints));
+      if (store.announcements) localStorage.setItem('pg_notices', JSON.stringify(store.announcements));
+      if (store.adminUser) localStorage.setItem('pg_admin', JSON.stringify(store.adminUser));
+      if (store.attendance) localStorage.setItem('pg_attendance', JSON.stringify(store.attendance));
+      if (store.structure) localStorage.setItem('pg_rooms', JSON.stringify(store.structure));
+      else if (store.rooms) localStorage.setItem('pg_rooms', JSON.stringify(store.rooms));
     } catch (e) {
       console.warn('Failed to save to localStorage:', e);
     }
@@ -1045,12 +1055,54 @@
       if (!Array.isArray(store.notifications) || store.notifications.length === 0) {
         store.notifications = getDefaultNotifications();
       }
-      // Always adopt the latest Vignan Vihar Boys Hostel menu
-      store.messMenu = getVignanMessMenu();
+      // Preserve existing mess menu if valid; fallback to default only if empty
+      if (!Array.isArray(store.messMenu) || store.messMenu.length === 0) {
+        store.messMenu = getVignanMessMenu();
+      }
     } else {
       store = getCleanInitialState();
-      // Safely migrate user-added students and records from v9, v8, v7, v6, or v5
+      // Check unified keys or previous version keys
       try {
+        const pgStud = localStorage.getItem('pg_students');
+        if (pgStud) {
+          const parsedStud = JSON.parse(pgStud);
+          if (Array.isArray(parsedStud) && parsedStud.length > 0) store.students = parsedStud;
+        }
+        const pgMenu = localStorage.getItem('pg_menu');
+        if (pgMenu) {
+          const parsedMenu = JSON.parse(pgMenu);
+          if (Array.isArray(parsedMenu) && parsedMenu.length > 0) store.messMenu = parsedMenu;
+        }
+        const pgComp = localStorage.getItem('pg_complaints');
+        if (pgComp) {
+          const parsedComp = JSON.parse(pgComp);
+          if (Array.isArray(parsedComp) && parsedComp.length > 0) store.complaints = parsedComp;
+        }
+        const pgFees = localStorage.getItem('pg_fees');
+        if (pgFees) {
+          const parsedFees = JSON.parse(pgFees);
+          if (Array.isArray(parsedFees) && parsedFees.length > 0) store.feeCycles = parsedFees;
+        }
+        const pgRooms = localStorage.getItem('pg_rooms');
+        if (pgRooms) {
+          const parsedRooms = JSON.parse(pgRooms);
+          if (Array.isArray(parsedRooms) && parsedRooms.length > 0) store.structure = parsedRooms;
+        }
+        const pgNotices = localStorage.getItem('pg_notices');
+        if (pgNotices) {
+          const parsedNotices = JSON.parse(pgNotices);
+          if (Array.isArray(parsedNotices) && parsedNotices.length > 0) store.announcements = parsedNotices;
+        }
+        const pgAdmin = localStorage.getItem('pg_admin');
+        if (pgAdmin) {
+          const parsedAdmin = JSON.parse(pgAdmin);
+          if (parsedAdmin && parsedAdmin.username) store.adminUser = parsedAdmin;
+        }
+        const pgAtt = localStorage.getItem('pg_attendance');
+        if (pgAtt) {
+          const parsedAtt = JSON.parse(pgAtt);
+          if (parsedAtt) store.attendance = parsedAtt;
+        }
         const prevKeys = ['sri_ram_pg_live_store_v10', 'sri_ram_pg_live_store_v9', 'sri_ram_pg_live_store_v8', 'sri_ram_pg_live_store_v7', 'sri_ram_pg_live_store_v6', 'sri_ram_pg_live_store_v5'];
         for (const pk of prevKeys) {
           const val = localStorage.getItem(pk);
@@ -1503,9 +1555,16 @@
       const pendingComplaints = store.complaints.filter(c => c.status !== 'Resolved').length;
       const activeVisitors = store.visitors.filter(v => v.status === 'in_hostel').length;
 
+      const totalRooms = 50;
+      const complaintsCount = store.complaints.length;
+      const todayAttendance = `${Math.round(totalStudents * 0.96)} / ${totalStudents} Present`;
+      const currentDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
+      const messStatus = `${currentDay}: Active`;
+
       return {
         totalStudents,
         totalBeds,
+        totalRooms,
         occupiedBeds,
         availableBeds,
         maintenanceBeds,
@@ -1514,7 +1573,10 @@
         pendingFees,
         hostelExpenses,
         netIncome,
+        complaints: complaintsCount,
         pendingComplaints,
+        todayAttendance,
+        messStatus,
         activeVisitors
       };
     },
@@ -1731,9 +1793,26 @@
     },
 
     addStudent(data) {
-      const studentId = store.students.length ? Math.max(...store.students.map(s => s.id)) + 1 : 1;
+      let studentId;
+      if (data.studentId && !isNaN(Number(data.studentId)) && !store.students.some(s => s.id === Number(data.studentId))) {
+        studentId = Number(data.studentId);
+      } else {
+        studentId = store.students.length ? Math.max(...store.students.map(s => s.id)) + 1 : 1;
+      }
+
       const isPaidNow = (data.paymentStatus === 'paid' || data.payment_status === 'paid');
-      const feeStatus = isPaidNow ? 'paid' : 'pending';
+      const monthlyFee = Number(data.monthlyFee || data.monthly_fee || data.feeAmount || data.fee_amount || 7000);
+      let paidAmt = 0;
+      if (data.paidAmount !== undefined && data.paidAmount !== null && data.paidAmount !== '') {
+        paidAmt = Number(data.paidAmount);
+      } else if (data.paid_amount !== undefined && data.paid_amount !== null && data.paid_amount !== '') {
+        paidAmt = Number(data.paid_amount);
+      } else if (isPaidNow) {
+        paidAmt = monthlyFee;
+      }
+      const remainingAmt = Math.max(0, monthlyFee - paidAmt);
+      const isPaid = (paidAmt >= monthlyFee);
+      const feeStatus = isPaid ? 'paid' : (paidAmt > 0 ? 'partial' : 'pending');
 
       let bedLabel = (data.bedLabel || data.bed_label || '').trim();
       let roomNumber = String(data.roomNumber || data.room_number || '').trim();
@@ -1766,48 +1845,55 @@
         photoUrl = data.photo;
       }
 
-      const pName = (data.parentName || data.parent_name || '').trim();
-      const pPhone = (data.parentPhone || data.parent_phone || '').trim();
+      const pName = (data.parentName || data.parent_name || data.fatherName || data.father_name || '').trim();
+      const pPhone = (data.parentPhone || data.parent_phone || data.fatherPhone || data.father_phone || '').trim();
       const mName = (data.motherName || data.mother_name || '').trim();
       const mPhone = (data.motherPhone || data.mother_phone || '').trim();
       const sAddress = (data.address || '').trim();
 
       const newStudent = {
         id: studentId,
+        student_id: data.studentId || `STU-${String(studentId).padStart(4, '0')}`,
         reg_number: data.regNumber || data.reg_number || `REG${Date.now().toString().slice(-4)}`,
         name: data.name,
         email: data.email,
         phone: data.phone,
+        student_phone: data.phone,
         college: data.college || 'VIGNAN UNIVERSITY',
         course: data.course || 'B.Tech Computer Science and Engineering (CSE)',
         year: data.year || '1st Year',
         gender: data.gender || 'Male',
         parent_name: pName || 'Parent / Guardian',
+        father_name: pName || 'Parent / Guardian',
         parent_phone: pPhone || data.phone || '+91 98765 00000',
+        father_phone: pPhone || data.phone || '+91 98765 00000',
         mother_name: mName || '',
         mother_phone: mPhone || '',
         address: sAddress || 'Near College Campus, Guntur - 522002',
         joining_date: data.joiningDate || data.joining_date || new Date().toISOString().slice(0, 10),
-        monthly_fee: Number(data.monthlyFee || data.monthly_fee || 7000),
+        monthly_fee: monthlyFee,
+        fee_amount: monthlyFee,
+        paid_amount: paidAmt,
+        remaining_amount: remainingAmt,
         room_number: roomNumber,
         floor_number: floorNumber,
         bed_label: bedLabel,
+        bed_number: data.bedNumber || (bedLabel.replace(/\D/g, '') || 1),
         bed_id: bedId || (floorNumber - 1) * 50 + 1,
         fee_status: feeStatus,
         student_status: feeStatus,
         latest_cycle_status: feeStatus,
         photo_url: photoUrl,
         username: (data.username || data.regNumber || data.reg_number || '').trim(),
-        password: data.password || data.regNumber || data.reg_number,
-        status: 'active'
+        password: data.password || data.regNumber || data.reg_number || 'student123',
+        status: data.status || 'Active'
       };
 
       store.students.unshift(newStudent);
 
-      // Initial Fee Cycle (PENDING by default, unless marked Paid Now)
+      // Initial Fee Cycle
       const feeCycleId = store.feeCycles.length ? Math.max(...store.feeCycles.map(c => c.id)) + 1 : 1;
       const today = new Date().toISOString().slice(0, 10);
-      const paidAmt = isPaidNow ? newStudent.monthly_fee : 0;
 
       // Cycle end date calculation (1 month after joining date)
       let cycleEnd = today;
@@ -1833,12 +1919,12 @@
         due_date: newStudent.joining_date || today,
         amount: newStudent.monthly_fee,
         paid_amount: paidAmt,
-        payment_date: isPaidNow ? today : null,
+        payment_date: paidAmt > 0 ? today : null,
         status: feeStatus
       });
 
-      // ONLY record payment if explicitly marked as Paid Now
-      if (isPaidNow) {
+      // Record payment if paid amount > 0
+      if (paidAmt > 0) {
         const pId = store.payments.length ? Math.max(...store.payments.map(p => p.id)) + 1 : 1;
         const receiptNumber = `REC-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(pId).padStart(4, '0')}`;
 
@@ -1858,7 +1944,7 @@
           student_email: newStudent.email,
           parent_name: newStudent.parent_name || 'Parent / Guardian',
           parent_phone: newStudent.parent_phone || '+91 98765 00000',
-          amount: newStudent.monthly_fee,
+          amount: paidAmt,
           payment_method: data.paymentMethod || data.payment_method || 'Cash / Desk',
           transaction_id: `TXN${Date.now()}`,
           payment_date: today,
@@ -1896,11 +1982,17 @@
       if (data.year !== undefined) student.year = String(data.year).trim();
       if (data.gender !== undefined) student.gender = String(data.gender).trim();
 
-      const pName = data.parentName !== undefined ? data.parentName : data.parent_name;
-      if (pName !== undefined) student.parent_name = String(pName).trim();
+      const pName = data.parentName !== undefined ? data.parentName : (data.parent_name !== undefined ? data.parent_name : (data.fatherName !== undefined ? data.fatherName : data.father_name));
+      if (pName !== undefined) {
+        student.parent_name = String(pName).trim();
+        student.father_name = String(pName).trim();
+      }
 
-      const pPhone = data.parentPhone !== undefined ? data.parentPhone : data.parent_phone;
-      if (pPhone !== undefined) student.parent_phone = String(pPhone).trim();
+      const pPhone = data.parentPhone !== undefined ? data.parentPhone : (data.parent_phone !== undefined ? data.parent_phone : (data.fatherPhone !== undefined ? data.fatherPhone : data.father_phone));
+      if (pPhone !== undefined) {
+        student.parent_phone = String(pPhone).trim();
+        student.father_phone = String(pPhone).trim();
+      }
 
       const mName = data.motherName !== undefined ? data.motherName : data.mother_name;
       if (mName !== undefined) student.mother_name = String(mName).trim();
@@ -1909,9 +2001,27 @@
       if (mPhone !== undefined) student.mother_phone = String(mPhone).trim();
 
       if (data.address !== undefined) student.address = String(data.address).trim();
+      if (data.status !== undefined) student.status = String(data.status).trim();
+      if (data.username !== undefined) student.username = String(data.username).trim();
+      if (data.password !== undefined) student.password = String(data.password).trim();
+      if (data.reg_number !== undefined) student.reg_number = String(data.reg_number).trim();
+      if (data.regNumber !== undefined) student.reg_number = String(data.regNumber).trim();
+      if (data.room_number !== undefined) student.room_number = String(data.room_number).trim();
+      if (data.roomNumber !== undefined) student.room_number = String(data.roomNumber).trim();
+      if (data.bed_label !== undefined) student.bed_label = String(data.bed_label).trim();
+      if (data.bedLabel !== undefined) student.bed_label = String(data.bedLabel).trim();
+      if (data.bed_number !== undefined) student.bed_number = data.bed_number;
+      if (data.floor_number !== undefined) student.floor_number = Number(data.floor_number);
+      if (data.floorNumber !== undefined) student.floor_number = Number(data.floorNumber);
 
-      if (data.monthlyFee !== undefined || data.monthly_fee !== undefined) {
-        student.monthly_fee = Number(data.monthlyFee || data.monthly_fee);
+      if (data.monthlyFee !== undefined || data.monthly_fee !== undefined || data.fee_amount !== undefined) {
+        const f = Number(data.monthlyFee || data.monthly_fee || data.fee_amount);
+        student.monthly_fee = f;
+        student.fee_amount = f;
+      }
+      if (data.paid_amount !== undefined || data.paidAmount !== undefined) {
+        student.paid_amount = Number(data.paid_amount ?? data.paidAmount);
+        student.remaining_amount = Math.max(0, (student.monthly_fee || 7000) - student.paid_amount);
       }
 
       if (data.photo_url) student.photo_url = data.photo_url;
@@ -2203,6 +2313,51 @@
       return item;
     },
 
+    addMessItem(dayOfWeek, mealType, itemText) {
+      const item = store.messMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === String(dayOfWeek).toLowerCase());
+      if (item && mealType && itemText) {
+        const key = mealType.toLowerCase();
+        if (item[key] && item[key] !== '-') {
+          item[key] = item[key] + ', ' + itemText.trim();
+        } else {
+          item[key] = itemText.trim();
+        }
+        saveStore();
+        return item;
+      }
+      return null;
+    },
+
+    deleteMessItem(dayOfWeek, mealType, itemText) {
+      const item = store.messMenu.find(m => (m.day_of_week || m.day || '').toLowerCase() === String(dayOfWeek).toLowerCase());
+      if (item && mealType) {
+        const key = mealType.toLowerCase();
+        if (itemText && item[key]) {
+          const parts = item[key].split(',').map(s => s.trim()).filter(s => s.toLowerCase() !== itemText.toLowerCase().trim());
+          item[key] = parts.length > 0 ? parts.join(', ') : '-';
+        } else {
+          item[key] = '-';
+        }
+        saveStore();
+        return item;
+      }
+      return null;
+    },
+
+    saveMessMenu(newMenu) {
+      if (Array.isArray(newMenu) && newMenu.length > 0) {
+        store.messMenu = newMenu;
+        saveStore();
+      }
+      return store.messMenu;
+    },
+
+    resetMessMenu() {
+      store.messMenu = getVignanMessMenu();
+      saveStore();
+      return store.messMenu;
+    },
+
     addMessFeedback(data) {
       const fb = {
         id: (store.complaints.length ? Math.max(...store.complaints.map(c => c.id)) : 0) + 1,
@@ -2299,6 +2454,7 @@
                       (store.students && store.students[0]) || {};
       const isStudent = user && user.role === 'student';
       const today = new Date().toISOString().slice(0, 10);
+      const complaintDate = data.date || today;
 
       const studentName = isStudent ? (student.name || user.name) : (data.student_name || user.name || 'Resident Student');
       const regNumber = isStudent ? (student.reg_number || user.username || 'RESIDENT') : (data.reg_number || (student ? student.reg_number : 'ADMIN'));
@@ -2318,8 +2474,9 @@
         priority: data.priority || 'Medium',
         status: 'Pending',
         admin_notes: '',
-        created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        createdAtDisplay: formatDisplayDate(today)
+        date: complaintDate,
+        created_at: data.date ? `${data.date} 10:00:00` : new Date().toISOString().slice(0, 19).replace('T', ' '),
+        createdAtDisplay: formatDisplayDate(complaintDate)
       };
 
       store.complaints.unshift(newComplaint);

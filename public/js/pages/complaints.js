@@ -243,6 +243,11 @@ const ComplaintsPage = {
           </div>
 
           <div class="form-group" style="margin-bottom:1.15rem;">
+            <label class="form-label required">Incident / Report Date</label>
+            <input type="date" id="comp-date" class="form-control" value="${typeof Utils !== 'undefined' ? Utils.getTodayISO() : new Date().toISOString().slice(0, 10)}" required />
+          </div>
+
+          <div class="form-group" style="margin-bottom:1.15rem;">
             <label class="form-label">Room Number / Location</label>
             <input type="text" id="comp-room" class="form-control" value="${defaultRoom}" placeholder="e.g. 101, Dining Hall, 2nd Floor Corridor" />
             <small style="color:var(--text-muted);font-size:0.72rem;">Room number or specific area in the hostel needing repair.</small>
@@ -283,6 +288,7 @@ const ComplaintsPage = {
     const btn = document.getElementById('comp-submit-btn');
 
     const category = document.getElementById('comp-category').value;
+    const compDate = document.getElementById('comp-date') ? document.getElementById('comp-date').value : '';
     const roomNumber = document.getElementById('comp-room') ? document.getElementById('comp-room').value.trim() : '';
     const title = document.getElementById('comp-title').value;
     const description = document.getElementById('comp-desc').value;
@@ -290,6 +296,7 @@ const ComplaintsPage = {
 
     const formData = new FormData();
     formData.append('category', category);
+    if (compDate) formData.append('date', compDate);
     if (roomNumber) formData.append('room_number', roomNumber);
     formData.append('title', title);
     formData.append('description', description);
@@ -324,6 +331,7 @@ const ComplaintsPage = {
         MockData.addComplaint({
           student_id: (student && student.id) || (user && user.id) || 1,
           category,
+          date: compDate,
           room_number: roomNumber || (student && student.room_number) || '205',
           title,
           description

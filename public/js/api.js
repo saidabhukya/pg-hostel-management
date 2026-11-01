@@ -3,7 +3,11 @@
  * Centralizes all network requests, JWT Bearer token authentication,
  * and error normalization. Communicates exclusively with the online backend.
  */
-const API = {
+
+// Use var so API is hoisted to the global scope and accessible as a true
+// global variable from all subsequent <script> files, preventing
+// "ReferenceError: API is not defined" even in strict environments.
+var API = {
   get baseUrl() {
     if (typeof window !== 'undefined' && window.location) {
       // 1. Check if user configured a custom API URL in localStorage
@@ -47,7 +51,7 @@ const API = {
 
   getUser() {
     try {
-      const u = localStorage.getItem('pg_hostel_user');
+      const u = localStorage.getItem('pg_hostel_user') || localStorage.getItem('currentUser');
       return u ? JSON.parse(u) : null;
     } catch (e) {
       return null;
@@ -58,8 +62,12 @@ const API = {
     try {
       if (user) {
         localStorage.setItem('pg_hostel_user', JSON.stringify(user));
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('userRole', user.role || '');
       } else {
         localStorage.removeItem('pg_hostel_user');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('userRole');
       }
     } catch (e) {}
   },
@@ -605,6 +613,13 @@ const API = {
         return { success: true, message: 'Complaint registered successfully!', data: comp };
       }
       let list = MockData.complaints || [];
+      const user = this.getUser();
+      if (user && user.role === 'student') {
+        const student = this.getStudent();
+        if (student) {
+          list = list.filter(c => Number(c.student_id) === Number(student.id) || (student.reg_number && c.reg_number === student.reg_number) || (student.name && c.student_name && c.student_name.toLowerCase() === student.name.toLowerCase()));
+        }
+      }
       const cat = params.get('category');
       if (cat) list = list.filter(c => c.category === cat);
       const st = params.get('status');
@@ -730,6 +745,24 @@ const API = {
     // 12. Mess
     if (path === '/mess') {
       return { success: true, data: MockData.messSchedule };
+    }
+    if (path === '/mess/item' && method === 'POST') {
+      const { day, meal, item } = payload;
+      const updated = MockData.addMessItem(day, meal, item);
+      return { success: true, message: `Item added to ${day}'s ${meal}!`, data: updated };
+    }
+    if (path === '/mess/item' && method === 'DELETE') {
+      const { day, meal, item } = payload;
+      const updated = MockData.deleteMessItem(day, meal, item);
+      return { success: true, message: `Item removed from ${day}'s ${meal}!`, data: updated };
+    }
+    if (path === '/mess/save' && method === 'POST') {
+      const saved = MockData.saveMessMenu(payload.weeklyMenu || payload.menu || payload);
+      return { success: true, message: 'Hostel mess schedule saved successfully!', data: saved };
+    }
+    if (path === '/mess/reset' && method === 'POST') {
+      const reset = MockData.resetMessMenu();
+      return { success: true, message: 'Hostel mess schedule restored to standard routine!', data: reset };
     }
     if (path.startsWith('/mess/') && method === 'PUT') {
       const day = decodeURIComponent(path.split('/')[2] || '');
@@ -927,8 +960,11 @@ const API = {
     });
   },
 
-  delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+  delete(endpoint, data = {}) {
+    return this.request(endpoint, {
+      method: 'DELETE',
+      body: data instanceof FormData ? data : JSON.stringify(data)
+    });
   },
 
   generateAiResponse(rawQuery, user, currentStudent) {
@@ -990,6 +1026,98 @@ const API = {
           { label: 'Payments', link: '#payments' }
         ];
       }
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // High-Priority Direct Handlers for Core Hostel Inquiries
+    // 1. "What is my room number?"
+    if (/what('?s| is) my (room|room number|bed|bed number)/i.test(q)) {
+      category = 'room';
+      answer = `🏠 **Your Room & Bed Details:**\n\n` +
+        `• **Resident Name:** **${student.name}**\n` +
+        `• **Room Number:** **Room ${student.room_number || '101'}**\n` +
+        `• **Bed Label:** **${student.bed_label || 'Bed-A'}**\n` +
+        `• **Floor:** Floor ${student.floor_number || Math.floor((parseInt(student.room_number) || 100) / 100)}\n` +
+        `• **Hostel:** SRI RAM PG, Opp. Vignan University`;
+      quickActions = [{ label: 'View Room Matrix', link: '#hostel-structure' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 2. "What is my remaining fee?" or "What is my fee?"
+    if (/what('?s| is) my (remaining fee|pending fee|fee balance|balance fee|due fee)/i.test(q) || /what('?s| is) my fee/i.test(q)) {
+      category = 'fees';
+      const monthlyFee = Number(student.monthly_fee || student.fee_amount || 7000);
+      const paidAmt = Number(student.paid_amount || 0);
+      const remaining = student.remaining_amount !== undefined ? Number(student.remaining_amount) : (student.fee_status === 'paid' ? 0 : monthlyFee);
+      answer = `💳 **Your Hostel Fee Breakdown:**\n\n` +
+        `• **Monthly Room Fee:** ₹${monthlyFee.toLocaleString('en-IN')}\n` +
+        `• **Paid Amount:** ₹${paidAmt.toLocaleString('en-IN')}\n` +
+        `• **Remaining Fee Due:** **₹${remaining.toLocaleString('en-IN')}**\n` +
+        `• **Payment Status:** ${remaining === 0 ? '🟢 Fully Paid & Cleared' : '🔴 Pending Payment'}\n` +
+        `• **Billing Cycle:** Current Active Cycle\n\n` +
+        (remaining === 0 ? 'Thank you for paying on time! No outstanding balance.' : 'You can pay your remaining fee at the administration counter or via UPI.');
+      quickActions = [{ label: 'View Fee Receipts', link: isStudent ? '#student-payments' : '#payments' }, { label: 'Fee Dues', link: isStudent ? '#student-fees' : '#fees' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 3. "What are the mess timings?"
+    if (/(mess timings?|food timings?|meal timings?|dining hours?|timing of mess)/i.test(q)) {
+      category = 'mess';
+      answer = `⏰ **Official Hostel Mess & Dining Timings:**\n\n` +
+        `• 🍳 **Break Fast:** **7:30 AM - 9:30 AM**\n` +
+        `• 🍲 **Lunch:** **12:30 PM - 2:30 PM**\n` +
+        `• ☕ **Evening Snacks & Tea:** **4:30 PM - 6:00 PM**\n` +
+        `• 🍽️ **Dinner:** **7:30 PM - 9:30 PM**\n\n` +
+        `*Dining Hall is located on the Ground Floor. Call-out alerts ring 15 minutes before each meal.*`;
+      quickActions = [{ label: "Today's Menu", link: '#mess' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 4. "How can I submit a complaint?"
+    if (/(how (can|do) i submit a complaint|how to report|lodge a complaint|register complaint|file complaint)/i.test(q)) {
+      category = 'complaint';
+      answer = `🛠️ **How to Submit a Hostel Complaint:**\n\n` +
+        `1. Click the **Submit Complaint** button below or open **Complaints** from the sidebar.\n` +
+        `2. Select the issue category (Electrical, Plumbing, Wi-Fi, Cleaning, Food, Room).\n` +
+        `3. Enter your Room Number, complaint title, and description.\n` +
+        `4. (Optional) Attach a photo of the damaged fixture.\n` +
+        `5. Click **Submit Ticket**. The Chief Warden and technicians resolve complaints within 24 hours.`;
+      quickActions = [{ label: 'Open Complaints Form', link: '#complaints' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 5. "What is my student information?"
+    if (/(what('?s| is) my student (information|info|details)|my student info|tell me my details)/i.test(q)) {
+      category = 'student_info';
+      answer = `👤 **Your Complete Student Information:**\n\n` +
+        `• **Student ID:** \`${student.student_id || ('STU-' + student.id)}\`\n` +
+        `• **Registration / Roll No:** \`${student.reg_number || '2024ST001'}\`\n` +
+        `• **Name:** **${student.name}**\n` +
+        `• **Course & Year:** ${student.course || 'B.Tech'} (${student.year || '1st Year'})\n` +
+        `• **Institution:** ${student.college || 'VIGNAN UNIVERSITY'}\n` +
+        `• **Room & Bed:** **Room ${student.room_number || '-'}, ${student.bed_label || '-'}**\n` +
+        `• **Phone:** 📞 ${student.phone || '-'}\n` +
+        `• **Email:** ✉️ ${student.email || '-'}\n` +
+        `• **Father / Guardian:** ${student.parent_name || student.father_name || '-'}\n` +
+        `• **Father Phone:** +91 ${student.parent_phone || student.father_phone || '-'}\n` +
+        `• **Mother Name:** ${student.mother_name || '-'}\n` +
+        `• **Joining Date:** ${student.joining_date || '-'}\n` +
+        `• **Status:** 🟢 ${student.status || 'Active'}`;
+      quickActions = [{ label: 'View Profile', link: '#student-profile' }, { label: 'Room Matrix', link: '#hostel-structure' }];
+      return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
+    }
+
+    // 6. "How can I contact admin?"
+    if (/(how (can|do) i contact admin|contact admin|contact warden|admin phone|warden number|admin contact)/i.test(q)) {
+      category = 'contact';
+      answer = `📞 **Sri Ram PG Hostel Administration & Warden Contact:**\n\n` +
+        `• **Chief Hostel Warden:** **+91 98111 22334** / **+91 98765 43210**\n` +
+        `• **Administration & Accounts Desk:** Ground Floor Office, Sri Ram PG\n` +
+        `• **Email:** \`warden@srirampg.in\` / \`admin@hostel.com\`\n` +
+        `• **Office Working Hours:** 8:00 AM – 8:00 PM Daily\n` +
+        `• **Emergency Security Intercom:** Ext 101\n` +
+        `• **Hostel Location:** Opp. Vignan University, Vadlamudi, Guntur - 522213`;
+      quickActions = [{ label: 'Hostel Settings', link: '#settings' }];
       return { question: rawQuery, answer, category, quickActions, timestamp: new Date().toISOString() };
     }
 
@@ -1113,8 +1241,7 @@ const API = {
         if (studentComplaints.length > 0) {
           complaintSection = `• **Complaints (${studentComplaints.length}):**
 ` +
-            studentComplaints.map(c => `  - *${c.title}* [Status: **${c.status}**]`).join('
-');
+            studentComplaints.map(c => `  - *${c.title}* [Status: **${c.status}**]`).join('\n');
         }
 
         answer = `👤 **Student Record Found — ${s.name}:**
@@ -1184,8 +1311,7 @@ ${complaintSection}`;
 ` +
             `   • Status: ${s.fee_status === 'paid' ? '🟢 Paid' : '🔴 Due'} • Parent: ${s.parent_name || '-'} (+91 ${s.parent_phone || '-'})
 `
-          ).join('
-') +
+          ).join('\n') +
           `
 💡 *Tip: Type the student's exact registration number (e.g. \`${matchedStudents[0].reg_number}\`) to view complete records, parent details, and payment receipts.*`;
 

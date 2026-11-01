@@ -139,6 +139,12 @@ const AddStudentModal = {
 
           <div class="form-grid" style="margin-bottom:1.25rem;">
             <div class="form-group">
+              <label class="form-label required">Student ID</label>
+              <input type="text" id="as-studentId" class="form-control" value="STU-${Date.now().toString().slice(-4)}" required />
+              <small style="color:var(--text-muted);font-size:0.72rem;">Permanent unique student ID.</small>
+            </div>
+
+            <div class="form-group">
               <label class="form-label required">Student Full Name</label>
               <input type="text" id="as-name" class="form-control" placeholder="e.g. Test Student" required />
             </div>
@@ -153,6 +159,14 @@ const AddStudentModal = {
                 required 
                 oninput="AddStudentModal.syncUsername(this.value)"
               />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Resident Status</label>
+              <select id="as-status" class="form-control" required>
+                <option value="Active" selected>Active Resident</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
 
             <div class="form-group">
@@ -375,8 +389,20 @@ const AddStudentModal = {
             </div>
 
             <div class="form-group">
-              <label class="form-label required">Monthly Fee (₹)</label>
-              <input type="number" id="as-monthlyFee" class="form-control" value="7000" min="1000" step="100" required onchange="AddStudentModal.updateCyclePreview()" />
+              <label class="form-label required">Fee Amount / Monthly Fee (₹)</label>
+              <input type="number" id="as-monthlyFee" class="form-control" value="7000" min="1000" step="100" required oninput="AddStudentModal.recalcRemaining()" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Paid Amount (₹)</label>
+              <input type="number" id="as-paidAmount" class="form-control" value="0" min="0" step="100" required oninput="AddStudentModal.recalcRemaining()" />
+              <small style="color:var(--text-muted);font-size:0.72rem;">Enter 0 for pending, or amount paid at admission.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Remaining Amount (₹)</label>
+              <input type="number" id="as-remainingAmount" class="form-control" value="7000" readonly style="background:var(--bg-secondary);font-weight:700;color:var(--primary-red);" />
+              <small style="color:var(--text-muted);font-size:0.72rem;">Auto-calculated balance due.</small>
             </div>
 
             <!-- CASCADING SELECTORS: Floor -> Room -> Bed -->
@@ -531,7 +557,19 @@ const AddStudentModal = {
     const otherWrap = document.getElementById('as-course-other-wrap');
     if (otherWrap) otherWrap.style.display = val === 'Other' ? 'block' : 'none';
   },
-  updateCyclePreview() {},
+
+  recalcRemaining() {
+    const fee = Number(document.getElementById('as-monthlyFee')?.value || 0);
+    const paid = Number(document.getElementById('as-paidAmount')?.value || 0);
+    const remInput = document.getElementById('as-remainingAmount');
+    if (remInput) {
+      remInput.value = Math.max(0, fee - paid);
+    }
+  },
+
+  updateCyclePreview() {
+    this.recalcRemaining();
+  },
 
   previewPhoto(input) {
     if (input.files && input.files[0]) {
@@ -575,6 +613,8 @@ const AddStudentModal = {
     e.preventDefault();
     const submitBtn = document.getElementById('as-submit-btn');
 
+    const studentId = document.getElementById('as-studentId')?.value.trim();
+    const status = document.getElementById('as-status')?.value.trim() || 'Active';
     const name = document.getElementById('as-name')?.value.trim();
     const regNumber = document.getElementById('as-regNumber')?.value.trim();
     const username = document.getElementById('as-username')?.value.trim() || regNumber;
@@ -598,6 +638,8 @@ const AddStudentModal = {
     const address = document.getElementById('as-address')?.value.trim();
     const joiningDate = document.getElementById('as-joiningDate')?.value;
     const monthlyFee = document.getElementById('as-monthlyFee')?.value;
+    const paidAmount = document.getElementById('as-paidAmount')?.value || 0;
+    const remainingAmount = document.getElementById('as-remainingAmount')?.value || 0;
     const bedId = document.getElementById('as-bed')?.value;
     const photoInput = document.getElementById('as-photo-input');
 
@@ -613,11 +655,17 @@ const AddStudentModal = {
       }
 
       const fd = new FormData();
+      fd.append('studentId', studentId || `STU-${Date.now().toString().slice(-4)}`);
+      fd.append('student_id', studentId || `STU-${Date.now().toString().slice(-4)}`);
+      fd.append('status', status);
       fd.append('name', name);
       fd.append('regNumber', regNumber);
+      fd.append('reg_number', regNumber);
       fd.append('username', username);
       fd.append('password', password);
       fd.append('phone', phone);
+      fd.append('studentPhone', phone);
+      fd.append('student_phone', phone);
       fd.append('email', email);
       fd.append('college', college);
       fd.append('course', course);
@@ -625,8 +673,12 @@ const AddStudentModal = {
       fd.append('gender', gender);
       fd.append('parentName', parentName || '');
       fd.append('parent_name', parentName || '');
+      fd.append('fatherName', parentName || '');
+      fd.append('father_name', parentName || '');
       fd.append('parentPhone', parentPhone || '');
       fd.append('parent_phone', parentPhone || '');
+      fd.append('fatherPhone', parentPhone || '');
+      fd.append('father_phone', parentPhone || '');
       if (motherName) {
         fd.append('motherName', motherName);
         fd.append('mother_name', motherName);
@@ -640,6 +692,12 @@ const AddStudentModal = {
       fd.append('joining_date', joiningDate);
       fd.append('monthlyFee', monthlyFee);
       fd.append('monthly_fee', monthlyFee);
+      fd.append('feeAmount', monthlyFee);
+      fd.append('fee_amount', monthlyFee);
+      fd.append('paidAmount', paidAmount);
+      fd.append('paid_amount', paidAmount);
+      fd.append('remainingAmount', remainingAmount);
+      fd.append('remaining_amount', remainingAmount);
       fd.append('bedId', bedId);
 
       const bedObj = this.allAvailableBeds.find(b => String(b.bed_id) === String(bedId));
@@ -712,9 +770,10 @@ const AddStudentModal = {
           maxWidth: '460px'
         });
 
+        Toast.success('Student enrolled successfully!');
         if (window.StudentsPage) StudentsPage.loadStudents();
         if (window.HostelStructurePage) HostelStructurePage.loadStructure();
-        if (window.AdminDashboard && App.currentRoute === 'dashboard') AdminDashboard.loadData();
+        if (window.AdminDashboard) AdminDashboard.loadData();
       }
     } catch (err) {
       Toast.error(err.message || 'Failed to add student.');
