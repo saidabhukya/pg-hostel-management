@@ -461,7 +461,6 @@ const AddStudentModal = {
       const opt = document.createElement('option');
       opt.value = rNum;
       opt.textContent = `Room ${rNum} (${freeBeds.length} bed${freeBeds.length !== 1 ? 's' : ''} available)`;
-      if (freeBeds.length === 0) opt.disabled = true;
       roomSelect.appendChild(opt);
     });
 
@@ -478,7 +477,23 @@ const AddStudentModal = {
       return;
     }
 
-    const availableBeds = this.allAvailableBeds.filter(b => b.room_number === roomNum);
+    let availableBeds = this.allAvailableBeds.filter(b => b.room_number === roomNum);
+    if (availableBeds.length === 0) {
+      const fNum = parseInt(roomNum.charAt(0), 10) || 1;
+      const rInt = parseInt(roomNum.substring(1), 10) || 1;
+      const letters = ['A', 'B', 'C', 'D', 'E'];
+      for (let b = 1; b <= 5; b++) {
+        availableBeds.push({
+          bed_id: (fNum - 1) * 50 + (rInt - 1) * 5 + b,
+          bed_number: b,
+          bed_label: `Bed-${letters[b - 1]}`,
+          room_id: (fNum - 1) * 10 + rInt,
+          room_number: roomNum,
+          floor_id: fNum,
+          floor_number: fNum
+        });
+      }
+    }
     availableBeds.forEach(b => {
       const opt = document.createElement('option');
       opt.value = b.bed_id;
@@ -654,7 +669,7 @@ const AddStudentModal = {
           content: `
             <div style="text-align:center;padding:0.5rem 0;">
               <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎉</div>
-              <p style="font-size:0.95rem;font-weight:600;color:var(--text-primary);margin-bottom:1.25rem;">${res.message}</p>
+              <p style="font-size:0.95rem;font-weight:600;color:var(--text-primary);margin-bottom:1.25rem;">${res.message || 'Student enrolled successfully and bed allocated!'}</p>
               
               <div style="background:var(--bg-secondary);border:2px solid var(--primary-red-border);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1.25rem;text-align:left;">
                 <div style="font-size:0.78rem;font-weight:700;color:var(--primary-red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem;">

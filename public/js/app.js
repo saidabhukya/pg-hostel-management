@@ -249,6 +249,12 @@ const App = {
             activePageModule = SettingsPage;
             break;
 
+          case 'ai-assistant':
+            if (typeof AiAssistantModal !== 'undefined' && AiAssistantModal.open) {
+              AiAssistantModal.open();
+            }
+            return;
+
           // Student Routes
           case 'student-dashboard':
             pageHtml = await StudentDashboard.render();

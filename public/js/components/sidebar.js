@@ -23,6 +23,7 @@ const Sidebar = {
         { id: 'reports', label: 'Reports & Analytics', icon: 'bar-chart-3' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
         { id: 'leave-requests', label: 'Leave Requests', icon: 'calendar-days', hasBadge: true, badgeType: 'leave' },
+        { id: 'ai-assistant', label: 'Hostel AI Assistant', icon: 'bot' },
         { id: 'settings', label: 'Hostel Settings', icon: 'settings' }
       ];
 
@@ -53,6 +54,7 @@ const Sidebar = {
         { id: 'leave-requests', label: 'Apply Leave', icon: 'calendar-days' },
         { id: 'mess', label: 'Today\'s Mess Menu', icon: 'utensils' },
         { id: 'announcements', label: 'Announcements', icon: 'megaphone' },
+        { id: 'ai-assistant', label: 'Hostel AI Assistant', icon: 'bot' },
         { id: 'settings', label: 'Change Password', icon: 'shield-check' }
       ];
 
@@ -115,6 +117,12 @@ const Sidebar = {
   handleNavClick(routeId, event) {
     if (event) event.preventDefault();
     this.closeMobile();
+    if (routeId === 'ai-assistant') {
+      if (typeof AiAssistantModal !== 'undefined' && AiAssistantModal.open) {
+        AiAssistantModal.open();
+      }
+      return;
+    }
     App.navigate(routeId);
   },
 
