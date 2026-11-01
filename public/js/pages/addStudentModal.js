@@ -139,12 +139,6 @@ const AddStudentModal = {
 
           <div class="form-grid" style="margin-bottom:1.25rem;">
             <div class="form-group">
-              <label class="form-label required">Student ID</label>
-              <input type="text" id="as-studentId" class="form-control" value="STU-${Date.now().toString().slice(-4)}" required />
-              <small style="color:var(--text-muted);font-size:0.72rem;">Permanent unique student ID.</small>
-            </div>
-
-            <div class="form-group">
               <label class="form-label required">Student Full Name</label>
               <input type="text" id="as-name" class="form-control" placeholder="e.g. Test Student" required />
             </div>
@@ -613,7 +607,6 @@ const AddStudentModal = {
     e.preventDefault();
     const submitBtn = document.getElementById('as-submit-btn');
 
-    const studentId = document.getElementById('as-studentId')?.value.trim();
     const status = document.getElementById('as-status')?.value.trim() || 'Active';
     const name = document.getElementById('as-name')?.value.trim();
     const regNumber = document.getElementById('as-regNumber')?.value.trim();
@@ -655,8 +648,6 @@ const AddStudentModal = {
       }
 
       const fd = new FormData();
-      fd.append('studentId', studentId || `STU-${Date.now().toString().slice(-4)}`);
-      fd.append('student_id', studentId || `STU-${Date.now().toString().slice(-4)}`);
       fd.append('status', status);
       fd.append('name', name);
       fd.append('regNumber', regNumber);
