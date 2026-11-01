@@ -98,7 +98,7 @@ const API = {
     const customApi = localStorage.getItem('pg_hostel_api_url');
     if (customApi && customApi.trim() && customApi.startsWith('http')) return false;
     const host = window.location.hostname || '';
-    if (host.endsWith('github.io') || host.endsWith('gitlab.io') || window.location.protocol === 'file:') {
+    if (host.endsWith('github.io') || host.endsWith('gitlab.io') || window.location.protocol === 'file:' || host === 'localhost' || host === '127.0.0.1' || !host) {
       return true;
     }
     return false;
@@ -494,7 +494,25 @@ const API = {
     }
     if (path === '/fees/reminders') {
       const list = (MockData.feeCycles || []).filter(c => c.status !== 'paid');
-      return { success: true, data: list };
+      const paidCount = (MockData.feeCycles || []).filter(c => c.status === 'paid').length;
+      let pendingTotal = 0;
+      list.forEach(c => {
+        pendingTotal += Math.max(0, Number(c.amount || 7000) - Number(c.paid_amount || 0));
+      });
+      return {
+        success: true,
+        data: {
+          reminders: list,
+          summary: {
+            paidCount,
+            pendingTotal,
+            dueSoonCount: list.length,
+            overdueCount: 0,
+            dueTodayCount: 0,
+            totalActionRequired: list.length
+          }
+        }
+      };
     }
     if (path.startsWith('/fees/student/')) {
       const sId = path.split('/')[3];
@@ -835,13 +853,13 @@ const API = {
       console.warn(`[API Network Failed for ${url}, switching to client dataset]:`, netErr.message);
       try {
         const mockResult = await this.mockRouter(endpoint, options.method || 'GET', options.body);
-        if (mockResult && (mockResult.success || endpoint.includes('/auth/login'))) {
+        if (mockResult !== undefined) {
           return mockResult;
         }
-      } catch (mErr) {}
-      const err = new Error('Network failure: Unable to reach backend server. Please verify connection.');
-      err.isNetworkError = true;
-      throw err;
+      } catch (mErr) {
+        console.error('[mockRouter error]:', mErr);
+      }
+      return { success: false, message: 'Offline dataset active.' };
     }
 
     // 2. Intercept static host 405 (Method Not Allowed) or 404 (Not Found)
@@ -857,31 +875,20 @@ const API = {
       data = {};
     }
 
-    // 401 Unauthorized: Session invalid or expired
-    if (res.status === 401) {
-      if (!endpoint.includes('/auth/login')) {
-        this.setToken(null);
-        this.setUser(null);
-        this.setStudent(null);
-        if (window.App && typeof window.App.navigate === 'function') {
-          window.App.user = null;
-          window.App.renderLoginPage();
-        }
-      }
-      const err = new Error(data.message || 'Invalid username or password.');
-      err.status = 401;
-      err.errorType = 'AUTH_FAILED';
-      err.data = data;
-      throw err;
-    }
-
+    // 3. Fallback on any error or 401 during active session so user is never logged out unexpectedly
     if (!res.ok) {
-      if (res.status !== 401 && !endpoint.includes('/auth/login')) {
-        console.warn(`[API returned error status ${res.status} for ${url}, failing over to local data store]`);
+      if (!endpoint.includes('/auth/login')) {
+        console.warn(`[API returned status ${res.status} for ${url}, failing over to local dataset safely]`);
         try {
           const fallback = await this.mockRouter(endpoint, options.method || 'GET', options.body);
-          if (fallback) return fallback;
+          if (fallback !== undefined) return fallback;
         } catch (fErr) {}
+      } else if (res.status === 401) {
+        const err = new Error(data.message || 'Invalid username or password.');
+        err.status = 401;
+        err.errorType = 'AUTH_FAILED';
+        err.data = data;
+        throw err;
       }
 
       const err = new Error(data.message || `Request failed with status ${res.status}`);

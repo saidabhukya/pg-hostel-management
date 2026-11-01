@@ -135,7 +135,7 @@ const LeaveRequestsPage = {
     // Auto-mark any pending unread leave notifications when Admin views this page
     const user = API.getUser();
     if (user && user.role === 'admin' && typeof NotificationCenter !== 'undefined') {
-      const leaveNotifs = NotificationCenter.notifications.filter(n => n.type === 'leave' && !n.is_read);
+      const leaveNotifs = (NotificationCenter.notifications || []).filter(n => n.type === 'leave' && !n.is_read);
       for (const n of leaveNotifs) {
         try {
           await API.put(`/notifications/${n.id}/read`);

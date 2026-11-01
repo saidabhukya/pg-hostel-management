@@ -1578,6 +1578,12 @@
     },
 
     getRoomDetails(rNum) {
+      sanitizeStore();
+      if (!Array.isArray(store.students) || store.students.length === 0) {
+        seedInitialData(store);
+        sanitizeStore();
+        saveStore();
+      }
       rNum = String(rNum).trim();
       const floorNum = parseInt(rNum.charAt(0), 10) || 1;
       const studentsInRoom = (store.students || []).filter(s => String(s.room_number || '').trim() === rNum);

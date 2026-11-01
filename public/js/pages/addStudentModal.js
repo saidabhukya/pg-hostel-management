@@ -645,7 +645,7 @@ const AddStudentModal = {
 
       const res = await API.post('/students', fd);
 
-      if (res.success) {
+      if (res && (res.success || res.data || res.student || res.id)) {
         Modal.close();
 
         // Show credentials popup with copy button

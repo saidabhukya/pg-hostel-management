@@ -142,153 +142,174 @@ const App = {
         window.location.hash = `#${routeId}`;
       }
 
-    // Update active nav items in sidebar
-    document.querySelectorAll('.nav-item').forEach(el => {
-      const href = el.getAttribute('href');
-      if (href === `#${routeId}`) {
-        el.classList.add('active');
-      } else {
-        el.classList.remove('active');
-      }
-    });
+      // Update active nav items in sidebar
+      document.querySelectorAll('.nav-item').forEach(el => {
+        const href = el.getAttribute('href');
+        if (href === `#${routeId}`) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
 
-    const pageContainer = document.getElementById('page-container');
-    if (!pageContainer) return;
+      const pageContainer = document.getElementById('page-container');
+      if (!pageContainer) return;
 
-    // Route dispatch
-    try {
-      switch (routeId) {
-        // Admin Routes
-        case 'dashboard':
-          if (this.user.role !== 'admin') return this.navigate('student-dashboard');
-          pageContainer.innerHTML = await AdminDashboard.render();
-          await AdminDashboard.afterRender();
-          break;
+      // Route dispatch
+      try {
+        let pageHtml = '';
+        let activePageModule = null;
 
-        case 'students':
-          if (this.user.role !== 'admin') return this.navigate('student-dashboard');
-          pageContainer.innerHTML = await StudentsPage.render();
-          await StudentsPage.afterRender();
-          break;
+        switch (routeId) {
+          // Admin Routes
+          case 'dashboard':
+            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            pageHtml = await AdminDashboard.render();
+            activePageModule = AdminDashboard;
+            break;
 
-        case 'hostel-structure':
-        case 'beds':
-          if (this.user.role !== 'admin') return this.navigate('student-dashboard');
-          pageContainer.innerHTML = await HostelStructurePage.render();
-          await HostelStructurePage.afterRender();
-          break;
+          case 'students':
+            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            pageHtml = await StudentsPage.render();
+            activePageModule = StudentsPage;
+            break;
 
-        case 'fees':
-        case 'student-fees':
-          pageContainer.innerHTML = await FeesPage.render();
-          await FeesPage.afterRender();
-          break;
+          case 'hostel-structure':
+          case 'beds':
+            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            pageHtml = await HostelStructurePage.render();
+            activePageModule = HostelStructurePage;
+            break;
 
-        case 'payments':
-        case 'student-payments':
-          pageContainer.innerHTML = await PaymentsPage.render();
-          await PaymentsPage.afterRender();
-          break;
+          case 'fees':
+          case 'student-fees':
+            pageHtml = await FeesPage.render();
+            activePageModule = FeesPage;
+            break;
 
-        case 'attendance':
-          pageContainer.innerHTML = await AttendancePage.render();
-          await AttendancePage.afterRender();
-          break;
+          case 'payments':
+          case 'student-payments':
+            pageHtml = await PaymentsPage.render();
+            activePageModule = PaymentsPage;
+            break;
 
-        case 'complaints':
-          pageContainer.innerHTML = await ComplaintsPage.render();
-          await ComplaintsPage.afterRender();
-          break;
+          case 'attendance':
+            pageHtml = await AttendancePage.render();
+            activePageModule = AttendancePage;
+            break;
 
-        case 'visitors':
-          if (this.user.role !== 'admin') return this.navigate('student-dashboard');
-          pageContainer.innerHTML = await VisitorsPage.render();
-          await VisitorsPage.afterRender();
-          break;
+          case 'complaints':
+            pageHtml = await ComplaintsPage.render();
+            activePageModule = ComplaintsPage;
+            break;
 
-        case 'mess':
-          pageContainer.innerHTML = await MessPage.render();
-          await MessPage.afterRender();
-          break;
+          case 'visitors':
+            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            pageHtml = await VisitorsPage.render();
+            activePageModule = VisitorsPage;
+            break;
 
-        case 'expenses':
-          if (this.user.role !== 'admin') return this.navigate('student-dashboard');
-          pageContainer.innerHTML = await ExpensesPage.render();
-          await ExpensesPage.afterRender();
-          break;
+          case 'mess':
+            pageHtml = await MessPage.render();
+            activePageModule = MessPage;
+            break;
 
-        case 'reports':
-          if (this.user.role !== 'admin') return this.navigate('student-dashboard');
-          pageContainer.innerHTML = await ReportsPage.render();
-          await ReportsPage.afterRender();
-          break;
+          case 'expenses':
+            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            pageHtml = await ExpensesPage.render();
+            activePageModule = ExpensesPage;
+            break;
 
-        case 'announcements':
-          pageContainer.innerHTML = await AnnouncementsPage.render();
-          await AnnouncementsPage.afterRender();
-          break;
+          case 'reports':
+            if (this.user.role !== 'admin') return this.navigate('student-dashboard');
+            pageHtml = await ReportsPage.render();
+            activePageModule = ReportsPage;
+            break;
 
-        case 'leave-requests':
-          pageContainer.innerHTML = await LeaveRequestsPage.render();
-          await LeaveRequestsPage.afterRender();
-          break;
+          case 'announcements':
+            pageHtml = await AnnouncementsPage.render();
+            activePageModule = AnnouncementsPage;
+            break;
 
-        case 'notifications':
-        case 'student-notifications':
-          pageContainer.innerHTML = await NotificationsPage.render();
-          await NotificationsPage.afterRender();
-          break;
+          case 'leave-requests':
+            pageHtml = await LeaveRequestsPage.render();
+            activePageModule = LeaveRequestsPage;
+            break;
 
-        case 'admin-profile':
-        case 'profile':
-        case 'settings':
-          pageContainer.innerHTML = await SettingsPage.render();
-          await SettingsPage.afterRender();
-          break;
+          case 'notifications':
+          case 'student-notifications':
+            pageHtml = await NotificationsPage.render();
+            activePageModule = NotificationsPage;
+            break;
 
-        // Student Routes
-        case 'student-dashboard':
-          pageContainer.innerHTML = await StudentDashboard.render();
-          await StudentDashboard.afterRender();
-          break;
+          case 'admin-profile':
+          case 'profile':
+          case 'settings':
+            pageHtml = await SettingsPage.render();
+            activePageModule = SettingsPage;
+            break;
 
-        case 'student-profile':
-          const student = API.getStudent();
-          if (student) {
-            StudentProfile.open(student.id);
-          } else {
-            pageContainer.innerHTML = await StudentDashboard.render();
-            await StudentDashboard.afterRender();
+          // Student Routes
+          case 'student-dashboard':
+            pageHtml = await StudentDashboard.render();
+            activePageModule = StudentDashboard;
+            break;
+
+          case 'student-profile':
+            const student = API.getStudent();
+            if (student) {
+              pageHtml = await StudentDashboard.render();
+              activePageModule = StudentDashboard;
+              setTimeout(() => {
+                if (typeof StudentProfile !== 'undefined') StudentProfile.open(student.id);
+              }, 60);
+            } else {
+              pageHtml = await StudentDashboard.render();
+              activePageModule = StudentDashboard;
+            }
+            break;
+
+          default:
+            if (this.user.role === 'admin') {
+              pageHtml = await AdminDashboard.render();
+              activePageModule = AdminDashboard;
+            } else {
+              pageHtml = await StudentDashboard.render();
+              activePageModule = StudentDashboard;
+            }
+            break;
+        }
+
+        if (pageHtml) {
+          pageContainer.innerHTML = pageHtml;
+          Utils.renderIcons();
+        }
+
+        // Safely invoke afterRender - never destroy rendered page on secondary afterRender warnings
+        if (activePageModule && typeof activePageModule.afterRender === 'function') {
+          try {
+            await activePageModule.afterRender();
+          } catch (afterRenderErr) {
+            console.warn(`[Page afterRender warning for route ${routeId}]:`, afterRenderErr);
           }
-          break;
-
-        default:
-          if (this.user.role === 'admin') {
-            pageContainer.innerHTML = await AdminDashboard.render();
-            await AdminDashboard.afterRender();
-          } else {
-            pageContainer.innerHTML = await StudentDashboard.render();
-            await StudentDashboard.afterRender();
-          }
-          break;
-      }
-    } catch (routeErr) {
-      console.error(`[App.navigate Error on route ${routeId}]:`, routeErr);
-      pageContainer.innerHTML = `
-        <div class="card" style="padding:2.5rem;text-align:center;margin:2rem auto;max-width:540px;">
-          <i data-lucide="alert-circle" style="width:48px;height:48px;color:var(--primary-red);margin-bottom:1rem;"></i>
-          <h2 style="font-size:1.3rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem;">Unable to Open Page</h2>
-          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">${Utils.escapeHTML(routeErr.message || 'An unexpected rendering issue occurred.')}</p>
-          <div style="display:flex;gap:0.75rem;justify-content:center;">
-            <button class="btn btn-secondary" onclick="App.navigate('dashboard')">Go to Dashboard</button>
-            <button class="btn btn-primary" onclick="App.navigate('${routeId}')">Retry</button>
+        }
+      } catch (routeErr) {
+        console.error(`[App.navigate Error on route ${routeId}]:`, routeErr);
+        pageContainer.innerHTML = `
+          <div class="card" style="padding:2.5rem;text-align:center;margin:2rem auto;max-width:540px;">
+            <i data-lucide="alert-circle" style="width:48px;height:48px;color:var(--primary-red);margin-bottom:1rem;"></i>
+            <h2 style="font-size:1.3rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem;">Unable to Open Page</h2>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">${Utils.escapeHTML(routeErr.message || 'An unexpected rendering issue occurred.')}</p>
+            <div style="display:flex;gap:0.75rem;justify-content:center;">
+              <button class="btn btn-secondary" onclick="App.navigate('dashboard')">Go to Dashboard</button>
+              <button class="btn btn-primary" onclick="App.navigate('${routeId}')">Retry</button>
+            </div>
           </div>
-        </div>
-      `;
-    }
+        `;
+      }
 
-    Utils.renderIcons();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      Utils.renderIcons();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       this._isNavigating = false;
     }
