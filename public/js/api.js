@@ -441,6 +441,19 @@ const API = {
       return { success: true, message: 'Student photo updated successfully!', data: updated, photoUrl: updated?.photo_url };
     }
 
+    if (path.startsWith('/students/') && path.endsWith('/reset-password') && (method === 'POST' || method === 'PUT')) {
+      const studentId = path.split('/')[2];
+      const newPwd = payload.newPassword || payload.password;
+      MockData.resetStudentPassword(studentId, newPwd);
+      return { success: true, message: 'Student portal password updated successfully!' };
+    }
+
+    if (path.startsWith('/students/') && path.endsWith('/status') && method === 'PUT') {
+      const studentId = path.split('/')[2];
+      const s = MockData.updateStudent(studentId, { status: payload.status });
+      return { success: true, message: 'Student status updated successfully', data: s };
+    }
+
     // 4. Hostel Structure
     if (path === '/rooms/structure') {
       return { success: true, data: MockData.structure };
@@ -699,6 +712,11 @@ const API = {
     // 12. Mess
     if (path === '/mess') {
       return { success: true, data: MockData.messSchedule };
+    }
+    if (path.startsWith('/mess/') && method === 'PUT') {
+      const day = decodeURIComponent(path.split('/')[2] || '');
+      const updated = MockData.updateMessMenu(day, payload);
+      return { success: true, message: `Menu for ${day} updated successfully!`, data: updated };
     }
     if (path.startsWith('/mess/send-alert') && method === 'POST') {
       MockData.triggerMealAlert(payload.mealType, payload.title, payload.message);

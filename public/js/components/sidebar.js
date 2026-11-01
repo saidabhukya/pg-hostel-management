@@ -115,7 +115,6 @@ const Sidebar = {
   handleNavClick(routeId, event) {
     if (event) event.preventDefault();
     this.closeMobile();
-    window.location.hash = `#${routeId}`;
     App.navigate(routeId);
   },
 

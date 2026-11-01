@@ -4,6 +4,7 @@
 const App = {
   currentRoute: 'dashboard',
   user: null,
+  _isNavigating: false,
 
   async init() {
     try {
@@ -128,8 +129,18 @@ const App = {
       return;
     }
 
-    this.currentRoute = routeId;
-    window.location.hash = `#${routeId}`;
+    if (this._isNavigating && this.currentRoute === routeId) {
+      return;
+    }
+    this._isNavigating = true;
+    this._navSequence = (this._navSequence || 0) + 1;
+    const currentSeq = this._navSequence;
+
+    try {
+      this.currentRoute = routeId;
+      if (window.location.hash !== `#${routeId}`) {
+        window.location.hash = `#${routeId}`;
+      }
 
     // Update active nav items in sidebar
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -278,6 +289,9 @@ const App = {
 
     Utils.renderIcons();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      this._isNavigating = false;
+    }
   },
 
   toggleAiAssistant() {
@@ -299,7 +313,7 @@ const App = {
 window.addEventListener('hashchange', () => {
   if (App.user && window.location.hash) {
     const route = window.location.hash.substring(1);
-    if (route && route !== App.currentRoute) {
+    if (route && route !== App.currentRoute && !App._isNavigating) {
       App.navigate(route);
     }
   }

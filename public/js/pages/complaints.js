@@ -115,6 +115,7 @@ const ComplaintsPage = {
   },
 
   renderComplaints(complaints) {
+    this._complaints = complaints || [];
     const container = document.getElementById('complaints-list-container');
     if (!container) return;
 
@@ -179,7 +180,7 @@ const ComplaintsPage = {
 
             ${isAdmin ? `
               <div style="display:flex;gap:0.4rem;">
-                <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.openUpdateStatusModal(${c.id}, '${c.status}', '${Utils.escapeHTML(c.admin_notes || '')}')" title="Update Status">
+                <button class="btn btn-sm btn-secondary" onclick="ComplaintsPage.openUpdateStatusModal(${c.id})" title="Update Status">
                   <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
                   <span>Update Status</span>
                 </button>
@@ -348,6 +349,10 @@ const ComplaintsPage = {
   },
 
   openUpdateStatusModal(id, currentStatus, currentNotes) {
+    const c = (this._complaints || []).find(item => item.id == id) || {};
+    const statusVal = currentStatus || c.status || 'In Progress';
+    const notesVal = currentNotes !== undefined ? currentNotes : (c.admin_notes || '');
+
     Modal.open({
       title: 'Update Complaint Status',
       content: `
@@ -355,15 +360,15 @@ const ComplaintsPage = {
           <div class="form-group" style="margin-bottom:1.15rem;">
             <label class="form-label required">Update Ticket Status</label>
             <select id="update-comp-status" class="form-control" required>
-              <option value="In Progress" ${currentStatus === 'In Progress' || currentStatus === 'Processing' ? 'selected' : ''}>⚙ In Progress (Processing / Work Underway)</option>
-              <option value="Resolved" ${currentStatus === 'Resolved' || currentStatus === 'Solved' ? 'selected' : ''}>✓ Resolved (Solved & Fixed)</option>
-              <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>⏳ Pending (Awaiting Review)</option>
+              <option value="In Progress" ${statusVal === 'In Progress' || statusVal === 'Processing' ? 'selected' : ''}>⚙ In Progress (Processing / Work Underway)</option>
+              <option value="Resolved" ${statusVal === 'Resolved' || statusVal === 'Solved' ? 'selected' : ''}>✓ Resolved (Solved & Fixed)</option>
+              <option value="Pending" ${statusVal === 'Pending' ? 'selected' : ''}>⏳ Pending (Awaiting Review)</option>
             </select>
           </div>
 
           <div class="form-group" style="margin-bottom:1.5rem;">
             <label class="form-label required">Warden Remarks / Action Notes (Visible on Student Portal)</label>
-            <textarea id="update-comp-notes" class="form-control" rows="3" placeholder="Explain action taken (e.g. Plumber replaced tap washer, issue solved)..." required>${currentNotes || ''}</textarea>
+            <textarea id="update-comp-notes" class="form-control" rows="3" placeholder="Explain action taken (e.g. Plumber replaced tap washer, issue solved)..." required>${Utils.escapeHTML(notesVal)}</textarea>
             <small style="color:var(--text-muted);font-size:0.75rem;">These notes immediately update on the student resident portal and their notification center.</small>
           </div>
 

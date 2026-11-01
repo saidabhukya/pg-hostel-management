@@ -110,7 +110,7 @@ const Header = {
       try {
         const query = val.trim();
         const res = await API.get('/students', { search: query, limit: 5 });
-        const students = res.data || [];
+        const students = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
 
         if (students.length === 0) {
           dropdown.innerHTML = `
@@ -119,22 +119,28 @@ const Header = {
             </div>
           `;
         } else {
-          dropdown.innerHTML = students.map(s => `
+          dropdown.innerHTML = students.map(s => {
+            const sName = s.name || 'Resident';
+            const sInitial = sName.charAt(0).toUpperCase();
+            const sReg = s.reg_number || 'REG-';
+            const isPaid = (s.fee_status === 'paid' || s.latest_cycle_status === 'paid' || s.student_status === 'paid');
+            return `
             <div class="search-result-item" onclick="Header.selectSearchResult(${s.id})">
               <div class="user-avatar" style="width:32px;height:32px;font-size:0.75rem;">
-                ${s.name.charAt(0)}
+                ${sInitial}
               </div>
               <div style="flex:1;min-width:0;">
-                <div style="font-size:0.88rem;font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(s.name)}</div>
+                <div style="font-size:0.88rem;font-weight:700;color:var(--text-primary);">${Utils.escapeHTML(sName)}</div>
                 <div style="font-size:0.75rem;color:var(--text-muted);">
-                  Reg: ${s.reg_number} • Room ${s.room_number || 'Unallocated'}, ${s.bed_label || ''}
+                  Reg: ${Utils.escapeHTML(sReg)} • Room ${s.room_number ? Utils.escapeHTML(String(s.room_number)) : 'Unallocated'}${s.bed_label ? `, ${Utils.escapeHTML(s.bed_label)}` : ''}
                 </div>
               </div>
-              <span class="badge ${(s.fee_status === 'paid' || s.latest_cycle_status === 'paid') ? 'badge-success' : 'badge-danger'}">
-                ${(s.fee_status === 'paid' || s.latest_cycle_status === 'paid') ? 'Paid' : 'Due'}
+              <span class="badge ${isPaid ? 'badge-success' : 'badge-danger'}">
+                ${isPaid ? 'Paid' : 'Due'}
               </span>
             </div>
-          `).join('');
+          `;
+          }).join('');
         }
 
         dropdown.classList.add('active');

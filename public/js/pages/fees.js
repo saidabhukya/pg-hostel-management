@@ -293,7 +293,7 @@ const FeesPage = {
                 </button>
               </div>
             ` : (isAdmin ? `
-              <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${c.student_id}, '${Utils.escapeHTML(c.student_name)}', ${c.amount}, '${c.start_date}', '${c.end_date}', ${c.id})">
+              <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${c.student_id}, null, ${c.amount}, '${c.start_date}', '${c.end_date}', ${c.id})">
                 <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
                 <span>Record Pay</span>
               </button>

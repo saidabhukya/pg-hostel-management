@@ -262,6 +262,16 @@ const PaymentsPage = {
   async openRecordPaymentModal(studentId = null, studentName = null, defaultAmount = 7000, cycleStart = null, cycleEnd = null, feeCycleId = null) {
     let studentSelectHtml = '';
 
+    if (studentId && !studentName) {
+      if (typeof MockData !== 'undefined' && Array.isArray(MockData.students)) {
+        const found = MockData.students.find(s => s.id == studentId);
+        if (found) {
+          studentName = found.name;
+          if (!defaultAmount) defaultAmount = found.monthly_fee;
+        }
+      }
+    }
+
     if (!studentId) {
       // Fetch students list for dropdown
       try {

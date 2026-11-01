@@ -320,7 +320,9 @@ const SettingsPage = {
       if (typeof MockData !== 'undefined' && typeof MockData.resetToClean === 'function') {
         MockData.resetToClean();
       }
-      localStorage.removeItem('sri_ram_pg_live_store_v1');
+      ['sri_ram_pg_live_store_v12', 'sri_ram_pg_live_store_v11', 'sri_ram_pg_live_store_v1', 'sri_ram_pg_clean_store_v1', 'sri_ram_pg_clean_store_v2', 'sri_ram_pg_clean_store_v3', 'sri_ram_pg_clean_store_v4'].forEach(k => {
+        try { localStorage.removeItem(k); } catch(e) {}
+      });
       try {
         await API.post('/system/reset-clean');
       } catch(e) {}

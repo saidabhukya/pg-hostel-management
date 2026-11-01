@@ -2024,6 +2024,15 @@
       return student;
     },
 
+    resetStudentPassword(studentId, newPassword) {
+      const sId = Number(studentId);
+      const student = store.students.find(s => s.id === sId);
+      if (!student) throw new Error('Student not found.');
+      student.password = String(newPassword || '').trim();
+      saveStore();
+      return true;
+    },
+
     transferStudent(studentId, targetBedId, reason) {
       const sId = Number(studentId);
       const student = store.students.find(s => s.id === sId);

@@ -192,15 +192,15 @@ const StudentProfile = {
                   <i data-lucide="edit-3" style="width:14px;height:14px;color:var(--primary-red);"></i>
                   Edit Details
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="StudentsPage.openResetPasswordModal(${profile.id}, '${Utils.escapeHTML(profile.name)}', '${Utils.escapeHTML(profile.reg_number)}')">
+                <button class="btn btn-secondary btn-sm" onclick="StudentsPage.openResetPasswordModal(${profile.id})">
                   <i data-lucide="key" style="width:14px;height:14px;"></i>
                   Reset Password
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="RoomDetailModal.promptTransfer(${profile.id}, '${Utils.escapeHTML(profile.name)}', ${profile.bed_id})">
+                <button class="btn btn-secondary btn-sm" onclick="RoomDetailModal.promptTransfer(${profile.id})">
                   <i data-lucide="arrow-right-left" style="width:14px;height:14px;"></i>
                   Transfer Bed
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="StudentProfile.vacateStudent(${profile.id}, '${Utils.escapeHTML(profile.name)}')">
+                <button class="btn btn-danger btn-sm" onclick="StudentProfile.vacateStudent(${profile.id})">
                   <i data-lucide="user-x" style="width:14px;height:14px;"></i>
                   Vacate Student
                 </button>
@@ -225,7 +225,7 @@ const StudentProfile = {
                     ${(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? 'Paid' : ((nextDueInfo.reminder && nextDueInfo.reminder.label) || 'Due')}
                   </span>
                   ${isAdmin && !(nextDueInfo.isPaid || nextDueInfo.status === 'paid' || profile.fee_status === 'paid') ? `
-                    <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${profile.id}, '${Utils.escapeHTML(profile.name)}', ${profile.monthly_fee})">
+                    <button class="btn btn-sm btn-primary" onclick="PaymentsPage.openRecordPaymentModal(${profile.id}, null, ${profile.monthly_fee})">
                       Record Payment
                     </button>
                   ` : ''}
@@ -406,6 +406,10 @@ const StudentProfile = {
   },
 
   async vacateStudent(studentId, name) {
+    if (!name) {
+      const s = (typeof MockData !== 'undefined' && MockData.students) ? MockData.students.find(x => String(x.id) === String(studentId)) : null;
+      name = s ? s.name : 'Resident Student';
+    }
     if (!confirm(`Are you sure you want to mark ${name} as vacated? This will free up their bed immediately.`)) {
       return;
     }

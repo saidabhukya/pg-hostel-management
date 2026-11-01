@@ -134,11 +134,11 @@ const RoomDetailModal = {
                         <span>Profile</span>
                       </button>
                       ${isAdmin ? `
-                        <button class="btn btn-sm btn-secondary" onclick="RoomDetailModal.promptTransfer(${b.student_id}, '${Utils.escapeHTML(b.student_name)}', ${b.id})" title="Transfer Student to Another Bed">
+                        <button class="btn btn-sm btn-secondary" onclick="RoomDetailModal.promptTransfer(${b.student_id})" title="Transfer Student to Another Bed">
                           <i data-lucide="arrow-right-left" style="width:14px;height:14px;"></i>
                           <span>Transfer</span>
                         </button>
-                        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;" onclick="RoomDetailModal.vacateOccupant(${b.student_id}, '${Utils.escapeHTML(b.student_name)}', '${room.room_number}', '${b.bed_label}')" title="Vacate student and make bed available">
+                        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;" onclick="RoomDetailModal.vacateOccupant(${b.student_id})" title="Vacate student and make bed available">
                           <i data-lucide="user-minus" style="width:14px;height:14px;"></i>
                           <span>Vacate</span>
                         </button>
@@ -195,6 +195,15 @@ const RoomDetailModal = {
 
   async promptTransfer(studentId, studentName, currentBedId) {
     try {
+      if (!studentName) {
+        const s = (typeof MockData !== 'undefined' && MockData.students) ? MockData.students.find(x => String(x.id) === String(studentId)) : null;
+        if (s) {
+          studentName = s.name;
+          if (!currentBedId) currentBedId = s.bed_id;
+        } else {
+          studentName = 'Resident Student';
+        }
+      }
       const res = await API.get('/rooms/options/available');
       const availableBeds = res.data || [];
 
@@ -264,6 +273,18 @@ const RoomDetailModal = {
   },
 
   async vacateOccupant(studentId, studentName, roomNumber, bedLabel) {
+    if (!studentName) {
+      const s = (typeof MockData !== 'undefined' && MockData.students) ? MockData.students.find(x => String(x.id) === String(studentId)) : null;
+      if (s) {
+        studentName = s.name;
+        if (!roomNumber) roomNumber = s.room_number;
+        if (!bedLabel) bedLabel = s.bed_label;
+      } else {
+        studentName = 'Resident Student';
+        if (!roomNumber) roomNumber = '-';
+        if (!bedLabel) bedLabel = 'Bed';
+      }
+    }
     if (!confirm(`Are you sure you want to remove ${studentName} from PG? This will immediately free up ${bedLabel} in Room ${roomNumber} and show it as Available.`)) {
       return;
     }

@@ -127,6 +127,7 @@ const StudentsPage = {
 
       let students = (res && res.success && Array.isArray(res.data)) ? res.data : [];
       let pagination = res?.pagination || null;
+      this._studentsList = students;
 
       // Robust fallback to MockData if API didn't return students
       if (students.length === 0) {
@@ -263,7 +264,7 @@ const StudentsPage = {
                   <i data-lucide="edit-3" style="width:13px;height:13px;color:var(--primary-red);"></i>
                 </button>
                 <!-- Reset Password -->
-                <button class="btn btn-sm btn-secondary" onclick="StudentsPage.openResetPasswordModal(${s.id}, '${Utils.escapeHTML(s.name)}', '${Utils.escapeHTML(s.reg_number)}')" title="Reset Login Password">
+                <button class="btn btn-sm btn-secondary" onclick="StudentsPage.openResetPasswordModal(${s.id})" title="Reset Login Password">
                   <i data-lucide="key" style="width:13px;height:13px;"></i>
                 </button>
                 <!-- Fee Status -->
@@ -271,11 +272,11 @@ const StudentsPage = {
                   <i data-lucide="receipt" style="width:13px;height:13px;"></i>
                 </button>
                 <!-- Record Payment -->
-                <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openRecordPaymentModal(${s.id}, '${Utils.escapeHTML(s.name)}', ${s.monthly_fee})" title="Record Payment">
+                <button class="btn btn-sm btn-secondary" onclick="PaymentsPage.openRecordPaymentModal(${s.id}, null, ${s.monthly_fee || 7000})" title="Record Payment">
                   <i data-lucide="credit-card" style="width:13px;height:13px;"></i>
                 </button>
                 <!-- Vacate / Remove -->
-                <button class="btn btn-sm" style="background:var(--status-danger-bg);color:var(--status-danger);border:1px solid #fecaca;" onclick="StudentsPage.removeStudent(${s.id}, '${Utils.escapeHTML(s.name)}')" title="Vacate Bed / Remove Student">
+                <button class="btn btn-sm" style="background:var(--status-danger-bg);color:var(--status-danger);border:1px solid #fecaca;" onclick="StudentsPage.removeStudent(${s.id})" title="Vacate Bed / Remove Student">
                   <i data-lucide="user-x" style="width:13px;height:13px;"></i>
                 </button>
               </div>
@@ -478,13 +479,25 @@ const StudentsPage = {
    */
   async openEditModal(studentId) {
     try {
-      const res = await API.get(`/students/${studentId}`);
-      if (!res.success || !res.data) {
+      let s = null;
+      try {
+        const res = await API.get(`/students/${studentId}`);
+        if (res && res.success && res.data) {
+          s = res.data.profile || res.data.student || res.data;
+        }
+      } catch (apiErr) {
+        console.warn('API get student error:', apiErr);
+      }
+
+      if (!s) {
+        s = (this._studentsList || []).find(item => String(item.id) === String(studentId)) ||
+            (typeof MockData !== 'undefined' && Array.isArray(MockData.students) ? MockData.students.find(item => String(item.id) === String(studentId)) : null);
+      }
+
+      if (!s) {
         Toast.error('Could not load student details.');
         return;
       }
-
-      const s = res.data.profile || res.data.student || res.data;
 
       Modal.open({
         title: `Edit Student: ${Utils.escapeHTML(s.name)} (${s.reg_number})`,
@@ -731,6 +744,10 @@ const StudentsPage = {
    * Reset Password Modal
    */
   openResetPasswordModal(studentId, name, regNumber) {
+    const s = (this._studentsList || []).find(item => String(item.id) === String(studentId)) ||
+              (typeof MockData !== 'undefined' && Array.isArray(MockData.students) ? MockData.students.find(item => String(item.id) === String(studentId)) : null) || {};
+    name = name || s.name || 'Resident Student';
+    regNumber = regNumber || s.reg_number || 'REG-';
     Modal.open({
       title: `Reset Password: ${Utils.escapeHTML(name)}`,
       content: `
@@ -822,6 +839,9 @@ const StudentsPage = {
   },
 
   removeStudent(studentId, studentName) {
+    const s = (this._studentsList || []).find(item => String(item.id) === String(studentId)) ||
+              (typeof MockData !== 'undefined' && Array.isArray(MockData.students) ? MockData.students.find(item => String(item.id) === String(studentId)) : null) || {};
+    studentName = studentName || s.name || 'Resident Student';
     Modal.open({
       title: 'Vacate Bed & Remove Student',
       content: `
@@ -864,12 +884,25 @@ const StudentsPage = {
 
   async openUpdateFeeModal(studentId) {
     try {
-      const res = await API.get(`/students/${studentId}`);
-      if (!res.success || !res.data) {
+      let student = null;
+      try {
+        const res = await API.get(`/students/${studentId}`);
+        if (res && res.success && res.data) {
+          student = res.data.profile || res.data.student || res.data;
+        }
+      } catch (apiErr) {
+        console.warn('API get student error:', apiErr);
+      }
+
+      if (!student) {
+        student = (this._studentsList || []).find(item => String(item.id) === String(studentId)) ||
+                  (typeof MockData !== 'undefined' && Array.isArray(MockData.students) ? MockData.students.find(item => String(item.id) === String(studentId)) : null);
+      }
+
+      if (!student) {
         Toast.error('Could not find student details.');
         return;
       }
-      const student = res.data.profile || res.data.student || res.data;
       const isPaid = student.fee_status === 'paid';
 
       Modal.open({

@@ -222,8 +222,12 @@ const ReportsPage = {
     const { title, columns, rows } = this.currentReportData;
 
     try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const jsPDFClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+      if (!jsPDFClass) {
+        Toast.error('PDF export library is still loading. Please try again.');
+        return;
+      }
+      const doc = new jsPDFClass({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
       // Header Banner
       doc.setFillColor(220, 38, 38);
@@ -244,14 +248,16 @@ const ReportsPage = {
       doc.text(`Generated Date: ${Utils.formatDate(Utils.getTodayISO())} | Total Records: ${rows.length}`, 14, 34);
 
       // AutoTable
-      doc.autoTable({
+      if (typeof doc.autoTable === 'function') {
+        doc.autoTable({
         startY: 38,
         head: [columns],
         body: rows,
         theme: 'striped',
         headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 8, cellPadding: 3 }
-      });
+        });
+      }
 
       const filename = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       doc.save(filename);
